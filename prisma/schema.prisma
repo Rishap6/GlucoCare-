@@ -1,0 +1,51 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+model User {
+  id                    String    @id @default(uuid())
+  name                  String
+  email                 String    @unique
+  phone                 String
+  role                  String    // "patient" or "doctor"
+  password              String
+  specialization        String?   // doctor only
+  medicalRegistrationNo String?   // doctor only
+  hospitalName          String?   // doctor only
+  age                   Int?      // patient only
+  gender                String?   // patient only
+  createdAt             DateTime  @default(now())
+
+  glucoseReadings       GlucoseReading[]
+  prescriptions         Prescription[]   @relation("PatientPrescriptions")
+  prescriptionsGiven    Prescription[]   @relation("DoctorPrescriptions")
+}
+
+model GlucoseReading {
+  id        String   @id @default(uuid())
+  patientId String
+  value     Float
+  type      String   // "fasting" or "post-meal"
+  createdAt DateTime @default(now())
+
+  patient   User     @relation(fields: [patientId], references: [id])
+}
+
+model Prescription {
+  id        String   @id @default(uuid())
+  patientId String
+  doctorId  String
+  medicine  String
+  dosage    String
+  duration  String
+  notes     String?
+  createdAt DateTime @default(now())
+
+  patient   User     @relation("PatientPrescriptions", fields: [patientId], references: [id])
+  doctor    User     @relation("DoctorPrescriptions", fields: [doctorId], references: [id])
+}
