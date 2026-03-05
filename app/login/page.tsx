@@ -27,7 +27,14 @@ export default function LoginPage() {
 
             const data = await res.json();
 
-            if (data.role === "doctor") {
+            localStorage.setItem('gc_token', data.token);
+            localStorage.setItem('gc_role', data.role);
+            localStorage.setItem('gc_user_id', data.id);
+            localStorage.setItem('gc_user_name', data.name || '');
+
+            if (data.role === "admin") {
+                router.push("/admin");
+            } else if (data.role === "doctor") {
                 router.push("/dashboard/doctor");
             } else {
                 router.push("/dashboard/patient");
@@ -38,14 +45,21 @@ export default function LoginPage() {
     };
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-blue-50 to-white flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8 relative overflow-hidden">
+        <div className="min-h-screen bg-gradient-to-br from-teal-50 to-white flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8 relative overflow-hidden">
+            <Link
+                href="/"
+                className="absolute right-4 top-4 z-20 inline-flex items-center justify-center rounded-lg border border-teal-200 bg-white px-4 py-2 text-sm font-semibold text-teal-700 hover:bg-teal-50 sm:right-6 sm:top-6"
+            >
+                Back to Landing Page
+            </Link>
+
             {/* Background animated elements matching register page */}
-            <div className="absolute top-[-10%] left-[-10%] w-96 h-96 bg-blue-200 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-blob"></div>
+            <div className="absolute top-[-10%] left-[-10%] w-96 h-96 bg-teal-200 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-blob"></div>
             <div className="absolute bottom-[-10%] right-[-10%] w-96 h-96 bg-cyan-200 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-blob animation-delay-2000"></div>
 
             <div className="max-w-md w-full space-y-8 bg-white/80 backdrop-blur-xl p-8 rounded-3xl shadow-2xl border border-white/50 relative z-10 transition-all duration-500">
                 <div className="text-center">
-                    <div className="mx-auto w-16 h-16 bg-gradient-to-tr from-blue-600 to-cyan-400 rounded-2xl flex items-center justify-center shadow-lg transform transition hover:scale-105">
+                    <div className="mx-auto w-16 h-16 bg-gradient-to-tr from-teal-600 to-cyan-400 rounded-2xl flex items-center justify-center shadow-lg transform transition hover:scale-105">
                         <Activity className="h-8 w-8 text-white" />
                     </div>
                     <h2 className="mt-6 text-3xl font-extrabold text-gray-900 tracking-tight">Welcome Back</h2>
@@ -55,28 +69,28 @@ export default function LoginPage() {
                 <form className="mt-8 space-y-5" onSubmit={handleLogin}>
                     <div className="space-y-4">
                         <div className="relative group">
-                            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400 group-focus-within:text-blue-500 transition-colors">
+                            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400 group-focus-within:text-teal-500 transition-colors">
                                 <Mail className="h-5 w-5" />
                             </div>
                             <input
                                 type="email"
                                 required
                                 placeholder="Email Address"
-                                className="block w-full pl-10 pr-3 py-3 border border-gray-200 rounded-xl bg-gray-50/50 backdrop-blur-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 focus:bg-white transition-all duration-300"
+                                className="block w-full pl-10 pr-3 py-3 border border-gray-200 rounded-xl bg-gray-50/50 backdrop-blur-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-teal-500/50 focus:border-teal-500 focus:bg-white transition-all duration-300"
                                 value={email}
                                 onChange={(e) => setEmail(e.target.value)}
                             />
                         </div>
 
                         <div className="relative group">
-                            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400 group-focus-within:text-blue-500 transition-colors">
+                            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400 group-focus-within:text-teal-500 transition-colors">
                                 <Lock className="h-5 w-5" />
                             </div>
                             <input
                                 type={showPassword ? "text" : "password"}
                                 required
                                 placeholder="Password"
-                                className="block w-full pl-10 pr-10 py-3 border border-gray-200 rounded-xl bg-gray-50/50 backdrop-blur-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 focus:bg-white transition-all duration-300"
+                                className="block w-full pl-10 pr-10 py-3 border border-gray-200 rounded-xl bg-gray-50/50 backdrop-blur-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-teal-500/50 focus:border-teal-500 focus:bg-white transition-all duration-300"
                                 value={password}
                                 onChange={(e) => setPassword(e.target.value)}
                             />
@@ -102,7 +116,7 @@ export default function LoginPage() {
 
                     <button
                         type="submit"
-                        className="w-full flex justify-center py-3 px-4 border border-transparent rounded-xl shadow-md shadow-blue-500/30 text-sm font-bold text-white bg-gradient-to-r from-blue-600 to-cyan-500 hover:from-blue-700 hover:to-cyan-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transform transition hover:-translate-y-0.5 active:translate-y-0"
+                        className="w-full flex justify-center py-3 px-4 border border-transparent rounded-xl shadow-md shadow-teal-500/30 text-sm font-bold text-white bg-gradient-to-r from-teal-600 to-cyan-500 hover:from-teal-700 hover:to-cyan-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-teal-500 transform transition hover:-translate-y-0.5 active:translate-y-0"
                     >
                         Sign In
                     </button>
@@ -110,8 +124,8 @@ export default function LoginPage() {
 
                 <div className="text-center pt-4 border-t border-gray-100">
                     <p className="text-sm text-gray-600">
-                        Don't have an account?{' '}
-                        <Link href="/register" className="font-semibold text-blue-600 hover:text-blue-500 transition-colors">
+                        Don&apos;t have an account?{' '}
+                        <Link href="/register" className="font-semibold text-teal-600 hover:text-teal-500 transition-colors">
                             Register here
                         </Link>
                     </p>

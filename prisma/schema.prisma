@@ -12,7 +12,8 @@ model User {
   name                  String
   email                 String    @unique
   phone                 String
-  role                  String    // "patient" or "doctor"
+  role                  String    // "patient", "doctor", or "admin"
+  isActive              Boolean   @default(true)
   password              String
   specialization        String?   // doctor only
   medicalRegistrationNo String?   // doctor only
@@ -21,9 +22,53 @@ model User {
   gender                String?   // patient only
   createdAt             DateTime  @default(now())
 
+  patientProfile        PatientProfile?
+  doctorProfile         DoctorProfile?
   glucoseReadings       GlucoseReading[]
+  alerts               Alert[]
   prescriptions         Prescription[]   @relation("PatientPrescriptions")
   prescriptionsGiven    Prescription[]   @relation("DoctorPrescriptions")
+  reminders             Reminder[]       @relation("PatientReminders")
+  remindersCreated      Reminder[]       @relation("DoctorReminders")
+
+  doctorAssignments     DoctorPatientAssignment[] @relation("DoctorAssignments")
+  patientAssignments    DoctorPatientAssignment[] @relation("PatientAssignments")
+
+  actorAuditEvents      AuditEvent[] @relation("AuditActor")
+  targetAuditEvents     AuditEvent[] @relation("AuditTarget")
+}
+
+model PatientProfile {
+  id        String   @id @default(uuid())
+  userId    String   @unique
+  age       Int?
+  gender    String?
+  createdAt DateTime @default(now())
+
+  user      User     @relation(fields: [userId], references: [id])
+}
+
+model DoctorProfile {
+  id                    String   @id @default(uuid())
+  userId                String   @unique
+  specialization        String?
+  medicalRegistrationNo String?  @unique
+  hospitalName          String?
+  createdAt             DateTime @default(now())
+
+  user                  User     @relation(fields: [userId], references: [id])
+}
+
+model DoctorPatientAssignment {
+  id         String   @id @default(uuid())
+  doctorId   String
+  patientId  String
+  createdAt  DateTime @default(now())
+
+  doctor     User     @relation("DoctorAssignments", fields: [doctorId], references: [id])
+  patient    User     @relation("PatientAssignments", fields: [patientId], references: [id])
+
+  @@unique([doctorId, patientId])
 }
 
 model GlucoseReading {
@@ -34,6 +79,18 @@ model GlucoseReading {
   createdAt DateTime @default(now())
 
   patient   User     @relation(fields: [patientId], references: [id])
+}
+
+model Alert {
+  id         String   @id @default(uuid())
+  patientId  String
+  alertType  String
+  severity   String
+  message    String
+  isActive   Boolean  @default(true)
+  createdAt  DateTime @default(now())
+
+  patient    User     @relation(fields: [patientId], references: [id])
 }
 
 model Prescription {
@@ -48,4 +105,41 @@ model Prescription {
 
   patient   User     @relation("PatientPrescriptions", fields: [patientId], references: [id])
   doctor    User     @relation("DoctorPrescriptions", fields: [doctorId], references: [id])
+}
+
+model Reminder {
+  id         String   @id @default(uuid())
+  patientId  String
+  doctorId   String?
+  title      String
+  message    String
+  remindAt   DateTime
+  isDone     Boolean  @default(false)
+  createdAt  DateTime @default(now())
+
+  patient    User     @relation("PatientReminders", fields: [patientId], references: [id])
+  doctor     User?    @relation("DoctorReminders", fields: [doctorId], references: [id])
+
+  @@index([patientId, remindAt])
+  @@index([doctorId, createdAt])
+}
+
+model AuditEvent {
+  id          String   @id @default(uuid())
+  actorUserId String?
+  targetUserId String?
+  action      String
+  entityType  String
+  entityId    String?
+  metadata    String?
+  ipAddress   String?
+  userAgent   String?
+  createdAt   DateTime @default(now())
+
+  actor       User?    @relation("AuditActor", fields: [actorUserId], references: [id])
+  target      User?    @relation("AuditTarget", fields: [targetUserId], references: [id])
+
+  @@index([createdAt])
+  @@index([actorUserId])
+  @@index([targetUserId])
 }

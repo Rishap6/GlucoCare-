@@ -9,8 +9,8 @@ const config: Config = {
     theme: {
         extend: {
             colors: {
-                prime: "#0EA5E9",
-                primeHover: "#0284C7",
+                prime: "#0D9488",
+                primeHover: "#0F766E",
             },
         },
     },
