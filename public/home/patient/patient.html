@@ -79,6 +79,10 @@
 
                 <div class="nav-section">
                     <div class="nav-section-title">Digital Care</div>
+                    <a class="nav-item" data-section="ai-assistant">
+                        <i class="fas fa-robot"></i>
+                        AI Assistant
+                    </a>
                     <a class="nav-item" data-section="messages">
                         <i class="fas fa-comments"></i>
                         Messages
@@ -949,6 +953,44 @@
                 </div>
             </section>
 
+            <!-- AI Assistant Section -->
+            <section id="ai-assistant" class="dashboard-section">
+                <div class="section-header">
+                    <h2 class="section-title">
+                        <i class="fas fa-robot"></i>
+                        Diabetes AI Assistant
+                    </h2>
+                </div>
+
+                <div class="card">
+                    <p class="muted-note" style="margin-top: 0; margin-bottom: 14px;">
+                        Ask about Type 1 diabetes, Type 2 diabetes, glucose safety, medicine allergies, and possible alternatives.
+                    </p>
+                    <div class="ai-suggestions">
+                        <button class="btn btn-outline btn-sm" onclick="askAiPreset('Difference between Type 1 and Type 2 diabetes')">Type 1 vs Type 2</button>
+                        <button class="btn btn-outline btn-sm" onclick="askAiPreset('What should I do for low blood sugar?')">Low Sugar Help</button>
+                        <button class="btn btn-outline btn-sm" onclick="askAiPreset('If allergic to metformin, what alternatives are used?')">Metformin Alternative</button>
+                    </div>
+                    <div class="form-group" style="margin-top: 14px; margin-bottom: 12px;">
+                        <label class="form-label">Your Question</label>
+                        <textarea id="ai-question" class="form-textarea" placeholder="Example: I have Type 2 diabetes and metformin intolerance. What alternatives are commonly considered?"></textarea>
+                    </div>
+                    <div class="modal-actions" style="margin-top: 0; justify-content: flex-start;">
+                        <button class="btn btn-primary" onclick="askAiAssistant()">
+                            <i class="fas fa-paper-plane"></i>
+                            Ask AI
+                        </button>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h3 class="card-title" style="margin-bottom: 12px;">AI Conversation</h3>
+                    <div id="ai-conversation" class="message-log">
+                        <div class="empty-state">No AI conversation yet. Ask your first question.</div>
+                    </div>
+                </div>
+            </section>
+
             <!-- Privacy & Security Section -->
             <section id="privacy" class="dashboard-section">
                 <div class="section-header">
@@ -1242,6 +1284,11 @@
             </form>
         </div>
     </div>
+
+    <button class="floating-ai-btn" onclick="openAiAssistantPanel()" aria-label="Open AI Assistant" title="Open AI Assistant">
+        <i class="fas fa-robot"></i>
+        <span>AI Help</span>
+    </button>
 
     <script src="/js/api.js"></script>
     <script src="./patient.js"></script>

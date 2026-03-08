@@ -8,6 +8,7 @@ const Appointment = require('../models/Appointment');
 const Alert = require('../models/Alert');
 const User = require('../models/User');
 const { getDb } = require('../database');
+const { answerQuestion } = require('../../Ai/ai-engine');
 
 const router = express.Router();
 
@@ -977,6 +978,27 @@ router.post('/education/:id/feedback', async (req, res) => {
         res.status(201).json(db.prepare('SELECT * FROM education_feedback WHERE id = ?').get(result.lastInsertRowid));
     } catch (err) {
         res.status(500).json({ error: 'Failed to save education feedback.' });
+    }
+});
+
+// ─── Feature 10b: AI Diabetes Assistant ────────────────────────────
+
+router.post('/ai/ask', async (req, res) => {
+    try {
+        const question = String(req.body.question || '').trim();
+        if (!question) {
+            return res.status(400).json({ error: 'Question is required.' });
+        }
+
+        if (question.length > 600) {
+            return res.status(400).json({ error: 'Question is too long. Keep it below 600 characters.' });
+        }
+
+        const allergies = Array.isArray(req.user.allergies) ? req.user.allergies : [];
+        const response = answerQuestion(question, { allergies });
+        res.json(response);
+    } catch (err) {
+        res.status(500).json({ error: 'Failed to process AI question.' });
     }
 });
 

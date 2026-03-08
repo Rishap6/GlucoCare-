@@ -1,0 +1,387 @@
+[
+  {
+    "id": "t1-overview",
+    "title": "Type 1 Diabetes Overview",
+    "tags": ["type 1", "autoimmune", "insulin"],
+    "question": "What is Type 1 diabetes?",
+    "answer": "Type 1 diabetes is an autoimmune condition where the pancreas makes little or no insulin. It usually requires lifelong insulin therapy, glucose monitoring, carbohydrate planning, and regular follow-up with a diabetes care team."
+  },
+  {
+    "id": "t2-overview",
+    "title": "Type 2 Diabetes Overview",
+    "tags": ["type 2", "insulin resistance", "lifestyle"],
+    "question": "What is Type 2 diabetes?",
+    "answer": "Type 2 diabetes is a condition where the body becomes resistant to insulin and may not produce enough insulin over time. Management often includes healthy eating, physical activity, weight optimization, oral medicines, and sometimes insulin."
+  },
+  {
+    "id": "t1-vs-t2",
+    "title": "Type 1 vs Type 2",
+    "tags": ["difference", "type 1", "type 2"],
+    "question": "What is the difference between Type 1 and Type 2 diabetes?",
+    "answer": "Type 1 is mainly autoimmune insulin deficiency and needs insulin from diagnosis. Type 2 is mainly insulin resistance with gradual insulin deficiency and may be managed with lifestyle changes and non-insulin medicines, especially early in the disease."
+  },
+  {
+    "id": "symptoms",
+    "title": "Common Symptoms",
+    "tags": ["symptoms", "thirst", "urination"],
+    "question": "What are common diabetes symptoms?",
+    "answer": "Common symptoms include increased thirst, frequent urination, fatigue, blurred vision, slow wound healing, and unexplained weight changes. Severe symptoms need urgent medical review."
+  },
+  {
+    "id": "hypoglycemia",
+    "title": "Low Blood Sugar",
+    "tags": ["hypoglycemia", "low glucose"],
+    "question": "What should I do for low blood sugar?",
+    "answer": "Use the 15-15 rule: take about 15 grams of fast carbohydrate, recheck in 15 minutes, and repeat if still low. If severe confusion, seizure, or unconsciousness occurs, seek emergency care immediately."
+  },
+  {
+    "id": "hyperglycemia",
+    "title": "High Blood Sugar",
+    "tags": ["hyperglycemia", "high glucose"],
+    "question": "What should I do for high blood sugar?",
+    "answer": "Hydrate, recheck glucose, follow your prescribed correction plan, and monitor symptoms. If vomiting, abdominal pain, deep breathing, or very high persistent values occur, seek urgent medical care."
+  },
+  {
+    "id": "hba1c",
+    "title": "HbA1c Meaning",
+    "tags": ["hba1c", "test"],
+    "question": "What is HbA1c?",
+    "answer": "HbA1c reflects average blood glucose over about 2 to 3 months. Targets vary by patient profile, age, and comorbid conditions, so goals should be individualized by the care team."
+  },
+  {
+    "id": "diet-basics",
+    "title": "Diabetes Nutrition Basics",
+    "tags": ["diet", "carbs", "nutrition"],
+    "question": "What diet should a diabetic patient follow?",
+    "answer": "Focus on high-fiber foods, lean proteins, healthy fats, controlled carbohydrate portions, and reduced sugary drinks. Regular meal timing and balanced plates help with glucose stability."
+  },
+  {
+    "id": "exercise",
+    "title": "Exercise Guidance",
+    "tags": ["exercise", "activity"],
+    "question": "How much exercise is recommended for diabetes?",
+    "answer": "A common target is at least 150 minutes of moderate activity each week plus resistance exercise on multiple days, adjusted for individual health status and clinician advice."
+  },
+  {
+    "id": "metformin-allergy",
+    "title": "Metformin Intolerance and Alternatives",
+    "tags": ["metformin", "allergy", "alternative"],
+    "question": "What if a patient cannot use metformin?",
+    "answer": "If metformin is not tolerated or contraindicated, clinicians may consider alternatives such as SGLT2 inhibitors, DPP-4 inhibitors, GLP-1 receptor agonists, sulfonylureas, or insulin, depending on kidney function, cardiovascular profile, cost, and risk of hypoglycemia."
+  },
+  {
+    "id": "sulfa-allergy",
+    "title": "Sulfonamide Allergy Considerations",
+    "tags": ["sulfa", "allergy", "sulfonylurea"],
+    "question": "Can sulfa-allergic patients take sulfonylureas?",
+    "answer": "Cross-reactivity is not absolute and decisions are individualized. If allergy history is severe, clinicians often choose non-sulfonylurea options such as DPP-4 inhibitors, GLP-1 receptor agonists, SGLT2 inhibitors, or insulin with close review."
+  },
+  {
+    "id": "insulin-allergy",
+    "title": "Insulin Allergy",
+    "tags": ["insulin", "allergy", "alternative"],
+    "question": "What if someone is allergic to insulin?",
+    "answer": "True insulin allergy is uncommon and needs specialist evaluation. Options may include switching insulin formulation, graded desensitization protocols, adjunct antihistamines, and allergy-endocrinology coordinated care."
+  },
+  {
+    "id": "aspirin-allergy",
+    "title": "Aspirin Allergy and Pain Relief",
+    "tags": ["aspirin", "allergy", "alternative"],
+    "question": "What is an alternative if allergic to aspirin?",
+    "answer": "Depending on indication and patient factors, alternatives can include acetaminophen for pain/fever or other clinician-selected agents. Cardiovascular prevention decisions should be made by a doctor, not self-switched."
+  },
+  {
+    "id": "ace-cough",
+    "title": "ACE Inhibitor Cough",
+    "tags": ["ace inhibitor", "cough", "alternative"],
+    "question": "What if ACE inhibitor causes cough in diabetic patient?",
+    "answer": "Clinicians often switch from an ACE inhibitor to an ARB when cough is persistent and no contraindication exists, while continuing blood pressure and kidney protection goals."
+  },
+  {
+    "id": "statin-intolerance",
+    "title": "Statin Intolerance",
+    "tags": ["statin", "muscle pain", "alternative"],
+    "question": "What if statin causes side effects?",
+    "answer": "A clinician may lower dose, try a different statin, alternate-day dosing, or consider non-statin lipid therapies depending on cardiovascular risk and tolerance."
+  },
+  {
+    "id": "pregnancy",
+    "title": "Diabetes in Pregnancy",
+    "tags": ["pregnancy", "gestational"],
+    "question": "How is diabetes managed during pregnancy?",
+    "answer": "Pregnancy needs close glucose control with obstetric and endocrine supervision. Treatment plans are individualized, and some usual medicines are changed for fetal safety."
+  },
+  {
+    "id": "foot-care",
+    "title": "Foot Care",
+    "tags": ["foot", "ulcer prevention"],
+    "question": "How should diabetic foot care be done?",
+    "answer": "Check feet daily, keep skin clean and moisturized (not between toes), wear properly fitted footwear, and seek care promptly for cuts, redness, swelling, or non-healing wounds."
+  },
+  {
+    "id": "kidney-protection",
+    "title": "Kidney Protection",
+    "tags": ["kidney", "nephropathy"],
+    "question": "How to protect kidneys in diabetes?",
+    "answer": "Control blood sugar and blood pressure, avoid smoking, monitor urine albumin and kidney function, and use kidney-protective medicines when appropriate under medical guidance."
+  },
+  {
+    "id": "eye-care",
+    "title": "Eye Care",
+    "tags": ["retinopathy", "eye exam"],
+    "question": "Why are regular eye exams needed in diabetes?",
+    "answer": "Diabetes can damage retinal blood vessels over time. Regular dilated eye exams help detect retinopathy early and prevent vision loss through timely treatment."
+  },
+  {
+    "id": "sick-day",
+    "title": "Sick Day Rules",
+    "tags": ["sick day", "illness"],
+    "question": "What are diabetes sick day rules?",
+    "answer": "During illness, monitor glucose more often, maintain hydration, continue or adjust medications per care plan, and seek urgent advice for persistent vomiting, ketones, or uncontrolled glucose."
+  },
+  {
+    "id": "india-risk-factors",
+    "title": "India Diabetes Risk Factors",
+    "tags": ["india", "risk factors", "type 2"],
+    "question": "Why is diabetes common in India?",
+    "answer": "Diabetes rates in India are influenced by family history, central obesity, lower physical activity, high refined carbohydrate intake, sleep stress patterns, and urban lifestyle changes. South Asians may develop insulin resistance at lower BMI compared with some other populations."
+  },
+  {
+    "id": "india-main-causes",
+    "title": "Main Sources of Diabetes Risk",
+    "tags": ["causes", "source", "india"],
+    "question": "What are main sources of diabetes?",
+    "answer": "Main drivers include genetic predisposition, excess body fat around the abdomen, high intake of refined grains/sugary foods, physical inactivity, poor sleep, stress, and in some cases prior gestational diabetes or PCOS. Type 1 diabetes is autoimmune and not caused by diet alone."
+  },
+  {
+    "id": "india-diet-pattern",
+    "title": "Indian Plate Method",
+    "tags": ["india", "diet", "plate method"],
+    "question": "How should Indian diabetic diet be planned?",
+    "answer": "A practical Indian plate can be half non-starchy vegetables, one quarter protein (dal, paneer, fish, egg, chicken, soy), and one quarter whole grains/millets. Prefer roti with multigrain flour, controlled rice portions, and avoid frequent large high-carb meals."
+  },
+  {
+    "id": "india-foods-limit",
+    "title": "Indian Foods to Limit",
+    "tags": ["india", "foods to avoid", "sugar"],
+    "question": "What foods should diabetics avoid in India?",
+    "answer": "Limit sugary drinks, packaged juices, sweets (gulab jamun, rasgulla, jalebi, laddoo, barfi), bakery items (maida biscuits, cakes, puffs), deep-fried snacks, and oversized portions of white rice, poha, upma, and refined flour products."
+  },
+  {
+    "id": "india-better-swaps",
+    "title": "Indian Healthy Food Swaps",
+    "tags": ["india", "food swap", "diet"],
+    "question": "What are healthier Indian food swaps for diabetes?",
+    "answer": "Use whole wheat or mixed-grain roti instead of maida options, choose brown/red rice or millets in moderate portions, add salad and protein to every meal, choose roasted chana/nuts over fried namkeen, and use unsweetened curd or buttermilk instead of sweet beverages."
+  },
+  {
+    "id": "india-breakfast",
+    "title": "Indian Diabetes Breakfast Guidance",
+    "tags": ["india", "breakfast", "diet"],
+    "question": "What is a good Indian breakfast for diabetes?",
+    "answer": "Balanced choices include vegetable besan chilla, moong chilla, vegetable omelet, oats with seeds and nuts, or idli with sambar plus protein side. Add protein and fiber to reduce post-meal glucose spikes and avoid sugary tea/coffee add-ons."
+  },
+  {
+    "id": "india-lunch-dinner",
+    "title": "Indian Lunch and Dinner Balance",
+    "tags": ["india", "lunch", "dinner"],
+    "question": "How can Indian lunch and dinner be diabetes friendly?",
+    "answer": "Build meals around sabzi and protein first, then measured carb portions. Include dal or lean protein in each major meal, reduce repeated second servings of rice/roti, and keep dinner lighter and earlier when possible."
+  },
+  {
+    "id": "india-fruit-guidance",
+    "title": "Fruit Guidance in Indian Diet",
+    "tags": ["india", "fruit", "glycemic control"],
+    "question": "Can diabetic patients eat fruits in India?",
+    "answer": "Fruits are allowed in portion control. Prefer whole fruit (guava, apple, pear, orange, papaya, berries) over juices. Limit large portions of high-sugar fruits and avoid fruit with added sugar syrups."
+  },
+  {
+    "id": "india-fasting-festivals",
+    "title": "Fasting and Festival Eating",
+    "tags": ["india", "fasting", "festival"],
+    "question": "How to manage diabetes during Indian fasting and festivals?",
+    "answer": "Plan medication timing with your doctor, monitor glucose more often, avoid long dehydration, and keep portions of festive sweets very small. Prefer protein-rich and high-fiber foods during non-fasting windows."
+  },
+  {
+    "id": "india-prediabetes",
+    "title": "Prediabetes Reversal Approach",
+    "tags": ["prediabetes", "india", "prevention"],
+    "question": "How can prediabetes be controlled in Indian adults?",
+    "answer": "Weight reduction, 150 plus minutes weekly activity, strength training, reduced refined carbs, and better sleep can significantly lower progression risk. Regular follow-up of fasting glucose and HbA1c is essential."
+  },
+  {
+    "id": "india-sustain-plan",
+    "title": "Long-Term Diabetes Maintenance",
+    "tags": ["maintenance", "sustain", "india"],
+    "question": "How can diabetes be maintained long term?",
+    "answer": "Sustainable control needs consistent meal routines, medication adherence, home glucose tracking, regular exercise, stress management, and periodic doctor review. Aim for realistic habits that can be followed lifelong rather than short-term restrictive diets."
+  },
+  {
+    "id": "india-monitoring-frequency",
+    "title": "Monitoring and Follow-up Frequency",
+    "tags": ["monitoring", "hba1c", "india"],
+    "question": "How often should diabetes tests be done?",
+    "answer": "Typical follow-up includes HbA1c every 3 months when control is unstable and every 3 to 6 months when stable, plus periodic kidney, eye, foot, and lipid checks. Frequency should be individualized by the treating clinician."
+  },
+  {
+    "id": "india-type1-kids",
+    "title": "Type 1 Diabetes in Indian Children",
+    "tags": ["type 1", "children", "india"],
+    "question": "How is Type 1 diabetes managed in children in India?",
+    "answer": "Children with Type 1 need insulin, frequent glucose checks, school action plans, carbohydrate counting, and family education. Growth, activity, and infection patterns can change insulin needs, so close pediatric endocrine follow-up is important."
+  },
+  {
+    "id": "india-gestational",
+    "title": "Gestational Diabetes in India",
+    "tags": ["gestational", "pregnancy", "india"],
+    "question": "How is gestational diabetes managed in Indian mothers?",
+    "answer": "Management includes meal planning, glucose monitoring, obstetric review, and medication or insulin when needed for targets. Post-delivery follow-up is essential because future Type 2 diabetes risk remains higher."
+  },
+  {
+    "id": "india-exercise-practical",
+    "title": "Practical Exercise in Indian Routine",
+    "tags": ["india", "exercise", "walking"],
+    "question": "What practical activity plan helps Indian diabetic patients?",
+    "answer": "Brisk walking after meals, stair use, weekend strength work, and reducing prolonged sitting can improve glucose response. Even short movement breaks every 30 to 45 minutes are useful in desk-based jobs."
+  },
+  {
+    "id": "india-med-classes",
+    "title": "Diabetes Medicine Classes Overview",
+    "tags": ["medicine", "classes", "india"],
+    "question": "What medicine classes are used for Type 2 diabetes in India?",
+    "answer": "Common classes include metformin (biguanide), sulfonylureas, DPP-4 inhibitors, SGLT2 inhibitors, thiazolidinediones, alpha-glucosidase inhibitors, GLP-1 receptor agonists, and insulin. Selection depends on kidney function, heart risk, weight goals, cost, and hypoglycemia risk."
+  },
+  {
+    "id": "india-brand-metformin",
+    "title": "India Brand Mapping: Metformin",
+    "tags": ["india", "brand name", "metformin"],
+    "question": "What are India brand examples for metformin?",
+    "answer": "Examples in Indian market commonly include brands such as Glycomet and Cetapin for metformin formulations. Brand availability differs by city and pharmacy, and generic substitution should be clinician guided."
+  },
+  {
+    "id": "india-brand-dpp4",
+    "title": "India Brand Mapping: DPP-4 Inhibitors",
+    "tags": ["india", "brand name", "dpp4"],
+    "question": "What are India brand examples for DPP-4 inhibitors?",
+    "answer": "Common Indian examples include sitagliptin combinations and teneligliptin brands such as Zita, Jalra family products, and Teneza class products depending on manufacturer. Exact choice should follow physician prescription and renal profile."
+  },
+  {
+    "id": "india-brand-sglt2",
+    "title": "India Brand Mapping: SGLT2 Inhibitors",
+    "tags": ["india", "brand name", "sglt2"],
+    "question": "What are India brand examples for SGLT2 inhibitors?",
+    "answer": "Examples often include dapagliflozin and empagliflozin brands such as Forxiga and Jardiance, including combination tablets. Use requires hydration guidance and monitoring for side effects, especially in high-risk patients."
+  },
+  {
+    "id": "india-brand-glp1",
+    "title": "India Brand Mapping: GLP-1 Receptor Agonists",
+    "tags": ["india", "brand name", "glp1"],
+    "question": "What are India brand examples for GLP-1 therapies?",
+    "answer": "Examples may include liraglutide and semaglutide brands available in India such as Victoza and oral or injectable semaglutide options. Suitability is individualized based on weight goals, GI tolerance, and affordability."
+  },
+  {
+    "id": "india-brand-insulin",
+    "title": "India Brand Mapping: Insulin",
+    "tags": ["india", "brand name", "insulin"],
+    "question": "What are common insulin brands in India?",
+    "answer": "Common insulin products include human insulin and analog formulations such as Actrapid, Mixtard, Huminsulin, NovoRapid, and basal options from multiple manufacturers. Dose and timing must be clinician prescribed and frequently reviewed."
+  },
+  {
+    "id": "india-allergy-brand-switch",
+    "title": "Brand Allergy and Molecule Switching",
+    "tags": ["allergy", "brand", "india"],
+    "question": "If allergic to one diabetes brand, can we switch to another?",
+    "answer": "If reaction is due to additives or formulation, clinicians may switch brand or molecule. If reaction is to the active drug class, switching within the same class may still be unsafe. Any rash, swelling, breathlessness, or severe reaction needs urgent medical care and supervised medication change."
+  },
+  {
+    "id": "india-regional-north",
+    "title": "North Indian Diabetes Meal Pattern",
+    "tags": ["india", "north", "diet"],
+    "question": "What is a North Indian diabetic diet plan?",
+    "answer": "For North Indian meals, prefer multigrain or whole wheat roti in measured portions, combine with dal/chana/rajma or lean protein, and add a large salad plus sabzi. Limit large white rice servings, paratha with excess oil, and frequent sweets."
+  },
+  {
+    "id": "india-regional-south",
+    "title": "South Indian Diabetes Meal Pattern",
+    "tags": ["india", "south", "diet"],
+    "question": "What is a South Indian diabetic diet plan?",
+    "answer": "In South Indian diets, control portions of idli, dosa, appam, rice, and upma by pairing with protein-rich sambar, sprouts, egg, fish, paneer, or curd. Prefer fermented and fiber-rich options, reduce polished rice quantity, and avoid sugary coffee or tea add-ons."
+  },
+  {
+    "id": "india-regional-east",
+    "title": "East Indian Diabetes Meal Pattern",
+    "tags": ["india", "east", "diet"],
+    "question": "What is an East Indian diabetic diet plan?",
+    "answer": "For East Indian patterns, keep rice portions moderate, increase vegetable and dal volume, and add fish or other lean proteins where suitable. Limit sweets and sweetened desserts, and avoid frequent fried snacks with tea."
+  },
+  {
+    "id": "india-regional-west",
+    "title": "West Indian Diabetes Meal Pattern",
+    "tags": ["india", "west", "diet"],
+    "question": "What is a West Indian diabetic diet plan?",
+    "answer": "For West Indian meals, balance roti/bhakri with sabzi, pulses, and protein; use less oil and reduce refined snacks like farsan in daily intake. Keep fruit portions planned and avoid sweetened drinks and desserts as routine foods."
+  },
+  {
+    "id": "india-regional-central",
+    "title": "Central Indian Diabetes Meal Pattern",
+    "tags": ["india", "central", "diet"],
+    "question": "What is a Central Indian diabetic diet plan?",
+    "answer": "In Central Indian cuisine, combine controlled cereal portions with dal, legumes, and seasonal vegetables. Choose roasted or grilled snacks over fried options and spread carbohydrates evenly through the day to prevent spikes."
+  },
+  {
+    "id": "india-veg-plan",
+    "title": "Indian Vegetarian Diabetes Plan",
+    "tags": ["india", "vegetarian", "diet"],
+    "question": "What is a vegetarian Indian diabetes meal plan?",
+    "answer": "A vegetarian diabetes pattern can include dal, chana, rajma, soy chunks, tofu or paneer, nuts, seeds, and curd for protein. Build each meal with vegetables first, then protein, then measured roti/rice to improve satiety and glucose control."
+  },
+  {
+    "id": "india-nonveg-plan",
+    "title": "Indian Non-Vegetarian Diabetes Plan",
+    "tags": ["india", "non vegetarian", "diet"],
+    "question": "What is a non-vegetarian Indian diabetes meal plan?",
+    "answer": "A non-vegetarian diabetes plan can include fish, eggs, and skinless chicken in grilled, steamed, or lightly cooked forms with less oil. Pair protein with high-fiber vegetables and controlled roti/rice portions, and avoid deep-fried meat preparations."
+  },
+  {
+    "id": "india-budget-plan",
+    "title": "Budget-Friendly Indian Diabetes Plan",
+    "tags": ["india", "budget", "low cost"],
+    "question": "What is a low-cost Indian diet plan for diabetes?",
+    "answer": "Low-cost options include seasonal vegetables, local dals, chana, peanuts, curd, eggs where acceptable, and whole grains in portion control. Home-cooked meals, batch cooking, and avoiding packaged snacks and sweet drinks reduce both cost and glucose variability."
+  },
+  {
+    "id": "india-budget-snacks",
+    "title": "Affordable Diabetes Snack Choices",
+    "tags": ["india", "snacks", "budget"],
+    "question": "What affordable snacks are good for diabetic patients in India?",
+    "answer": "Affordable snack ideas include roasted chana, peanuts in moderation, sprouts chaat without sugar, boiled chana, vegetable salad, and unsweetened buttermilk. Prefer whole-food snacks over packaged chips, sweets, and bakery products."
+  },
+  {
+    "id": "india-meal-timing",
+    "title": "Meal Timing in Indian Routine",
+    "tags": ["india", "meal timing", "maintenance"],
+    "question": "How should meal timing be maintained in Indian daily routine for diabetes?",
+    "answer": "Keep meal intervals consistent, avoid very large late-night dinners, and align medicines or insulin with eating schedule as prescribed. A practical pattern is three balanced meals and planned small snacks when needed to avoid over-hunger and erratic glucose."
+  },
+  {
+    "id": "india-office-workers",
+    "title": "Diabetes Plan for Indian Office Workers",
+    "tags": ["india", "office", "sedentary"],
+    "question": "How can Indian office workers prevent and maintain diabetes?",
+    "answer": "Carry planned meals, reduce canteen fried foods, take short walking breaks every 30 to 45 minutes, and include post-meal walks. Weekly resistance training plus sleep and stress management are important for long-term control."
+  },
+  {
+    "id": "india-rural-practical",
+    "title": "Practical Diabetes Plan for Rural India",
+    "tags": ["india", "rural", "practical"],
+    "question": "How can diabetes be managed in rural Indian settings?",
+    "answer": "Use locally available grains, pulses, vegetables, and simple cooking methods with less oil and sugar. Maintain medication supply, basic glucose checks where possible, foot care, and regular follow-up at the nearest health center."
+  },
+  {
+    "id": "india-maintenance-checklist",
+    "title": "Indian Diabetes Maintenance Checklist",
+    "tags": ["india", "maintenance", "checklist"],
+    "question": "What should be followed to sustain diabetes control in India?",
+    "answer": "Core checklist: regular medication use, portion-aware meal planning, weekly exercise goals, home glucose log, quarterly HbA1c, annual eye and kidney checks, foot care, sleep routine, and stress reduction. Consistency over months is the key to sustained control."
+  }
+]

@@ -11,6 +11,7 @@ var state = {
     auditLog: [],
     exports: [],
     shares: [],
+    aiConversation: [],
     charts: {},
 };
 
@@ -98,6 +99,7 @@ function updateNav(section) {
 
     var titles = {
         overview: 'Dashboard Overview',
+        'ai-assistant': 'Diabetes AI Assistant',
         reports: 'Medical Reports',
         profile: 'Personal Data',
         doctors: 'My Doctors',
@@ -830,6 +832,78 @@ function renderAuditLog() {
     }).join('');
 }
 
+function renderAiConversation() {
+    var container = document.getElementById('ai-conversation');
+    if (!container) return;
+
+    if (state.aiConversation.length === 0) {
+        container.innerHTML = '<div class="empty-state">No AI conversation yet. Ask your first question.</div>';
+        return;
+    }
+
+    container.innerHTML = state.aiConversation.map(function(item) {
+        var roleClass = item.role === 'assistant' ? 'doctor' : 'patient';
+        var safeText = escapeHtml(item.text || '');
+        var meta = item.meta ? '<div class="message-bubble-meta">' + escapeHtml(item.meta) + '</div>' : '';
+        return '<div class="message-bubble ' + roleClass + '">' + safeText + meta + '</div>';
+    }).join('');
+    container.scrollTop = container.scrollHeight;
+}
+
+async function askAiAssistant() {
+    var input = document.getElementById('ai-question');
+    if (!input) return;
+
+    var question = String(input.value || '').trim();
+    if (!question) {
+        alert('Please enter a question for the AI assistant.');
+        return;
+    }
+
+    state.aiConversation.push({ role: 'patient', text: question });
+    input.value = '';
+    renderAiConversation();
+
+    var result = await API.post('/api/patient/ai/ask', { question: question });
+    if (!result.ok) {
+        state.aiConversation.push({ role: 'assistant', text: (result.data && result.data.error) || 'AI request failed. Please try again.' });
+        renderAiConversation();
+        return;
+    }
+
+    var confidence = result.data && typeof result.data.confidence === 'number'
+        ? 'Confidence: ' + Math.round(result.data.confidence * 100) + '%'
+        : null;
+
+    state.aiConversation.push({
+        role: 'assistant',
+        text: result.data && result.data.answer ? result.data.answer : 'No answer available.',
+        meta: confidence,
+    });
+
+    if (result.data && result.data.disclaimer) {
+        state.aiConversation.push({ role: 'assistant', text: result.data.disclaimer });
+    }
+
+    renderAiConversation();
+}
+
+function askAiPreset(question) {
+    var input = document.getElementById('ai-question');
+    if (!input) return;
+    input.value = String(question || '');
+    askAiAssistant();
+}
+
+function openAiAssistantPanel() {
+    updateNav('ai-assistant');
+    var input = document.getElementById('ai-question');
+    if (!input) return;
+    setTimeout(function() {
+        input.focus();
+    }, 120);
+}
+
 async function createMessageThread() {
     var doctorId = document.getElementById('new-thread-doctor').value;
     var subject = (document.getElementById('new-thread-subject').value || '').trim();
@@ -1422,6 +1496,26 @@ function initInteractions() {
     if (appointmentDate) {
         appointmentDate.min = new Date().toISOString().slice(0, 10);
     }
+
+    var aiQuestion = document.getElementById('ai-question');
+    if (aiQuestion) {
+        aiQuestion.addEventListener('keydown', function(event) {
+            if (event.key === 'Enter' && !event.shiftKey) {
+                event.preventDefault();
+                askAiAssistant().catch(function() {
+                    console.error('Failed to ask AI assistant.');
+                });
+            }
+        });
+    }
+
+    var aiFab = document.querySelector('.floating-ai-btn');
+    if (aiFab) {
+        aiFab.classList.add('pulse-once');
+        setTimeout(function() {
+            aiFab.classList.remove('pulse-once');
+        }, 2800);
+    }
 }
 
 async function bootstrap() {
@@ -1439,6 +1533,7 @@ async function bootstrap() {
     }
 
     try {
+        renderAiConversation();
         await Promise.all([
             loadProfile(),
             loadDoctors(),
@@ -1483,6 +1578,9 @@ window.createShare = createShare;
 window.revokeShare = revokeShare;
 window.savePrivacySettings = savePrivacySettings;
 window.revokeSession = revokeSession;
+window.askAiAssistant = askAiAssistant;
+window.askAiPreset = askAiPreset;
+window.openAiAssistantPanel = openAiAssistantPanel;
 
 bootstrap();
 
