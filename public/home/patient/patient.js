@@ -5,6 +5,8 @@ var state = {
     appointments: [],
     threads: [],
     selectedThreadId: null,
+    selectedDoctorId: null,
+    chatDoctors: [],
     goals: [],
     badges: [],
     sessions: [],
@@ -12,8 +14,12 @@ var state = {
     exports: [],
     shares: [],
     aiConversation: [],
+    aiRequestPending: false,
     charts: {},
 };
+
+var aiTypingTimer = null;
+var chatSocket = null;
 
 var reportTypeMap = {
     lab: 'Lab Report',
@@ -99,14 +105,14 @@ function updateNav(section) {
 
     var titles = {
         overview: 'Dashboard Overview',
-        'ai-assistant': 'Diabetes AI Assistant',
+        'ai-assistant': 'Chat',
         reports: 'Medical Reports',
         profile: 'Personal Data',
         doctors: 'My Doctors',
         nutritionist: 'Nutrition & Diet',
         records: 'Past Medical Records',
         charts: 'Health Trends',
-        messages: 'Care Team Messages',
+        'doctor-chat': 'Doctor Chat',
         safety: 'Emergency & Safety',
         gamification: 'Goals & Rewards',
         sharing: 'Data Export & Sharing',
@@ -122,6 +128,9 @@ function initNavigation() {
         item.addEventListener('click', function() {
             var section = this.getAttribute('data-section');
             updateNav(section);
+            if (section !== 'ai-assistant') {
+                closeAiAssistantPanel();
+            }
         });
     });
 }
@@ -644,29 +653,86 @@ function boolFromSelectValue(value) {
     return String(value) === 'true';
 }
 
+function threadInitials(name) {
+    if (!name) return 'DR';
+    var parts = name.trim().split(/\s+/);
+    if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
+    return parts[0].substring(0, 2).toUpperCase();
+}
+
+function shortTime(value) {
+    if (!value) return '';
+    var d = new Date(value);
+    if (Number.isNaN(d.getTime())) return '';
+    var now = new Date();
+    if (d.toDateString() === now.toDateString()) return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    var yesterday = new Date(now); yesterday.setDate(now.getDate() - 1);
+    if (d.toDateString() === yesterday.toDateString()) return 'Yesterday';
+    return d.toLocaleDateString([], { month: 'short', day: 'numeric' });
+}
+
 function renderMessageThreads() {
     var container = document.getElementById('message-threads-list');
     if (!container) return;
 
-    if (state.threads.length === 0) {
-        container.innerHTML = '<div class="empty-state">No threads yet.</div>';
+    var searchVal = '';
+    var searchEl = document.getElementById('wa-thread-search');
+    if (searchEl) searchVal = (searchEl.value || '').trim().toLowerCase();
+
+    var doctors = state.chatDoctors;
+    if (searchVal) {
+        doctors = doctors.filter(function(doc) {
+            return (doc.fullName || '').toLowerCase().indexOf(searchVal) >= 0 ||
+                   (doc.specialization || '').toLowerCase().indexOf(searchVal) >= 0;
+        });
+    }
+
+    if (doctors.length === 0) {
+        container.innerHTML = '<div class="wa-empty">No doctors found</div>';
         return;
     }
 
-    container.innerHTML = state.threads.map(function(thread) {
+    container.innerHTML = doctors.map(function(doc) {
+        var docId = Number(doc._id || doc.id);
+        var isActive = docId === state.selectedDoctorId;
+        var thread = state.threads.find(function(t) { return Number(t.doctor_id) === docId; });
+        var lastMsg = thread ? shortTime(thread.last_message_at) : '';
+        var snippet = thread && thread.lastMessageBody ? thread.lastMessageBody : (thread ? (thread.subject || '') : 'Tap to start chatting');
+        var unread = thread && thread.unreadCount ? thread.unreadCount : 0;
+
         return [
-            '<div class="stack-item">',
-            '<div class="stack-item-header">',
-            '<div class="stack-item-title">' + escapeHtml(thread.subject || 'No Subject') + '</div>',
-            '<div class="stack-item-meta">' + formatDate(thread.last_message_at || thread.createdAt) + '</div>',
-            '</div>',
-            '<div class="stack-item-meta">Status: ' + escapeHtml(thread.status || 'open') + '</div>',
-            '<div class="stack-item-actions">',
-            '<button class="btn btn-outline btn-sm" onclick="openThread(' + Number(thread.id || thread._id) + ')">Open</button>',
-            '</div>',
+            '<div class="wa-thread-item' + (isActive ? ' active' : '') + '" onclick="openDoctorChat(' + docId + ')" data-doctor-id="' + docId + '">',
+            '  <div class="wa-thread-avatar">' + escapeHtml(threadInitials(doc.fullName)) + '</div>',
+            '  <div class="wa-thread-info">',
+            '    <div class="wa-thread-name">' + escapeHtml(doc.fullName || 'Doctor') + '</div>',
+            '    <div class="wa-thread-snippet">' + escapeHtml(snippet) + '</div>',
+            '  </div>',
+            '  <div style="text-align:right; flex-shrink:0;">',
+            '    <div class="wa-thread-time">' + escapeHtml(lastMsg) + '</div>',
+            (unread > 0 ? '<div style="background:var(--primary-teal); color:#fff; border-radius:50%; width:20px; height:20px; font-size:11px; display:flex; align-items:center; justify-content:center; margin-left:auto; margin-top:4px;">' + unread + '</div>' : ''),
+            '  </div>',
             '</div>',
         ].join('');
     }).join('');
+}
+
+function msgTime(value) {
+    if (!value) return '';
+    var d = new Date(value);
+    if (Number.isNaN(d.getTime())) return '';
+    return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+}
+
+function msgDateLabel(value) {
+    if (!value) return '';
+    var d = new Date(value);
+    if (Number.isNaN(d.getTime())) return '';
+    var now = new Date();
+    if (d.toDateString() === now.toDateString()) return 'Today';
+    var yesterday = new Date(now);
+    yesterday.setDate(now.getDate() - 1);
+    if (d.toDateString() === yesterday.toDateString()) return 'Yesterday';
+    return d.toLocaleDateString([], { weekday: 'long', month: 'short', day: 'numeric' });
 }
 
 function renderThreadMessages(messages) {
@@ -674,19 +740,31 @@ function renderThreadMessages(messages) {
     if (!container) return;
 
     if (!Array.isArray(messages) || messages.length === 0) {
-        container.innerHTML = '<div class="empty-state">No messages in this thread yet.</div>';
+        container.innerHTML = '<div class="wa-empty">No messages in this thread yet.</div>';
         return;
     }
 
-    container.innerHTML = messages.map(function(msg) {
+    var html = '';
+    var lastDateLabel = '';
+
+    messages.forEach(function(msg) {
+        var ts = msg.sent_at || msg.createdAt;
+        var dateLabel = msgDateLabel(ts);
+        if (dateLabel && dateLabel !== lastDateLabel) {
+            html += '<div class="wa-msg-date-divider"><span>' + escapeHtml(dateLabel) + '</span></div>';
+            lastDateLabel = dateLabel;
+        }
         var senderClass = msg.sender_role === 'patient' ? 'patient' : 'doctor';
-        return [
-            '<div class="message-bubble ' + senderClass + '">',
+        html += [
+            '<div class="wa-msg ' + senderClass + '">',
             '<div>' + escapeHtml(msg.body || '') + '</div>',
-            '<div class="message-bubble-meta">' + escapeHtml(msg.sender_role || 'user') + ' • ' + formatDate(msg.sent_at || msg.createdAt) + '</div>',
+            '<div class="wa-msg-time">' + msgTime(ts) + '</div>',
             '</div>',
         ].join('');
-    }).join('');
+    });
+
+    container.innerHTML = html;
+    container.scrollTop = container.scrollHeight;
 }
 
 function renderGoals() {
@@ -843,31 +921,172 @@ function renderAiConversation() {
 
     container.innerHTML = state.aiConversation.map(function(item) {
         var roleClass = item.role === 'assistant' ? 'doctor' : 'patient';
+        if (item.loading) {
+            var loadingText = escapeHtml(item.loadingText || 'Thinking...');
+            return [
+                '<div class="message-bubble ' + roleClass + ' is-loading">',
+                '<div class="ai-loading-dots" aria-hidden="true"><span></span><span></span><span></span></div>',
+                '<div class="message-bubble-meta">' + loadingText + '</div>',
+                '</div>',
+            ].join('');
+        }
+
         var safeText = escapeHtml(item.text || '');
         var meta = item.meta ? '<div class="message-bubble-meta">' + escapeHtml(item.meta) + '</div>' : '';
-        return '<div class="message-bubble ' + roleClass + '">' + safeText + meta + '</div>';
+        var debugMeta = '';
+        if (item.debug && item.debug.engine) {
+            var engineLabel = item.debug.engine === 'llm-fallback'
+                ? 'Engine: LLM Fallback (' + String(item.debug.provider || 'llm').toUpperCase() + ')'
+                : 'Engine: Local AI';
+            debugMeta = '<div class="message-bubble-meta debug-engine">' + escapeHtml(engineLabel) + '</div>';
+        }
+        var typingClass = item.typing ? ' is-typing' : '';
+        var suggestions = '';
+        if (item.role === 'assistant' && Array.isArray(item.suggestions) && item.suggestions.length > 0) {
+            suggestions = '<div class="ai-rephrase-list">' + item.suggestions.slice(0, 3).map(function(suggestion) {
+                var encoded = encodeURIComponent(String(suggestion || ''));
+                return '<button class="btn btn-outline btn-sm ai-rephrase-btn" onclick="askAiSuggestion(\'' + encoded + '\')">' + escapeHtml(suggestion) + '</button>';
+            }).join('') + '</div>';
+        }
+        return '<div class="message-bubble ' + roleClass + typingClass + '">' + safeText + meta + debugMeta + suggestions + '</div>';
     }).join('');
     container.scrollTop = container.scrollHeight;
+}
+
+function setAiComposerBusy(isBusy) {
+    state.aiRequestPending = Boolean(isBusy);
+    var input = document.getElementById('ai-question');
+    var sendBtn = document.getElementById('ai-send-btn');
+    if (input) input.disabled = state.aiRequestPending;
+    if (sendBtn) sendBtn.disabled = state.aiRequestPending;
+}
+
+function stopAiTypingAnimation() {
+    if (aiTypingTimer) {
+        clearTimeout(aiTypingTimer);
+        aiTypingTimer = null;
+    }
+}
+
+function animateAssistantMessage(messageItem, finalText, done) {
+    stopAiTypingAnimation();
+
+    var words = String(finalText || '').split(/\s+/).filter(function(word) { return Boolean(word); });
+    var idx = 0;
+
+    messageItem.typing = true;
+    messageItem.text = '';
+    renderAiConversation();
+
+    if (words.length === 0) {
+        messageItem.typing = false;
+        if (typeof done === 'function') done();
+        return;
+    }
+
+    // Human-like cadence: short messages feel quick, longer ones stay readable.
+    var baseDelay;
+    if (words.length <= 12) {
+        baseDelay = 44;
+    } else if (words.length <= 36) {
+        baseDelay = 52;
+    } else if (words.length <= 90) {
+        baseDelay = 58;
+    } else {
+        baseDelay = 62;
+    }
+
+    var maxTypingDuration = 6800;
+    if ((words.length * baseDelay) > maxTypingDuration) {
+        baseDelay = Math.max(28, Math.round(maxTypingDuration / words.length));
+    }
+
+    function getStepDelay(word) {
+        var token = String(word || '');
+        var delay = baseDelay;
+
+        // Small pause after punctuation for a more natural rhythm.
+        if (/[.!?]$/.test(token)) {
+            delay += 140;
+        } else if (/[,;:]$/.test(token)) {
+            delay += 70;
+        }
+
+        if (token.length >= 10) {
+            delay += 18;
+        }
+
+        // Light jitter avoids machine-perfect cadence.
+        delay += Math.floor(Math.random() * 18) - 7;
+        return Math.max(24, delay);
+    }
+
+    function typeStep() {
+        if (idx >= words.length) {
+            messageItem.typing = false;
+            renderAiConversation();
+            if (typeof done === 'function') done();
+            return;
+        }
+
+        messageItem.text = messageItem.text ? (messageItem.text + ' ' + words[idx]) : words[idx];
+        var delay = getStepDelay(words[idx]);
+        idx += 1;
+        renderAiConversation();
+        aiTypingTimer = setTimeout(typeStep, delay);
+    }
+
+    aiTypingTimer = setTimeout(typeStep, 180);
 }
 
 async function askAiAssistant() {
     var input = document.getElementById('ai-question');
     if (!input) return;
+    if (state.aiRequestPending) return;
 
     var question = String(input.value || '').trim();
     if (!question) {
-        alert('Please enter a question for the AI assistant.');
+        alert('Please enter a question for AI chat.');
         return;
     }
 
     state.aiConversation.push({ role: 'patient', text: question });
     input.value = '';
+
+    var loadingEntry = {
+        role: 'assistant',
+        text: '',
+        loading: true,
+        loadingText: 'Thinking...',
+    };
+    state.aiConversation.push(loadingEntry);
     renderAiConversation();
 
-    var result = await API.post('/api/patient/ai/ask', { question: question });
+    setAiComposerBusy(true);
+
+    var slowHintTimer = setTimeout(function() {
+        if (loadingEntry.loading) {
+            loadingEntry.loadingText = 'Still thinking. Preparing the best answer...';
+            renderAiConversation();
+        }
+    }, 12000);
+
+    var result;
+    try {
+        result = await API.post('/api/patient/ai/ask', { question: question });
+    } catch {
+        result = { ok: false, data: { error: 'AI request failed. Please try again.' } };
+    }
+
+    clearTimeout(slowHintTimer);
+    loadingEntry.loading = false;
+
     if (!result.ok) {
-        state.aiConversation.push({ role: 'assistant', text: (result.data && result.data.error) || 'AI request failed. Please try again.' });
+        loadingEntry.text = (result.data && result.data.error) || 'AI request failed. Please try again.';
+        loadingEntry.meta = null;
+        loadingEntry.typing = false;
         renderAiConversation();
+        setAiComposerBusy(false);
         return;
     }
 
@@ -875,17 +1094,18 @@ async function askAiAssistant() {
         ? 'Confidence: ' + Math.round(result.data.confidence * 100) + '%'
         : null;
 
-    state.aiConversation.push({
-        role: 'assistant',
-        text: result.data && result.data.answer ? result.data.answer : 'No answer available.',
-        meta: confidence,
+    loadingEntry.meta = confidence;
+    loadingEntry.debug = result.data && result.data.debug ? result.data.debug : null;
+    loadingEntry.suggestions = result.data && Array.isArray(result.data.suggestions) ? result.data.suggestions : null;
+
+    var finalAnswer = result.data && result.data.answer ? result.data.answer : 'No answer available.';
+    animateAssistantMessage(loadingEntry, finalAnswer, function() {
+        if (result.data && result.data.disclaimer) {
+            state.aiConversation.push({ role: 'assistant', text: result.data.disclaimer });
+            renderAiConversation();
+        }
+        setAiComposerBusy(false);
     });
-
-    if (result.data && result.data.disclaimer) {
-        state.aiConversation.push({ role: 'assistant', text: result.data.disclaimer });
-    }
-
-    renderAiConversation();
 }
 
 function askAiPreset(question) {
@@ -895,8 +1115,20 @@ function askAiPreset(question) {
     askAiAssistant();
 }
 
+function askAiSuggestion(encodedQuestion) {
+    var decoded = '';
+    try {
+        decoded = decodeURIComponent(String(encodedQuestion || ''));
+    } catch {
+        decoded = String(encodedQuestion || '');
+    }
+    if (!decoded.trim()) return;
+    askAiPreset(decoded);
+}
+
 function openAiAssistantPanel() {
     updateNav('ai-assistant');
+    document.body.classList.add('ai-panel-open');
     var input = document.getElementById('ai-question');
     if (!input) return;
     setTimeout(function() {
@@ -904,61 +1136,114 @@ function openAiAssistantPanel() {
     }, 120);
 }
 
-async function createMessageThread() {
-    var doctorId = document.getElementById('new-thread-doctor').value;
-    var subject = (document.getElementById('new-thread-subject').value || '').trim();
-    var body = (document.getElementById('new-thread-body').value || '').trim();
-    if (!subject || !body) {
-        alert('Subject and message are required.');
-        return;
-    }
-
-    var result = await API.post('/api/patient/messages/threads', {
-        doctorId: doctorId ? Number(doctorId) : null,
-        subject: subject,
-        body: body,
-    });
-
-    if (!result.ok) {
-        alert((result.data && result.data.error) || 'Failed to create thread.');
-        return;
-    }
-
-    document.getElementById('new-thread-subject').value = '';
-    document.getElementById('new-thread-body').value = '';
-    await loadMessages();
+function closeAiAssistantPanel() {
+    document.body.classList.remove('ai-panel-open');
 }
 
-async function openThread(threadId) {
-    state.selectedThreadId = Number(threadId);
-    var result = await API.get('/api/patient/messages/threads/' + Number(threadId));
-    if (!result.ok) {
-        alert((result.data && result.data.error) || 'Failed to load thread.');
-        return;
+function initAiAssistantPanel() {
+    var overlay = document.getElementById('ai-panel-overlay');
+    if (overlay) {
+        overlay.addEventListener('click', function() {
+            closeAiAssistantPanel();
+        });
     }
-    renderThreadMessages(result.data.messages || []);
+
+    document.addEventListener('keydown', function(event) {
+        if (event.key === 'Escape' && document.body.classList.contains('ai-panel-open')) {
+            closeAiAssistantPanel();
+        }
+    });
+}
+
+async function openDoctorChat(doctorId) {
+    doctorId = Number(doctorId);
+    state.selectedDoctorId = doctorId;
+
+    // Find the doctor info
+    var doc = state.chatDoctors.find(function(d) { return Number(d._id || d.id) === doctorId; });
+    var headerName = document.getElementById('wa-chat-header-name');
+    var headerStatus = document.getElementById('wa-chat-header-status');
+    var headerAvatar = document.getElementById('wa-chat-avatar');
+    if (headerName) headerName.textContent = doc ? doc.fullName : 'Doctor';
+    if (headerStatus) headerStatus.textContent = doc ? (doc.specialization || 'Doctor') : '';
+    if (headerAvatar) headerAvatar.textContent = doc ? threadInitials(doc.fullName) : 'DR';
+
+    renderMessageThreads();
+
+    // Find existing thread with this doctor
+    var thread = state.threads.find(function(t) { return Number(t.doctor_id) === doctorId; });
+
+    if (thread) {
+        state.selectedThreadId = Number(thread.id || thread._id);
+        var result = await API.get('/api/patient/messages/threads/' + state.selectedThreadId);
+        if (result.ok) {
+            renderThreadMessages(result.data.messages || []);
+        } else {
+            renderThreadMessages([]);
+        }
+    } else {
+        // No thread yet — show empty, thread will be created on first message
+        state.selectedThreadId = null;
+        renderThreadMessages([]);
+    }
 }
 
 async function sendThreadReply() {
+    if (!state.selectedDoctorId) {
+        alert('Select a doctor first.');
+        return;
+    }
+
+    var inputEl = document.getElementById('thread-reply-body');
+    var body = (inputEl.value || '').trim();
+    if (!body) return;
+
+    // If no thread yet, create one with the first message
     if (!state.selectedThreadId) {
-        alert('Select a thread first.');
+        var doc = state.chatDoctors.find(function(d) { return Number(d._id || d.id) === state.selectedDoctorId; });
+        var subject = 'Chat with ' + (doc ? doc.fullName : 'Doctor');
+        var createResult = await API.post('/api/patient/messages/threads', {
+            doctorId: state.selectedDoctorId,
+            subject: subject,
+            body: body,
+        });
+        if (!createResult.ok) {
+            alert((createResult.data && createResult.data.error) || 'Failed to send message.');
+            return;
+        }
+        inputEl.value = '';
+        await loadMessages();
+        // Select the newly created thread
+        var newThread = state.threads.find(function(t) { return Number(t.doctor_id) === state.selectedDoctorId; });
+        if (newThread) {
+            state.selectedThreadId = Number(newThread.id || newThread._id);
+        }
+        await openDoctorChat(state.selectedDoctorId);
         return;
     }
 
-    var body = (document.getElementById('thread-reply-body').value || '').trim();
-    if (!body) {
-        alert('Reply cannot be empty.');
-        return;
-    }
-
-    var result = await API.post('/api/patient/messages/threads/' + Number(state.selectedThreadId), { body: body });
+    var result = await API.post('/api/patient/messages/threads/' + state.selectedThreadId, { body: body });
     if (!result.ok) {
-        alert((result.data && result.data.error) || 'Failed to send reply.');
+        alert((result.data && result.data.error) || 'Failed to send message.');
         return;
     }
 
-    document.getElementById('thread-reply-body').value = '';
-    await openThread(state.selectedThreadId);
+    inputEl.value = '';
+
+    // Append the new message to the UI immediately for snappy feel
+    var container = document.getElementById('thread-messages');
+    if (container && result.data) {
+        var emptyEl = container.querySelector('.wa-empty');
+        if (emptyEl) emptyEl.remove();
+
+        var msgDiv = document.createElement('div');
+        msgDiv.className = 'wa-msg patient';
+        msgDiv.innerHTML = '<div>' + escapeHtml(result.data.body || body) + '</div><div class="wa-msg-time">' + msgTime(result.data.sent_at || new Date().toISOString()) + '</div>';
+        container.appendChild(msgDiv);
+        container.scrollTop = container.scrollHeight;
+    }
+
+    // Update thread list
     await loadMessages();
 }
 
@@ -1398,8 +1683,13 @@ async function loadTrends() {
 }
 
 async function loadMessages() {
-    var result = await API.get('/api/patient/messages/threads');
-    state.threads = result.ok && Array.isArray(result.data) ? result.data : [];
+    // Load assigned doctors and existing threads in parallel
+    var doctorsResult = await API.get('/api/patient/doctors');
+    var threadsResult = await API.get('/api/patient/messages/threads');
+
+    state.chatDoctors = doctorsResult.ok && Array.isArray(doctorsResult.data) ? doctorsResult.data : [];
+    state.threads = threadsResult.ok && Array.isArray(threadsResult.data) ? threadsResult.data : [];
+
     renderMessageThreads();
 }
 
@@ -1500,6 +1790,7 @@ function initInteractions() {
     var aiQuestion = document.getElementById('ai-question');
     if (aiQuestion) {
         aiQuestion.addEventListener('keydown', function(event) {
+            if (event.isComposing) return;
             if (event.key === 'Enter' && !event.shiftKey) {
                 event.preventDefault();
                 askAiAssistant().catch(function() {
@@ -1516,15 +1807,77 @@ function initInteractions() {
             aiFab.classList.remove('pulse-once');
         }, 2800);
     }
+
+    // Doctor-chat: thread search
+    var waSearch = document.getElementById('wa-thread-search');
+    if (waSearch) {
+        waSearch.addEventListener('input', function() {
+            renderMessageThreads();
+        });
+    }
+
+    // Doctor-chat: reply on Enter
+    var replyInput = document.getElementById('thread-reply-body');
+    if (replyInput) {
+        replyInput.addEventListener('keydown', function(event) {
+            if (event.isComposing) return;
+            if (event.key === 'Enter' && !event.shiftKey) {
+                event.preventDefault();
+                sendThreadReply();
+            }
+        });
+    }
+}
+
+function initChatSocket() {
+    if (typeof io === 'undefined') return;
+    var token = localStorage.getItem('token');
+    if (!token) return;
+
+    chatSocket = io({ auth: { token: token } });
+
+    chatSocket.on('connect', function() {
+        console.log('Chat socket connected');
+    });
+
+    chatSocket.on('new_message', function(data) {
+        // A doctor sent a new message
+        if (data && data.message && data.threadId) {
+            // If we're viewing this thread, append the message live
+            if (state.selectedThreadId === data.threadId) {
+                var container = document.getElementById('thread-messages');
+                if (container) {
+                    var emptyEl = container.querySelector('.wa-empty');
+                    if (emptyEl) emptyEl.remove();
+
+                    var msgDiv = document.createElement('div');
+                    msgDiv.className = 'wa-msg doctor';
+                    msgDiv.innerHTML = '<div>' + escapeHtml(data.message.body || '') + '</div><div class="wa-msg-time">' + msgTime(data.message.sent_at || new Date().toISOString()) + '</div>';
+                    container.appendChild(msgDiv);
+                    container.scrollTop = container.scrollHeight;
+                }
+            }
+            // Refresh thread list to update last message / unread
+            loadMessages();
+        }
+    });
+
+    chatSocket.on('disconnect', function() {
+        console.log('Chat socket disconnected');
+    });
 }
 
 async function bootstrap() {
-    if (typeof API === 'undefined' || !requireAuth('patient')) return;
+    if (typeof API === 'undefined') return;
+    var authorized = await verifyAuthRole('patient');
+    if (!authorized) return;
 
     initNavigation();
     initModals();
+    initAiAssistantPanel();
     initCharts();
     initInteractions();
+    initChatSocket();
 
     var localUser = API.getUser();
     if (localUser) {
@@ -1566,8 +1919,7 @@ window.filterReports = filterReports;
 window.filterRecords = filterRecords;
 window.deleteReport = deleteReport;
 window.scheduleWithDoctor = scheduleWithDoctor;
-window.createMessageThread = createMessageThread;
-window.openThread = openThread;
+window.openDoctorChat = openDoctorChat;
 window.sendThreadReply = sendThreadReply;
 window.saveSafetyProfile = saveSafetyProfile;
 window.triggerSafetyEvent = triggerSafetyEvent;
@@ -1580,7 +1932,9 @@ window.savePrivacySettings = savePrivacySettings;
 window.revokeSession = revokeSession;
 window.askAiAssistant = askAiAssistant;
 window.askAiPreset = askAiPreset;
+window.askAiSuggestion = askAiSuggestion;
 window.openAiAssistantPanel = openAiAssistantPanel;
+window.closeAiAssistantPanel = closeAiAssistantPanel;
 
 bootstrap();
 

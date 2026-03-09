@@ -9,6 +9,7 @@ const Alert = require('../models/Alert');
 const User = require('../models/User');
 const { getDb } = require('../database');
 const { answerQuestion } = require('../../Ai/ai-engine');
+const { askLlmFallback } = require('../services/llm');
 
 const router = express.Router();
 
@@ -404,17 +405,18 @@ router.post('/records', async (req, res) => {
 
 // ─── Doctors ────────────────────────────────────────────────────────
 
-// GET /api/patient/doctors - get assigned doctors
+// GET /api/patient/doctors - get assigned doctors (latest assigned first)
 router.get('/doctors', async (req, res) => {
     try {
-        let doctors = User.findLoggedInDoctors();
+        // Return doctors assigned to this patient via patient_doctors join
+        var assigned = User.getAssignedDoctors(req.user._id);
 
-        // Fallback for new databases with no session rows yet.
-        if (!doctors || doctors.length === 0) {
-            doctors = User.findAllDoctors();
+        // Fallback: if no assignments yet, return all doctors so patient can chat
+        if (!assigned || assigned.length === 0) {
+            assigned = User.findAllDoctors();
         }
 
-        res.json(doctors);
+        res.json(assigned);
     } catch (err) {
         res.status(500).json({ error: 'Failed to fetch doctors.' });
     }
@@ -824,14 +826,26 @@ router.post('/messages/threads', async (req, res) => {
         const result = db.prepare('INSERT INTO message_threads (patient_id, doctor_id, subject) VALUES (?, ?, ?)').run(req.user._id, doctorId || null, subject || null);
         const threadId = result.lastInsertRowid;
 
+        var msg = null;
         if (body) {
-            db.prepare(`
+            var msgResult = db.prepare(`
                 INSERT INTO messages (thread_id, sender_id, sender_role, body, attachments_json)
                 VALUES (?, ?, 'patient', ?, ?)
             `).run(threadId, req.user._id, body, JSON.stringify([]));
+            msg = db.prepare('SELECT * FROM messages WHERE id = ?').get(msgResult.lastInsertRowid);
         }
 
-        res.status(201).json(db.prepare('SELECT * FROM message_threads WHERE id = ?').get(threadId));
+        var thread = db.prepare('SELECT * FROM message_threads WHERE id = ?').get(threadId);
+
+        // Real-time push to doctor
+        if (doctorId) {
+            var io = req.app.get('io');
+            if (io) {
+                io.to('user_' + doctorId).emit('new_message', { threadId: threadId, message: msg, thread: thread });
+            }
+        }
+
+        res.status(201).json(thread);
     } catch (err) {
         res.status(500).json({ error: 'Failed to create thread.' });
     }
@@ -862,7 +876,18 @@ router.post('/messages/threads/:id', async (req, res) => {
         `).run(req.params.id, req.user._id, body, JSON.stringify(Array.isArray(attachments) ? attachments : []));
 
         db.prepare('UPDATE message_threads SET last_message_at = datetime(\'now\'), updatedAt = datetime(\'now\') WHERE id = ?').run(req.params.id);
-        res.status(201).json(db.prepare('SELECT * FROM messages WHERE id = ?').get(result.lastInsertRowid));
+
+        var msg = db.prepare('SELECT * FROM messages WHERE id = ?').get(result.lastInsertRowid);
+
+        // Real-time push to doctor
+        if (thread.doctor_id) {
+            var io = req.app.get('io');
+            if (io) {
+                io.to('user_' + thread.doctor_id).emit('new_message', { threadId: thread.id, message: msg });
+            }
+        }
+
+        res.status(201).json(msg);
     } catch (err) {
         res.status(500).json({ error: 'Failed to send message.' });
     }
@@ -985,6 +1010,20 @@ router.post('/education/:id/feedback', async (req, res) => {
 
 router.post('/ai/ask', async (req, res) => {
     try {
+        const debugSourceEnabled = String(process.env.AI_DEBUG_SOURCE || 'false').toLowerCase() === 'true';
+        const withDebug = (payload, engine) => {
+            if (!debugSourceEnabled || !payload || typeof payload !== 'object') return payload;
+            return {
+                ...payload,
+                debug: {
+                    engine,
+                    provider: engine === 'llm-fallback' ? String(process.env.LLM_PROVIDER || '').toLowerCase() : 'local',
+                    sourceId: payload.source && payload.source.id ? payload.source.id : null,
+                    confidence: typeof payload.confidence === 'number' ? payload.confidence : null,
+                },
+            };
+        };
+
         const question = String(req.body.question || '').trim();
         if (!question) {
             return res.status(400).json({ error: 'Question is required.' });
@@ -995,8 +1034,34 @@ router.post('/ai/ask', async (req, res) => {
         }
 
         const allergies = Array.isArray(req.user.allergies) ? req.user.allergies : [];
-        const response = answerQuestion(question, { allergies });
-        res.json(response);
+        const profile = {
+            chronicConditions: Array.isArray(req.user.chronicConditions) ? req.user.chronicConditions : [],
+            bloodType: req.user.bloodType || null,
+            dateOfBirth: req.user.dateOfBirth || null,
+        };
+        const localResponse = answerQuestion(question, { allergies, profile });
+
+        const fallbackThreshold = Number(process.env.LLM_FALLBACK_THRESHOLD || 0.74);
+        const lowConfidence = !localResponse
+            || typeof localResponse.confidence !== 'number'
+            || localResponse.confidence < fallbackThreshold;
+        const localLooksVague = !localResponse || !localResponse.source || localResponse.source.id === 'clarify-question-first';
+        const fallbackEnabled = String(process.env.LLM_FALLBACK_ENABLED || 'true').toLowerCase() !== 'false';
+
+        if (fallbackEnabled && (lowConfidence || localLooksVague)) {
+            const llmResponse = await askLlmFallback({
+                question,
+                allergies,
+                profile,
+                localResponse,
+            });
+
+            if (llmResponse) {
+                return res.json(withDebug(llmResponse, 'llm-fallback'));
+            }
+        }
+
+        res.json(withDebug(localResponse, 'local-ai'));
     } catch (err) {
         res.status(500).json({ error: 'Failed to process AI question.' });
     }

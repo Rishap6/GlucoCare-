@@ -67,3 +67,41 @@ function requireAuth(role) {
     }
     return true;
 }
+
+// Stronger auth guard: validates token + role with backend session state.
+async function verifyAuthRole(expectedRole) {
+    if (typeof API === 'undefined') return false;
+
+    var token = API.getToken();
+    var user = API.getUser();
+    if (!token || !user) {
+        API.logout();
+        return false;
+    }
+
+    if (expectedRole && user.role !== expectedRole) {
+        API.logout();
+        return false;
+    }
+
+    try {
+        var me = await API.get('/api/auth/me');
+        if (!me.ok || !me.data || !me.data.user) {
+            API.logout();
+            return false;
+        }
+
+        var backendUser = me.data.user;
+        if (expectedRole && backendUser.role !== expectedRole) {
+            API.logout();
+            return false;
+        }
+
+        // Keep local cache aligned with backend identity.
+        localStorage.setItem('user', JSON.stringify(backendUser));
+        return true;
+    } catch (err) {
+        API.logout();
+        return false;
+    }
+}

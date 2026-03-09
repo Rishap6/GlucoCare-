@@ -4,63 +4,63 @@
     "title": "Type 1 Diabetes Overview",
     "tags": ["type 1", "autoimmune", "insulin"],
     "question": "What is Type 1 diabetes?",
-    "answer": "Type 1 diabetes is an autoimmune condition where the pancreas makes little or no insulin. It usually requires lifelong insulin therapy, glucose monitoring, carbohydrate planning, and regular follow-up with a diabetes care team."
+    "answer": "Type 1 diabetes is an autoimmune condition where the body's immune system mistakenly attacks the insulin-producing cells in the pancreas. This means the pancreas makes little or no insulin on its own. People with Type 1 need daily insulin (through injections or a pump), regular blood sugar monitoring, careful carbohydrate counting, and ongoing follow-up with a diabetes care team. It is most commonly diagnosed in children and young adults, but can appear at any age. It is not caused by diet or lifestyle — it is an immune system issue."
   },
   {
     "id": "t2-overview",
     "title": "Type 2 Diabetes Overview",
     "tags": ["type 2", "insulin resistance", "lifestyle"],
     "question": "What is Type 2 diabetes?",
-    "answer": "Type 2 diabetes is a condition where the body becomes resistant to insulin and may not produce enough insulin over time. Management often includes healthy eating, physical activity, weight optimization, oral medicines, and sometimes insulin."
+    "answer": "Type 2 diabetes happens when your body becomes resistant to insulin — meaning insulin is there, but your cells do not respond to it well enough. Over time, the pancreas may also produce less insulin. The good news is that Type 2 can often be managed and even improved with lifestyle changes: healthier eating, regular physical activity, weight management, and sometimes oral medicines or insulin. It tends to develop gradually and is more common in adults, though it is increasingly seen in younger people too. Family history, excess weight, and sedentary habits are major risk factors."
   },
   {
     "id": "t1-vs-t2",
     "title": "Type 1 vs Type 2",
     "tags": ["difference", "type 1", "type 2"],
     "question": "What is the difference between Type 1 and Type 2 diabetes?",
-    "answer": "Type 1 is mainly autoimmune insulin deficiency and needs insulin from diagnosis. Type 2 is mainly insulin resistance with gradual insulin deficiency and may be managed with lifestyle changes and non-insulin medicines, especially early in the disease."
+    "answer": "The key difference is the underlying cause. In Type 1, the immune system destroys insulin-producing cells, so the body cannot make insulin at all — patients need insulin from day one. In Type 2, the body still makes insulin but cannot use it effectively (insulin resistance), and production may decline over time. Type 1 usually appears in childhood or young adulthood and is not preventable. Type 2 typically develops later in life and is strongly linked to lifestyle factors — it can often be managed with diet, exercise, and oral medicines, especially if caught early. Both types require ongoing care, but the treatment approach differs significantly."
   },
   {
     "id": "symptoms",
     "title": "Common Symptoms",
     "tags": ["symptoms", "thirst", "urination"],
     "question": "What are common diabetes symptoms?",
-    "answer": "Common symptoms include increased thirst, frequent urination, fatigue, blurred vision, slow wound healing, and unexplained weight changes. Severe symptoms need urgent medical review."
+    "answer": "Watch for these common signs: feeling unusually thirsty all the time, needing to urinate frequently (especially at night), persistent tiredness even after rest, blurry vision, cuts or wounds that heal slowly, tingling or numbness in hands or feet, and unexpected weight loss or gain. Some people also experience increased hunger, dry skin, or frequent infections. In Type 1, symptoms often appear suddenly and can be severe. In Type 2, they may develop gradually and go unnoticed for months or years. If you notice several of these together, see a doctor for a blood sugar check — early detection makes a real difference."
   },
   {
     "id": "hypoglycemia",
     "title": "Low Blood Sugar",
     "tags": ["hypoglycemia", "low glucose"],
     "question": "What should I do for low blood sugar?",
-    "answer": "Use the 15-15 rule: take about 15 grams of fast carbohydrate, recheck in 15 minutes, and repeat if still low. If severe confusion, seizure, or unconsciousness occurs, seek emergency care immediately."
+    "answer": "This needs quick action. Use the 15-15 rule: (1) Take 15 grams of fast-acting carbs — this could be 3-4 glucose tablets, half a cup (4 oz) of fruit juice or regular soda, a tablespoon of sugar dissolved in water, or a tablespoon of honey. (2) Wait 15 minutes, then recheck your blood sugar. (3) If still below 70 mg/dL, repeat the treatment once more. (4) Once your sugar is back above 70, eat a small snack with protein and carbs (like peanut butter crackers or cheese with crackers) to keep it stable. Important: if you feel confused, cannot swallow safely, have a seizure, or lose consciousness — this is an emergency. Someone nearby should call for medical help immediately. Do not try to force food or drink into an unconscious person."
   },
   {
     "id": "hyperglycemia",
     "title": "High Blood Sugar",
     "tags": ["hyperglycemia", "high glucose"],
     "question": "What should I do for high blood sugar?",
-    "answer": "Hydrate, recheck glucose, follow your prescribed correction plan, and monitor symptoms. If vomiting, abdominal pain, deep breathing, or very high persistent values occur, seek urgent medical care."
+    "answer": "When your blood sugar is high, here is what to do step by step: (1) Drink water — dehydration makes high sugar worse, so sip water steadily. (2) Take your prescribed medication on schedule — do not skip doses or double them. (3) Avoid sugary foods, refined carbs, and fruit juice right now. Stick to non-starchy vegetables and lean protein. (4) If you feel physically okay, take a 15-20 minute walk — light movement helps your body use glucose. (5) Recheck your sugar in 1-2 hours. Watch for these warning signs that need urgent medical attention: persistent vomiting, stomach pain, rapid or deep breathing, fruity-smelling breath, confusion, extreme thirst, or readings that stay above 300 mg/dL despite medication. These could indicate a dangerous condition and you should seek emergency care right away."
   },
   {
     "id": "hba1c",
     "title": "HbA1c Meaning",
     "tags": ["hba1c", "test"],
     "question": "What is HbA1c?",
-    "answer": "HbA1c reflects average blood glucose over about 2 to 3 months. Targets vary by patient profile, age, and comorbid conditions, so goals should be individualized by the care team."
+    "answer": "HbA1c (also called A1c or glycated hemoglobin) is a blood test that shows your average blood sugar level over the past 2-3 months. Think of it as your blood sugar report card — it tells you how well things have been controlled overall, not just at one moment. A normal HbA1c is below 5.7%. Prediabetes is 5.7-6.4%. Diabetes is 6.5% or higher. For most adults with diabetes, doctors aim for below 7%, but your personal target depends on your age, other health conditions, risk of low sugars, and how long you have had diabetes. Your doctor will set the right goal for you. It is typically checked every 3 months when control is unstable, and every 6 months when things are stable."
   },
   {
     "id": "diet-basics",
     "title": "Diabetes Nutrition Basics",
     "tags": ["diet", "carbs", "nutrition"],
     "question": "What diet should a diabetic patient follow?",
-    "answer": "Focus on high-fiber foods, lean proteins, healthy fats, controlled carbohydrate portions, and reduced sugary drinks. Regular meal timing and balanced plates help with glucose stability."
+    "answer": "A good diabetes diet is not about giving up everything you enjoy — it is about making smarter choices. Here are the key principles: (1) Fill half your plate with non-starchy vegetables like spinach, broccoli, cucumber, and salad greens. (2) One quarter should be lean protein — chicken, fish, eggs, dal, paneer, tofu, or beans. (3) One quarter should be complex carbs — whole wheat roti, brown rice, millets, or oats in controlled portions. (4) Include healthy fats from nuts, seeds, olive oil, or avocado. (5) Minimize sugary drinks, fruit juices, white rice, maida products, and processed snacks. (6) Eat meals at consistent times — skipping meals can cause sugar swings. (7) Drink plenty of water throughout the day. The goal is balanced, consistent meals that your body can handle without big sugar spikes."
   },
   {
     "id": "exercise",
     "title": "Exercise Guidance",
     "tags": ["exercise", "activity"],
     "question": "How much exercise is recommended for diabetes?",
-    "answer": "A common target is at least 150 minutes of moderate activity each week plus resistance exercise on multiple days, adjusted for individual health status and clinician advice."
+    "answer": "Exercise is one of the most powerful tools for managing diabetes. Here is what works: Aim for at least 150 minutes of moderate activity per week — that is about 30 minutes on most days. Walking, cycling, swimming, dancing, and yoga all count. Add some strength training (like resistance bands, bodyweight exercises, or light weights) 2-3 times a week to improve insulin sensitivity. The easiest habit to start? A 10-15 minute walk after your largest meal — it directly helps prevent post-meal sugar spikes. Important tips: check your blood sugar before exercising if you take insulin or sulfonylureas (to avoid going too low), carry a fast-acting snack just in case, stay hydrated, and wear proper footwear. Start slow and build up — consistency matters much more than intensity."
   },
   {
     "id": "metformin-allergy",
@@ -116,28 +116,28 @@
     "title": "Foot Care",
     "tags": ["foot", "ulcer prevention"],
     "question": "How should diabetic foot care be done?",
-    "answer": "Check feet daily, keep skin clean and moisturized (not between toes), wear properly fitted footwear, and seek care promptly for cuts, redness, swelling, or non-healing wounds."
+    "answer": "Diabetes can reduce blood flow and sensation in your feet, so small problems can quickly become serious if not caught early. Daily foot care routine: (1) Inspect your feet every day — look for cuts, blisters, redness, swelling, or color changes. Use a mirror for the bottom if needed. (2) Wash feet daily with warm (not hot) water and mild soap. Dry thoroughly, especially between toes. (3) Moisturize the tops and bottoms to prevent cracking, but not between the toes (moisture there can cause infection). (4) Trim toenails straight across, not too short, to avoid ingrown nails. (5) Always wear proper-fitting shoes — never walk barefoot, even at home. (6) See a doctor immediately for any non-healing wound, discharge, foul smell, blackening, fever, or sudden pain. Small foot issues in diabetes can escalate quickly, so daily attention is your best protection."
   },
   {
     "id": "kidney-protection",
     "title": "Kidney Protection",
     "tags": ["kidney", "nephropathy"],
     "question": "How to protect kidneys in diabetes?",
-    "answer": "Control blood sugar and blood pressure, avoid smoking, monitor urine albumin and kidney function, and use kidney-protective medicines when appropriate under medical guidance."
+    "answer": "Your kidneys filter your blood 24 hours a day, and diabetes can gradually damage these tiny filters over years if not managed well. Here is how to protect them: (1) Keep blood sugar in your target range — consistently high glucose is the biggest kidney risk. (2) Control blood pressure — high BP accelerates kidney damage significantly. (3) Take your prescribed medicines, especially ACE inhibitors or ARBs if your doctor has recommended them — these specifically protect kidney function. (4) Get tested regularly — urine albumin and serum creatinine with eGFR should be checked at least once a year. (5) Avoid smoking. (6) Stay hydrated. (7) Limit excessive salt intake. (8) Be cautious with painkillers like ibuprofen — they can stress kidneys. Catching kidney changes early gives your doctor the best chance to slow or prevent progression."
   },
   {
     "id": "eye-care",
     "title": "Eye Care",
     "tags": ["retinopathy", "eye exam"],
     "question": "Why are regular eye exams needed in diabetes?",
-    "answer": "Diabetes can damage retinal blood vessels over time. Regular dilated eye exams help detect retinopathy early and prevent vision loss through timely treatment."
+    "answer": "Diabetes can quietly damage the tiny blood vessels in the back of your eye (the retina) over time — a condition called diabetic retinopathy. The tricky part is that you might not notice any vision changes until the damage is already advanced. That is why regular dilated eye exams (where drops widen your pupil so the doctor can see inside) are so important — they catch problems early when they are most treatable. Most diabetes guidelines recommend an eye exam at least once a year. If retinopathy is detected, more frequent visits may be needed. Treatment options for early damage include laser therapy, injections, or surgery. Keeping your blood sugar, blood pressure, and cholesterol under control greatly reduces the risk of eye damage."
   },
   {
     "id": "sick-day",
     "title": "Sick Day Rules",
     "tags": ["sick day", "illness"],
     "question": "What are diabetes sick day rules?",
-    "answer": "During illness, monitor glucose more often, maintain hydration, continue or adjust medications per care plan, and seek urgent advice for persistent vomiting, ketones, or uncontrolled glucose."
+    "answer": "Being sick (fever, cold, flu, infection, or any illness) can make blood sugar harder to control because stress hormones push it up. Here are the sick day rules: (1) Monitor blood sugar more frequently — at least every 3-4 hours. (2) Keep taking your diabetes medicines unless your doctor specifically says otherwise — sickness is not a reason to skip them. (3) Stay hydrated — drink water, clear broth, or sugar-free fluids frequently. (4) If you cannot eat regular meals, try small frequent portions of soft foods or liquids with some carbs to prevent sugar from dropping too low. (5) Check for ketones if you have Type 1 or readings above 300 mg/dL. (6) Seek urgent medical help if: you cannot keep fluids down for more than a few hours, sugar stays above 300 despite medication, you have moderate-to-large ketones, you feel confused or extremely weak, or you have difficulty breathing."
   },
   {
     "id": "india-risk-factors",

@@ -6,6 +6,7 @@
     <title>Patient Dashboard | GlucoCare+</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="/socket.io/socket.io.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="./patient.css">
 </head>
@@ -79,14 +80,6 @@
 
                 <div class="nav-section">
                     <div class="nav-section-title">Digital Care</div>
-                    <a class="nav-item" data-section="ai-assistant">
-                        <i class="fas fa-robot"></i>
-                        AI Assistant
-                    </a>
-                    <a class="nav-item" data-section="messages">
-                        <i class="fas fa-comments"></i>
-                        Messages
-                    </a>
                     <a class="nav-item" data-section="safety">
                         <i class="fas fa-shield-heart"></i>
                         Safety
@@ -739,50 +732,41 @@
                 </div>
             </section>
 
-            <!-- Messages Section -->
-            <section id="messages" class="dashboard-section">
-                <div class="section-header">
-                    <h2 class="section-title">
-                        <i class="fas fa-comments"></i>
-                        Care Team Messages
-                    </h2>
-                </div>
-
-                <div class="card">
-                    <div class="form-grid">
-                        <div class="form-group">
-                            <label class="form-label">Doctor</label>
-                            <select id="new-thread-doctor" class="form-select"></select>
+            <!-- Doctor Chat Section — WhatsApp-style -->
+            <section id="doctor-chat" class="dashboard-section">
+                <div class="wa-chat-container">
+                    <!-- Left: assigned doctors list -->
+                    <div class="wa-sidebar">
+                        <div class="wa-sidebar-header">
+                            <h3><i class="fas fa-user-doctor"></i> My Doctors</h3>
                         </div>
-                        <div class="form-group">
-                            <label class="form-label">Subject</label>
-                            <input id="new-thread-subject" class="form-input" type="text" placeholder="Topic of your message">
+                        <div class="wa-search-bar">
+                            <i class="fas fa-search"></i>
+                            <input id="wa-thread-search" type="text" placeholder="Search doctors...">
                         </div>
-                        <div class="form-group full-width">
-                            <label class="form-label">Message</label>
-                            <textarea id="new-thread-body" class="form-textarea" placeholder="Write your first message..."></textarea>
+                        <div id="message-threads-list" class="wa-thread-list">
+                            <div class="wa-empty">Loading doctors...</div>
                         </div>
                     </div>
-                    <div class="modal-actions" style="margin-top: 0;">
-                        <button class="btn btn-primary" onclick="createMessageThread()">Start Thread</button>
-                    </div>
-                </div>
 
-                <div class="card">
-                    <h3 class="card-title" style="margin-bottom: 16px;">Threads</h3>
-                    <div id="message-threads-list" class="stack-list">
-                        <div class="empty-state">No threads yet.</div>
-                    </div>
-                </div>
+                    <!-- Right: active conversation -->
+                    <div class="wa-main">
+                        <div class="wa-chat-header" id="wa-chat-header">
+                            <div class="wa-chat-avatar" id="wa-chat-avatar"><i class="fas fa-user-doctor"></i></div>
+                            <div class="wa-chat-header-info">
+                                <div class="wa-chat-header-name" id="wa-chat-header-name">Select a doctor</div>
+                                <div class="wa-chat-header-status" id="wa-chat-header-status">Choose a doctor from the left to chat</div>
+                            </div>
+                        </div>
 
-                <div class="card">
-                    <h3 class="card-title" style="margin-bottom: 16px;">Conversation</h3>
-                    <div id="thread-messages" class="message-log">
-                        <div class="empty-state">Select a thread to view messages.</div>
-                    </div>
-                    <div style="display:flex; gap:12px; margin-top:16px;">
-                        <input id="thread-reply-body" class="form-input" type="text" placeholder="Write a reply...">
-                        <button class="btn btn-primary" onclick="sendThreadReply()">Send</button>
+                        <div id="thread-messages" class="wa-messages">
+                            <div class="wa-empty">Select a doctor to start chatting</div>
+                        </div>
+
+                        <div class="wa-input-bar" id="wa-input-bar">
+                            <input id="thread-reply-body" type="text" class="wa-input" placeholder="Type a message" autocomplete="off">
+                            <button class="wa-send-btn" onclick="sendThreadReply()" title="Send"><i class="fas fa-paper-plane"></i></button>
+                        </div>
                     </div>
                 </div>
             </section>
@@ -953,40 +937,37 @@
                 </div>
             </section>
 
-            <!-- AI Assistant Section -->
+            <!-- Chat Section -->
             <section id="ai-assistant" class="dashboard-section">
                 <div class="section-header">
                     <h2 class="section-title">
-                        <i class="fas fa-robot"></i>
-                        Diabetes AI Assistant
+                        <i class="fas fa-comments"></i>
+                        Chat
                     </h2>
+                    <button class="ai-popup-close" type="button" onclick="closeAiAssistantPanel()" aria-label="Close Chat">&times;</button>
                 </div>
 
-                <div class="card">
-                    <p class="muted-note" style="margin-top: 0; margin-bottom: 14px;">
-                        Ask about Type 1 diabetes, Type 2 diabetes, glucose safety, medicine allergies, and possible alternatives.
-                    </p>
-                    <div class="ai-suggestions">
-                        <button class="btn btn-outline btn-sm" onclick="askAiPreset('Difference between Type 1 and Type 2 diabetes')">Type 1 vs Type 2</button>
-                        <button class="btn btn-outline btn-sm" onclick="askAiPreset('What should I do for low blood sugar?')">Low Sugar Help</button>
-                        <button class="btn btn-outline btn-sm" onclick="askAiPreset('If allergic to metformin, what alternatives are used?')">Metformin Alternative</button>
+                <div class="card chat-card">
+                    <div class="chat-mode-bar">
+                        <button class="btn btn-primary btn-sm" onclick="document.getElementById('ai-question').focus()">AI Chat</button>
+                        <button class="btn btn-outline btn-sm" onclick="updateNav('doctor-chat'); closeAiAssistantPanel();">Doctor Chat</button>
                     </div>
-                    <div class="form-group" style="margin-top: 14px; margin-bottom: 12px;">
-                        <label class="form-label">Your Question</label>
-                        <textarea id="ai-question" class="form-textarea" placeholder="Example: I have Type 2 diabetes and metformin intolerance. What alternatives are commonly considered?"></textarea>
-                    </div>
-                    <div class="modal-actions" style="margin-top: 0; justify-content: flex-start;">
-                        <button class="btn btn-primary" onclick="askAiAssistant()">
-                            <i class="fas fa-paper-plane"></i>
-                            Ask AI
-                        </button>
-                    </div>
-                </div>
 
-                <div class="card">
-                    <h3 class="card-title" style="margin-bottom: 12px;">AI Conversation</h3>
+                    <h3 class="card-title" style="margin-bottom: 12px;">Conversation</h3>
                     <div id="ai-conversation" class="message-log">
                         <div class="empty-state">No AI conversation yet. Ask your first question.</div>
+                    </div>
+
+                    <div class="chat-input-wrap">
+                        <label class="form-label">Message</label>
+                        <textarea id="ai-question" class="form-textarea ai-chat-input" placeholder="Ask anything about diabetes care, symptoms, food, medicine, or safety."></textarea>
+                        <p class="muted-note" style="margin: 0 0 10px 0;">Press Enter to send. Use Shift+Enter for a new line.</p>
+                        <div class="chat-actions">
+                            <button id="ai-send-btn" class="btn btn-primary" onclick="askAiAssistant()">
+                                <i class="fas fa-paper-plane"></i>
+                                Send to AI
+                            </button>
+                        </div>
                     </div>
                 </div>
             </section>
@@ -1285,10 +1266,12 @@
         </div>
     </div>
 
-    <button class="floating-ai-btn" onclick="openAiAssistantPanel()" aria-label="Open AI Assistant" title="Open AI Assistant">
-        <i class="fas fa-robot"></i>
-        <span>AI Help</span>
+    <button class="floating-ai-btn" onclick="openAiAssistantPanel()" aria-label="Open Chat" title="Open Chat">
+        <i class="fas fa-comments"></i>
+        <span>Chat</span>
     </button>
+
+    <div id="ai-panel-overlay" class="ai-panel-overlay" aria-hidden="true"></div>
 
     <script src="/js/api.js"></script>
     <script src="./patient.js"></script>

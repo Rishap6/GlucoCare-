@@ -160,6 +160,32 @@ const User = {
         return transformUser(row);
     },
 
+    isPatientAssignedToDoctor(patientId, doctorId) {
+        const row = db.prepare(`
+            SELECT 1 as ok
+            FROM patient_doctors
+            WHERE patient_id = ? AND doctor_id = ?
+            LIMIT 1
+        `).get(patientId, doctorId);
+        return !!row;
+    },
+
+    assignPatientToDoctor(patientId, doctorId) {
+        const patient = db.prepare(`
+            SELECT id FROM users
+            WHERE id = ? AND role = 'patient'
+        `).get(patientId);
+
+        if (!patient) return { ok: false, reason: 'patient-not-found' };
+
+        db.prepare(`
+            INSERT OR IGNORE INTO patient_doctors (patient_id, doctor_id)
+            VALUES (?, ?)
+        `).run(patientId, doctorId);
+
+        return { ok: true };
+    },
+
     countPatientsByDoctor(doctorId) {
         const row = db.prepare(`
             SELECT COUNT(*) as count FROM users u
