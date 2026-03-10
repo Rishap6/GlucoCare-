@@ -1434,6 +1434,28 @@
             color: var(--gray-500);
             text-align: right;
             margin-top: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            gap: 3px;
+        }
+
+        /* Message status check marks */
+        .msg-status {
+            font-size: 13px;
+            letter-spacing: -3px;
+            font-weight: 700;
+            line-height: 1;
+            margin-left: 2px;
+        }
+        .msg-status.sent {
+            color: #8696a0;
+        }
+        .msg-status.delivered {
+            color: #8696a0;
+        }
+        .msg-status.read {
+            color: #53bdeb;
         }
 
         .wa-msg-date-divider {

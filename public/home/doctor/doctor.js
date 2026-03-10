@@ -922,6 +922,18 @@ function dcpMsgTime(value) {
     return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 }
 
+function dcpMsgStatusIcon(msg) {
+    // Only show status on messages sent by the current user (doctor)
+    if (msg.sender_role !== 'doctor') return '';
+    if (msg.read_at) {
+        return '<span class="msg-status read" title="Read">&#10003;&#10003;</span>';
+    }
+    if (msg.delivered_at) {
+        return '<span class="msg-status delivered" title="Delivered">&#10003;&#10003;</span>';
+    }
+    return '<span class="msg-status sent" title="Sent">&#10003;</span>';
+}
+
 function dcpMsgDateLabel(value) {
     if (!value) return '';
     var d = new Date(value);
@@ -1030,7 +1042,8 @@ async function openDoctorThread(threadId) {
             lastDate = dateLabel;
         }
         var cls = msg.sender_role === 'doctor' ? 'doctor' : 'patient';
-        html += '<div class="dcp-msg ' + cls + '"><div>' + escapeHtml(msg.body || '') + '</div><div class="dcp-msg-time">' + dcpMsgTime(ts) + '</div></div>';
+        var statusHtml = msg.sender_role === 'doctor' ? ' ' + dcpMsgStatusIcon(msg) : '';
+        html += '<div class="dcp-msg ' + cls + '" data-msg-id="' + (msg.id || '') + '"><div>' + escapeHtml(msg.body || '') + '</div><div class="dcp-msg-time">' + dcpMsgTime(ts) + statusHtml + '</div></div>';
     });
 
     container.innerHTML = html;
@@ -1068,7 +1081,9 @@ async function doctorSendReply() {
 
         var msgDiv = document.createElement('div');
         msgDiv.className = 'dcp-msg doctor';
-        msgDiv.innerHTML = '<div>' + escapeHtml(result.data.body || body) + '</div><div class="dcp-msg-time">' + dcpMsgTime(result.data.sent_at || new Date().toISOString()) + '</div>';
+        msgDiv.setAttribute('data-msg-id', result.data.id || '');
+        var sentIcon = '<span class="msg-status sent" title="Sent">&#10003;</span>';
+        msgDiv.innerHTML = '<div>' + escapeHtml(result.data.body || body) + '</div><div class="dcp-msg-time">' + dcpMsgTime(result.data.sent_at || new Date().toISOString()) + ' ' + sentIcon + '</div>';
         container.appendChild(msgDiv);
         container.scrollTop = container.scrollHeight;
     }
@@ -1108,7 +1123,14 @@ function initDoctorChatSocket() {
 
     doctorState.chatSocket.on('new_message', function(data) {
         if (data && data.message) {
-            // If we're in the active thread, append the message
+            // Acknowledge delivery to the sender (patient)
+            doctorState.chatSocket.emit('message_delivered', {
+                messageIds: [data.message.id],
+                senderId: data.message.sender_id,
+                threadId: data.threadId
+            });
+
+            // If we're in the active thread, append the message and mark as read
             if (data.threadId === doctorState.chatSelectedThreadId) {
                 var container = document.getElementById('dcp-messages');
                 if (container) {
@@ -1116,14 +1138,47 @@ function initDoctorChatSocket() {
                     if (emptyEl) emptyEl.remove();
                     var msgDiv = document.createElement('div');
                     msgDiv.className = 'dcp-msg patient';
+                    msgDiv.setAttribute('data-msg-id', data.message.id || '');
                     msgDiv.innerHTML = '<div>' + escapeHtml(data.message.body || '') + '</div><div class="dcp-msg-time">' + dcpMsgTime(data.message.sent_at || new Date().toISOString()) + '</div>';
                     container.appendChild(msgDiv);
                     container.scrollTop = container.scrollHeight;
                 }
+                // Since we're actively viewing this thread, mark as read
+                doctorState.chatSocket.emit('messages_read', {
+                    messageIds: [data.message.id],
+                    senderId: data.message.sender_id,
+                    threadId: data.threadId
+                });
             }
             // Refresh threads to update unread counts
             loadDoctorChatThreads();
         }
+    });
+
+    // Our sent messages were delivered to the patient's device
+    doctorState.chatSocket.on('messages_delivered', function(data) {
+        if (!data || !Array.isArray(data.messageIds)) return;
+        data.messageIds.forEach(function(id) {
+            var el = document.querySelector('.dcp-msg[data-msg-id="' + id + '"] .msg-status');
+            if (el) {
+                el.className = 'msg-status delivered';
+                el.title = 'Delivered';
+                el.innerHTML = '&#10003;&#10003;';
+            }
+        });
+    });
+
+    // Our sent messages were read by the patient
+    doctorState.chatSocket.on('messages_read_ack', function(data) {
+        if (!data || !Array.isArray(data.messageIds)) return;
+        data.messageIds.forEach(function(id) {
+            var el = document.querySelector('.dcp-msg[data-msg-id="' + id + '"] .msg-status');
+            if (el) {
+                el.className = 'msg-status read';
+                el.title = 'Read';
+                el.innerHTML = '&#10003;&#10003;';
+            }
+        });
     });
 
     doctorState.chatSocket.on('disconnect', function() {

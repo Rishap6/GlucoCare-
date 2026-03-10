@@ -368,7 +368,7 @@ router.put('/profile', async (req, res) => {
 // ─── Doctor Messaging ───────────────────────────────────────────────
 
 // GET /api/doctor/messages/threads - all threads for this doctor
-router.get('/messages/threads', auth, requireRole('doctor'), async (req, res) => {
+router.get('/messages/threads', async (req, res) => {
     try {
         const db = getDb();
         const threads = db.prepare(`
@@ -395,7 +395,7 @@ router.get('/messages/threads', auth, requireRole('doctor'), async (req, res) =>
 });
 
 // GET /api/doctor/messages/threads/:id - get thread messages
-router.get('/messages/threads/:id', auth, requireRole('doctor'), async (req, res) => {
+router.get('/messages/threads/:id', async (req, res) => {
     try {
         const db = getDb();
         const thread = db.prepare('SELECT * FROM message_threads WHERE id = ? AND doctor_id = ?').get(req.params.id, req.user._id);
@@ -404,16 +404,29 @@ router.get('/messages/threads/:id', auth, requireRole('doctor'), async (req, res
         const messages = db.prepare('SELECT * FROM messages WHERE thread_id = ? ORDER BY sent_at ASC').all(req.params.id);
 
         // Mark patient messages as read
-        db.prepare(`UPDATE messages SET read_at = datetime('now') WHERE thread_id = ? AND sender_role = 'patient' AND read_at IS NULL`).run(req.params.id);
+        const unreadPatientMsgs = messages.filter(function(m) { return m.sender_role === 'patient' && !m.read_at; });
+        if (unreadPatientMsgs.length > 0) {
+            db.prepare(`UPDATE messages SET delivered_at = COALESCE(delivered_at, datetime('now')), read_at = datetime('now') WHERE thread_id = ? AND sender_role = 'patient' AND read_at IS NULL`).run(req.params.id);
+            // Notify patient via socket that their messages were read
+            var notifyIo = req.app.get('io');
+            if (notifyIo && thread.patient_id) {
+                notifyIo.to('user_' + thread.patient_id).emit('messages_read_ack', {
+                    messageIds: unreadPatientMsgs.map(function(m) { return m.id; }),
+                    threadId: Number(req.params.id)
+                });
+            }
+        }
 
-        res.json({ thread, messages });
+        // Return refreshed messages with updated statuses
+        const updatedMessages = db.prepare('SELECT * FROM messages WHERE thread_id = ? ORDER BY sent_at ASC').all(req.params.id);
+        res.json({ thread, messages: updatedMessages });
     } catch (err) {
         res.status(500).json({ error: 'Failed to fetch thread messages.' });
     }
 });
 
 // POST /api/doctor/messages/threads/:id - doctor sends a reply
-router.post('/messages/threads/:id', auth, requireRole('doctor'), async (req, res) => {
+router.post('/messages/threads/:id', async (req, res) => {
     try {
         const db = getDb();
         const thread = db.prepare('SELECT * FROM message_threads WHERE id = ? AND doctor_id = ?').get(req.params.id, req.user._id);
@@ -447,7 +460,7 @@ router.post('/messages/threads/:id', auth, requireRole('doctor'), async (req, re
 });
 
 // GET /api/doctor/messages/unread-count - total unread messages for badge
-router.get('/messages/unread-count', auth, requireRole('doctor'), async (req, res) => {
+router.get('/messages/unread-count', async (req, res) => {
     try {
         const db = getDb();
         var row = db.prepare(`

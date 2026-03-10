@@ -856,6 +856,24 @@ router.get('/messages/threads/:id', async (req, res) => {
         const thread = db.prepare('SELECT * FROM message_threads WHERE id = ? AND patient_id = ?').get(req.params.id, req.user._id);
         if (!thread) return res.status(404).json({ error: 'Thread not found.' });
         const messages = db.prepare('SELECT * FROM messages WHERE thread_id = ? ORDER BY sent_at ASC').all(req.params.id);
+
+        // Mark doctor messages as read
+        const unreadDoctorMsgs = messages.filter(function(m) { return m.sender_role === 'doctor' && !m.read_at; });
+        if (unreadDoctorMsgs.length > 0) {
+            db.prepare("UPDATE messages SET delivered_at = COALESCE(delivered_at, datetime('now')), read_at = datetime('now') WHERE thread_id = ? AND sender_role = 'doctor' AND read_at IS NULL").run(req.params.id);
+            // Notify doctor via socket that their messages were read
+            var io = req.app.get('io');
+            if (io && thread.doctor_id) {
+                io.to('user_' + thread.doctor_id).emit('messages_read_ack', {
+                    messageIds: unreadDoctorMsgs.map(function(m) { return m.id; }),
+                    threadId: Number(req.params.id)
+                });
+            }
+            // Refresh messages to include updated read_at
+            const updatedMessages = db.prepare('SELECT * FROM messages WHERE thread_id = ? ORDER BY sent_at ASC').all(req.params.id);
+            return res.json({ thread, messages: updatedMessages });
+        }
+
         res.json({ thread, messages });
     } catch (err) {
         res.status(500).json({ error: 'Failed to fetch thread messages.' });

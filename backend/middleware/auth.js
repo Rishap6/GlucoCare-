@@ -27,7 +27,8 @@ const auth = async (req, res, next) => {
 // Role-based access
 const requireRole = (...roles) => {
     return (req, res, next) => {
-        if (!roles.includes(req.user.role)) {
+        if (!req.user || !roles.includes(req.user.role)) {
+            console.warn(`Access denied: user ${req.user ? req.user._id : 'unknown'} with role '${req.user ? req.user.role : 'none'}' tried ${req.method} ${req.originalUrl} (requires [${roles.join(', ')}])`);
             return res.status(403).json({ error: 'Access denied' });
         }
         next();

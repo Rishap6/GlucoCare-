@@ -25,6 +25,10 @@ const limiter = rateLimit({
     max: 100,
     standardHeaders: true,
     legacyHeaders: false,
+    skip: function(req) {
+        // Keep auth throttling separate from dashboard/chat traffic.
+        return req.path.startsWith('/api/auth');
+    },
 });
 app.use(limiter);
 
@@ -66,6 +70,50 @@ io.on('connection', function(socket) {
     // Join a room named after the user's id so we can target messages
     socket.join('user_' + socket.user.id);
     console.log('Socket connected: user_' + socket.user.id);
+
+    // Delivery acknowledgment: recipient confirms message arrived on their device
+    socket.on('message_delivered', function(data) {
+        if (!data || !Array.isArray(data.messageIds) || data.messageIds.length === 0) return;
+        try {
+            var db = require('./database').getDb();
+            var placeholders = data.messageIds.map(function() { return '?'; }).join(',');
+            db.prepare(
+                "UPDATE messages SET delivered_at = datetime('now') WHERE id IN (" + placeholders + ") AND delivered_at IS NULL"
+            ).run(...data.messageIds);
+
+            // Notify the sender so their UI updates to double-grey checks
+            if (data.senderId) {
+                io.to('user_' + data.senderId).emit('messages_delivered', {
+                    messageIds: data.messageIds,
+                    threadId: data.threadId
+                });
+            }
+        } catch (err) {
+            console.error('message_delivered error:', err.message);
+        }
+    });
+
+    // Read acknowledgment: recipient has opened and viewed the messages
+    socket.on('messages_read', function(data) {
+        if (!data || !Array.isArray(data.messageIds) || data.messageIds.length === 0) return;
+        try {
+            var db = require('./database').getDb();
+            var placeholders = data.messageIds.map(function() { return '?'; }).join(',');
+            db.prepare(
+                "UPDATE messages SET delivered_at = COALESCE(delivered_at, datetime('now')), read_at = datetime('now') WHERE id IN (" + placeholders + ") AND read_at IS NULL"
+            ).run(...data.messageIds);
+
+            // Notify the sender so their UI updates to double-blue checks
+            if (data.senderId) {
+                io.to('user_' + data.senderId).emit('messages_read_ack', {
+                    messageIds: data.messageIds,
+                    threadId: data.threadId
+                });
+            }
+        } catch (err) {
+            console.error('messages_read error:', err.message);
+        }
+    });
 
     socket.on('disconnect', function() {
         console.log('Socket disconnected: user_' + socket.user.id);

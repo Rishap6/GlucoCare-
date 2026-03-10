@@ -23,7 +23,7 @@ var API = {
         return fetch(url, options).then(function(response) {
             if (response.status === 401) {
                 API.logout();
-                return Promise.reject(new Error('Session expired'));
+                return Promise.reject(new Error('Session expired. Please log in again.'));
             }
             return response.text().then(function(raw) {
                 var data = {};

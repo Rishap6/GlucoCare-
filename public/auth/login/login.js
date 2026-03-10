@@ -44,10 +44,24 @@ function togglePassword(inputId, button) {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ email: email, password: password })
             })
-            .then(function(response) { return response.json().then(function(data) { return { ok: response.ok, data: data }; }); })
+            .then(function(response) {
+                return response.text().then(function(raw) {
+                    var data = {};
+                    try {
+                        data = raw ? JSON.parse(raw) : {};
+                    } catch (e) {
+                        data = { error: raw || ('Request failed with status ' + response.status) };
+                    }
+                    return { ok: response.ok, status: response.status, data: data };
+                });
+            })
             .then(function(result) {
                 if (!result.ok) {
-                    errorText.textContent = result.data.error || 'Login failed.';
+                    if (result.status === 429) {
+                        errorText.textContent = result.data.error || 'Too many attempts. Please wait a few minutes and try again.';
+                    } else {
+                        errorText.textContent = result.data.error || 'Login failed.';
+                    }
                     errorMessage.classList.add('show');
                     btn.innerHTML = 'Log In <svg viewBox="0 0 24 24" width="20" height="20" fill="white"><path d="M12 4l-1.41 1.41L16.17 11H4v2h12.17l-5.58 5.59L12 20l8-8-8-8z"/></svg>';
                     btn.disabled = false;
@@ -65,8 +79,8 @@ function togglePassword(inputId, button) {
                     window.location.href = '/home/patient/patient.html';
                 }
             })
-            .catch(function() {
-                errorText.textContent = 'Network error. Please try again.';
+            .catch(function(err) {
+                errorText.textContent = (err && err.message) ? err.message : 'Network error. Please try again.';
                 errorMessage.classList.add('show');
                 btn.innerHTML = 'Log In <svg viewBox="0 0 24 24" width="20" height="20" fill="white"><path d="M12 4l-1.41 1.41L16.17 11H4v2h12.17l-5.58 5.59L12 20l8-8-8-8z"/></svg>';
                 btn.disabled = false;

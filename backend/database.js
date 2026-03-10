@@ -318,11 +318,19 @@ async function initDatabase() {
             body TEXT NOT NULL,
             attachments_json TEXT,
             sent_at TEXT DEFAULT (datetime('now')),
+            delivered_at TEXT,
             read_at TEXT,
             createdAt TEXT DEFAULT (datetime('now')),
             updatedAt TEXT DEFAULT (datetime('now'))
         )
     `);
+
+    // Migration: add delivered_at column if missing
+    try {
+        _wrapper.exec(`ALTER TABLE messages ADD COLUMN delivered_at TEXT`);
+    } catch (e) {
+        // Column already exists — ignore
+    }
 
     _wrapper.exec(`
         CREATE TABLE IF NOT EXISTS appointment_checklist (

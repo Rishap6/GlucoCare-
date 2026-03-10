@@ -1245,7 +1245,12 @@
         }
         .dcp-msg.doctor { align-self: flex-end; background: #d9fdd3; border-bottom-right-radius: 4px; }
         .dcp-msg.patient { align-self: flex-start; background: #fff; border-bottom-left-radius: 4px; }
-        .dcp-msg-time { font-size: 10px; color: #667781; text-align: right; margin-top: 4px; }
+        .dcp-msg-time { font-size: 10px; color: #667781; text-align: right; margin-top: 4px; display: flex; align-items: center; justify-content: flex-end; gap: 3px; }
+        /* Message status check marks */
+        .msg-status { font-size: 13px; letter-spacing: -3px; font-weight: 700; line-height: 1; margin-left: 2px; }
+        .msg-status.sent { color: #8696a0; }
+        .msg-status.delivered { color: #8696a0; }
+        .msg-status.read { color: #53bdeb; }
         .dcp-msg-date-divider {
             align-self: center; background: rgba(255,255,255,0.9);
             padding: 4px 14px; border-radius: 8px; font-size: 12px;

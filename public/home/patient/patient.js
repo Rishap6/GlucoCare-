@@ -723,6 +723,18 @@ function msgTime(value) {
     return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 }
 
+function msgStatusIcon(msg) {
+    // Only show status on messages sent by the current user (patient)
+    if (msg.sender_role !== 'patient') return '';
+    if (msg.read_at) {
+        return '<span class="msg-status read" title="Read">&#10003;&#10003;</span>';
+    }
+    if (msg.delivered_at) {
+        return '<span class="msg-status delivered" title="Delivered">&#10003;&#10003;</span>';
+    }
+    return '<span class="msg-status sent" title="Sent">&#10003;</span>';
+}
+
 function msgDateLabel(value) {
     if (!value) return '';
     var d = new Date(value);
@@ -755,10 +767,11 @@ function renderThreadMessages(messages) {
             lastDateLabel = dateLabel;
         }
         var senderClass = msg.sender_role === 'patient' ? 'patient' : 'doctor';
+        var statusHtml = msg.sender_role === 'patient' ? ' ' + msgStatusIcon(msg) : '';
         html += [
-            '<div class="wa-msg ' + senderClass + '">',
+            '<div class="wa-msg ' + senderClass + '" data-msg-id="' + (msg.id || '') + '">',
             '<div>' + escapeHtml(msg.body || '') + '</div>',
-            '<div class="wa-msg-time">' + msgTime(ts) + '</div>',
+            '<div class="wa-msg-time">' + msgTime(ts) + statusHtml + '</div>',
             '</div>',
         ].join('');
     });
@@ -1238,7 +1251,9 @@ async function sendThreadReply() {
 
         var msgDiv = document.createElement('div');
         msgDiv.className = 'wa-msg patient';
-        msgDiv.innerHTML = '<div>' + escapeHtml(result.data.body || body) + '</div><div class="wa-msg-time">' + msgTime(result.data.sent_at || new Date().toISOString()) + '</div>';
+        msgDiv.setAttribute('data-msg-id', result.data.id || '');
+        var sentIcon = '<span class="msg-status sent" title="Sent">&#10003;</span>';
+        msgDiv.innerHTML = '<div>' + escapeHtml(result.data.body || body) + '</div><div class="wa-msg-time">' + msgTime(result.data.sent_at || new Date().toISOString()) + ' ' + sentIcon + '</div>';
         container.appendChild(msgDiv);
         container.scrollTop = container.scrollHeight;
     }
@@ -1687,7 +1702,14 @@ async function loadMessages() {
     var doctorsResult = await API.get('/api/patient/doctors');
     var threadsResult = await API.get('/api/patient/messages/threads');
 
-    state.chatDoctors = doctorsResult.ok && Array.isArray(doctorsResult.data) ? doctorsResult.data : [];
+    // Keep chat usable if doctors endpoint fails transiently.
+    if (doctorsResult.ok && Array.isArray(doctorsResult.data) && doctorsResult.data.length > 0) {
+        state.chatDoctors = doctorsResult.data;
+    } else if (Array.isArray(state.doctors) && state.doctors.length > 0) {
+        state.chatDoctors = state.doctors;
+    } else {
+        state.chatDoctors = [];
+    }
     state.threads = threadsResult.ok && Array.isArray(threadsResult.data) ? threadsResult.data : [];
 
     renderMessageThreads();
@@ -1843,7 +1865,14 @@ function initChatSocket() {
     chatSocket.on('new_message', function(data) {
         // A doctor sent a new message
         if (data && data.message && data.threadId) {
-            // If we're viewing this thread, append the message live
+            // Acknowledge delivery to the sender (doctor)
+            chatSocket.emit('message_delivered', {
+                messageIds: [data.message.id],
+                senderId: data.message.sender_id,
+                threadId: data.threadId
+            });
+
+            // If we're viewing this thread, append the message live and mark as read
             if (state.selectedThreadId === data.threadId) {
                 var container = document.getElementById('thread-messages');
                 if (container) {
@@ -1852,14 +1881,47 @@ function initChatSocket() {
 
                     var msgDiv = document.createElement('div');
                     msgDiv.className = 'wa-msg doctor';
+                    msgDiv.setAttribute('data-msg-id', data.message.id || '');
                     msgDiv.innerHTML = '<div>' + escapeHtml(data.message.body || '') + '</div><div class="wa-msg-time">' + msgTime(data.message.sent_at || new Date().toISOString()) + '</div>';
                     container.appendChild(msgDiv);
                     container.scrollTop = container.scrollHeight;
                 }
+                // Since we're viewing it, also mark as read
+                chatSocket.emit('messages_read', {
+                    messageIds: [data.message.id],
+                    senderId: data.message.sender_id,
+                    threadId: data.threadId
+                });
             }
             // Refresh thread list to update last message / unread
             loadMessages();
         }
+    });
+
+    // Our sent messages were delivered to the doctor's device
+    chatSocket.on('messages_delivered', function(data) {
+        if (!data || !Array.isArray(data.messageIds)) return;
+        data.messageIds.forEach(function(id) {
+            var el = document.querySelector('.wa-msg[data-msg-id="' + id + '"] .msg-status');
+            if (el) {
+                el.className = 'msg-status delivered';
+                el.title = 'Delivered';
+                el.innerHTML = '&#10003;&#10003;';
+            }
+        });
+    });
+
+    // Our sent messages were read by the doctor
+    chatSocket.on('messages_read_ack', function(data) {
+        if (!data || !Array.isArray(data.messageIds)) return;
+        data.messageIds.forEach(function(id) {
+            var el = document.querySelector('.wa-msg[data-msg-id="' + id + '"] .msg-status');
+            if (el) {
+                el.className = 'msg-status read';
+                el.title = 'Read';
+                el.innerHTML = '&#10003;&#10003;';
+            }
+        });
     });
 
     chatSocket.on('disconnect', function() {
