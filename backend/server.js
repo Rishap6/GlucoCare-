@@ -53,7 +53,7 @@ io.use(function(socket, next) {
     var token = socket.handshake.auth && socket.handshake.auth.token;
     if (!token) return next(new Error('Authentication required'));
     try {
-        var decoded = jwt.verify(token, process.env.JWT_SECRET || 'glucocare_jwt_secret_key_2024');
+        var decoded = jwt.verify(token, process.env.JWT_SECRET);
         socket.user = decoded;
         next();
     } catch (err) {
@@ -64,11 +64,11 @@ io.use(function(socket, next) {
 // Socket.io connection handler
 io.on('connection', function(socket) {
     // Join a room named after the user's id so we can target messages
-    socket.join('user_' + socket.user._id);
-    console.log('Socket connected: user_' + socket.user._id + ' (' + socket.user.role + ')');
+    socket.join('user_' + socket.user.id);
+    console.log('Socket connected: user_' + socket.user.id);
 
     socket.on('disconnect', function() {
-        console.log('Socket disconnected: user_' + socket.user._id);
+        console.log('Socket disconnected: user_' + socket.user.id);
     });
 });
 

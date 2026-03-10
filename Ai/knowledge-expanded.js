@@ -784,6 +784,175 @@ function buildExpandedKnowledge() {
             tags: ['urine test', 'urine glucose', 'ketones', 'microalbumin', 'kidney screening'],
             question: 'Can urine tests diagnose or monitor diabetes?',
             answer: 'Urine glucose tests are not accurate for diagnosis — glucose only appears in urine when blood sugar exceeds approximately 180 mg/dL, missing many cases. However, urine tests are valuable for: detecting ketones (important for DKA monitoring), microalbumin testing (early kidney damage screening), and as a rough indicator when blood testing is unavailable. Blood tests remain the gold standard for diagnosis and monitoring.'
+        },
+        // --- MEMORY EXPANSION BATCH ---
+        {
+            id: 'exp-diabetes-and-fever',
+            title: 'Diabetes and Fever Management',
+            tags: ['fever', 'temperature', 'sick', 'paracetamol', 'infection'],
+            question: 'How should fever be managed in diabetes?',
+            answer: 'Fever raises blood sugar through stress hormones. Take paracetamol (acetaminophen) for fever as it is generally safe with diabetes medications. Monitor sugar every 3-4 hours, stay well hydrated, continue diabetes medicines, and eat small frequent meals. If fever persists beyond 2 days, sugar stays above 300, or you cannot keep fluids down, see your doctor urgently.'
+        },
+        {
+            id: 'exp-diabetes-and-cold-flu',
+            title: 'Diabetes and Cold or Flu',
+            tags: ['cold', 'flu', 'cough', 'congestion', 'sick day', 'OTC medicines'],
+            question: 'What cold medicines are safe with diabetes?',
+            answer: 'Many over-the-counter cold and flu medicines contain hidden sugar or ingredients that raise blood sugar. Avoid sugar-laden syrups and decongestants containing pseudoephedrine (raises blood sugar and blood pressure). Choose sugar-free formulations. Paracetamol is safe for pain and fever. Always read labels. If unsure, ask your pharmacist. During illness, monitor blood sugar more frequently, stay hydrated, and do not skip diabetes medicines.'
+        },
+        {
+            id: 'exp-diabetes-foot-numbness-detail',
+            title: 'Diabetic Foot Numbness Prevention',
+            tags: ['foot', 'numbness', 'shoes', 'nerve damage', 'circulation'],
+            question: 'How to prevent foot numbness in diabetes?',
+            answer: 'Foot numbness is caused by nerve damage from prolonged high blood sugar. Prevention: (1) Keep blood sugar well controlled — this is the single most important step. (2) Check your feet daily for injuries you might not feel. (3) Wear properly fitting shoes with soft insoles — never tight or pointed shoes. (4) Avoid walking barefoot anywhere, even at home. (5) Keep feet clean and dry. (6) Moisturize to prevent cracks but not between toes. (7) Exercise regularly to improve circulation. (8) Quit smoking — it dramatically worsens circulation. (9) Get annual foot exams from your doctor.'
+        },
+        {
+            id: 'exp-diabetes-hair-loss',
+            title: 'Diabetes and Hair Loss',
+            tags: ['hair loss', 'hair fall', 'thinning', 'alopecia', 'scalp'],
+            question: 'Can diabetes cause hair loss?',
+            answer: 'Yes, diabetes can contribute to hair loss through several mechanisms: (1) Poor blood sugar control damages blood vessels that supply hair follicles. (2) Hormonal imbalances associated with diabetes can affect hair growth cycles. (3) Thyroid dysfunction, which is more common in diabetes, is a major cause of hair loss. (4) Stress from managing a chronic condition. (5) Some diabetes medications may affect hair. (6) Iron deficiency and vitamin D deficiency, common in diabetes, also cause hair loss. What helps: improve blood sugar control, get thyroid and iron levels checked, manage stress, eat protein-rich meals, and talk to your doctor if hair loss is persistent.'
+        },
+        {
+            id: 'exp-diabetes-memory-brain',
+            title: 'Diabetes and Brain Health',
+            tags: ['brain', 'memory', 'cognitive', 'dementia', 'alzheimer', 'concentration'],
+            question: 'Does diabetes affect memory and brain function?',
+            answer: 'Yes, diabetes can affect brain health over time. High blood sugar damages small blood vessels in the brain and increases inflammation. Effects include: (1) Difficulty concentrating and brain fog, especially during sugar highs or lows. (2) Increased risk of vascular dementia and Alzheimer disease — diabetes roughly doubles dementia risk. (3) Acute effects: very high sugar causes confusion and slow thinking; very low sugar can cause confusion, seizures, and loss of consciousness. Prevention: (1) Keep blood sugar well controlled. (2) Avoid extreme highs and lows. (3) Exercise regularly — it protects brain function. (4) Manage blood pressure and cholesterol. (5) Stay mentally active. (6) Get adequate sleep.'
+        },
+        {
+            id: 'exp-diabetes-periods-menstrual',
+            title: 'Diabetes and Menstrual Cycle',
+            tags: ['menstrual', 'periods', 'cycle', 'hormones', 'PMS', 'women'],
+            question: 'How does the menstrual cycle affect blood sugar?',
+            answer: 'Hormonal fluctuations during the menstrual cycle can cause blood sugar swings: (1) Before your period (luteal phase): progesterone rises, which can increase insulin resistance and push blood sugar up. Many women notice higher readings 3-5 days before their period. (2) During your period: sugar may drop as progesterone falls. (3) Cravings for sweets and comfort food before periods can worsen control. What helps: track your blood sugar alongside your cycle for 2-3 months to identify your pattern, adjust carb intake during high-sugar phases, talk to your doctor about medication timing adjustments, and be extra careful with food choices during PMS.'
+        },
+        {
+            id: 'exp-diabetes-surgery',
+            title: 'Diabetes and Surgery Preparation',
+            tags: ['surgery', 'operation', 'pre-operative', 'post-operative', 'hospital'],
+            question: 'How should diabetes be managed before and after surgery?',
+            answer: 'Surgery requires special diabetes planning: Before surgery: (1) Inform your surgeon and anesthesiologist about your diabetes and all medications. (2) Your doctor may adjust or temporarily stop certain medicines — metformin is usually paused 24-48 hours before, SGLT2 inhibitors may be stopped to prevent DKA risk. (3) Follow fasting instructions carefully. (4) Check blood sugar the morning of surgery. After surgery: (1) Blood sugar often runs higher due to surgical stress. (2) Insulin or medication adjustments are common during recovery. (3) Wound healing may be slower — keep glucose well controlled. (4) Stay hydrated and resume eating as advised. (5) Follow up with your diabetes doctor within a week of discharge.'
+        },
+        {
+            id: 'exp-diabetes-eye-floaters',
+            title: 'Eye Floaters and Diabetes',
+            tags: ['floaters', 'eye', 'vision', 'retinopathy', 'vitreous'],
+            question: 'Are eye floaters related to diabetes?',
+            answer: 'While occasional floaters are common and often harmless, sudden new floaters in someone with diabetes can be a warning sign of diabetic retinopathy — specifically vitreous hemorrhage, where damaged blood vessels in the retina leak blood into the eye. Seek urgent eye examination if you notice: (1) Sudden increase in floaters. (2) Flashes of light. (3) Dark curtain or shadow across your vision. (4) Sudden blurred or distorted vision. These could indicate bleeding or retinal detachment requiring immediate treatment. Regular annual dilated eye exams can catch retinopathy early before symptoms appear.'
+        },
+        {
+            id: 'exp-diabetes-constipation',
+            title: 'Diabetes and Constipation',
+            tags: ['constipation', 'digestion', 'gastroparesis', 'stomach', 'bowel'],
+            question: 'Why do diabetic patients experience constipation?',
+            answer: 'Constipation is common in diabetes due to: (1) Autonomic neuropathy — nerve damage from high blood sugar can slow down the digestive tract (gastroparesis in severe cases). (2) Dehydration from high sugar levels. (3) Some diabetes medications (especially calcium channel blockers for BP control) can cause constipation. (4) Low fiber diet. (5) Reduced physical activity. What helps: (1) Increase fiber intake gradually (25-30g daily). (2) Drink plenty of water. (3) Exercise regularly. (4) Eat meals at consistent times. (5) Try probiotic foods like curd or yogurt. (6) If persistent, talk to your doctor — they may need to evaluate for gastroparesis or adjust medications.'
+        },
+        {
+            id: 'exp-diabetes-honeymoon-phase',
+            title: 'Type 1 Diabetes Honeymoon Phase',
+            tags: ['honeymoon phase', 'remission', 'type 1', 'c-peptide', 'newly diagnosed'],
+            question: 'What is the honeymoon phase in Type 1 diabetes?',
+            answer: 'Shortly after being diagnosed with Type 1 diabetes and starting insulin, many people experience a honeymoon phase (also called partial remission). During this period, the remaining beta cells temporarily recover and produce some insulin, reducing the amount of injected insulin needed. This can last weeks to months, rarely over a year. It does NOT mean the diabetes is gone or cured. Eventually, the immune system destroys the remaining beta cells and insulin needs increase. During the honeymoon phase: (1) Continue taking insulin as prescribed. (2) Monitor blood sugar closely — doses may need frequent adjustment. (3) Do not be discouraged when it ends — it is a normal progression.'
+        },
+        {
+            id: 'exp-diabetes-reactive-hypoglycemia',
+            title: 'Reactive Hypoglycemia',
+            tags: ['reactive hypoglycemia', 'post meal low', 'sugar crash', 'after eating'],
+            question: 'What is reactive hypoglycemia?',
+            answer: 'Reactive (postprandial) hypoglycemia is low blood sugar that occurs 2-4 hours after eating, especially after a high-carb meal. It happens because your pancreas over-releases insulin in response to a large sugar spike. Symptoms are the same as regular hypoglycemia: shakiness, sweating, confusion, and hunger. Management: (1) Eat smaller, more frequent meals. (2) Reduce simple carbs and pair with protein, fat, and fiber. (3) Avoid sugary drinks and large desserts. (4) A 10-15 minute post-meal walk can help prevent the initial spike and subsequent crash. (5) If episodes are frequent, see your doctor — it can be an early sign of insulin resistance or prediabetes.'
+        },
+        {
+            id: 'exp-diabetes-leg-cramps',
+            title: 'Leg Cramps in Diabetes',
+            tags: ['leg cramps', 'muscle cramps', 'charlie horse', 'night cramps', 'legs'],
+            question: 'Why do diabetic patients get leg cramps?',
+            answer: 'Leg cramps, especially at night, are common in diabetes due to: (1) Peripheral neuropathy — nerve damage from high sugar. (2) Poor blood circulation to the legs. (3) Electrolyte imbalances — diabetes medications (especially diuretics) can deplete potassium and magnesium. (4) Dehydration from high blood sugar. What helps: (1) Stay well hydrated. (2) Stretch your calves before bed. (3) Ensure adequate potassium (bananas, coconut water, dal) and magnesium (nuts, seeds, green vegetables) intake. (4) Keep blood sugar well controlled. (5) Walk regularly to improve circulation. (6) If cramps are severe or frequent, ask your doctor to check electrolyte levels and circulation.'
+        },
+        {
+            id: 'exp-diabetes-tattoo-piercing',
+            title: 'Tattoos and Piercings with Diabetes',
+            tags: ['tattoo', 'piercing', 'wound healing', 'infection risk'],
+            question: 'Can diabetic patients get tattoos or piercings?',
+            answer: 'People with well-controlled diabetes (HbA1c below 8%) can generally get tattoos and piercings, but extra precautions are needed: (1) Higher infection risk — ensure the studio follows strict hygiene with sterilized equipment. (2) Slower healing — blood sugar affects how quickly skin repairs. (3) Avoid feet and lower legs — areas with poor circulation in diabetes heal slowest. (4) Keep blood sugar well controlled before and after the procedure. (5) Follow aftercare instructions meticulously, keeping the area clean and moisturized. (6) Watch for signs of infection — increased redness, swelling, warmth, pus, or fever. (7) Consult your doctor first if you have complications like neuropathy or circulation problems.'
+        },
+        {
+            id: 'exp-diabetes-insurance-planning',
+            title: 'Health Insurance for Diabetic Patients',
+            tags: ['insurance', 'health insurance', 'coverage', 'planning', 'financial'],
+            question: 'How should diabetic patients plan health insurance?',
+            answer: 'Health insurance planning is important for diabetes since it is a lifelong condition with regular expenses: (1) Disclose diabetes when applying — hiding pre-existing conditions can lead to claim rejection. (2) Many Indian insurers cover diabetes after a waiting period (typically 2-4 years for pre-existing conditions). (3) Look for policies that cover: outpatient visits, lab tests (HbA1c, kidney function), medications, emergency hospitalization, and complications like eye treatment or dialysis. (4) Some insurers offer diabetes-specific health plans. (5) Government schemes like Ayushman Bharat may cover hospitalization costs. (6) Keep all medical records organized for smooth claim processing. (7) Start insurance as early as possible — premiums are lower before complications develop.'
+        },
+        {
+            id: 'exp-diabetes-fasting-navratri',
+            title: 'Diabetes and Navratri Fasting',
+            tags: ['navratri', 'fasting', 'festival', 'vrat', 'sabudana', 'kuttu'],
+            question: 'How to manage diabetes during Navratri fasting?',
+            answer: 'Navratri fasting with diabetes requires planning: (1) Discuss with your doctor before starting — medication doses may need adjustment. (2) Avoid sabudana (tapioca) in large quantities — it is very high in carbs and spikes blood sugar. (3) Better fasting food choices: paneer, curd, nuts, seeds, pumpkin, bottle gourd, cucumber, and moderate portions of kuttu (buckwheat) atta. (4) Monitor blood sugar more frequently. (5) Stay hydrated with water, buttermilk, or nimbu pani without sugar. (6) Break the fast immediately if you feel symptoms of low sugar. (7) If on insulin or sulfonylureas, fasting can be dangerous without dose adjustment — never fast without medical advice. (8) Do not overeat during evening meals — large portions after fasting cause dramatic spikes.'
+        },
+        {
+            id: 'exp-diabetes-acanthosis',
+            title: 'Dark Skin Patches and Diabetes',
+            tags: ['acanthosis nigricans', 'dark patches', 'neck', 'skin', 'insulin resistance'],
+            question: 'What causes dark patches on the neck in diabetes?',
+            answer: 'Dark, velvety patches on the neck, armpits, groin, or knuckles are called acanthosis nigricans. They are a visible sign of insulin resistance — a hallmark of Type 2 diabetes and prediabetes. Excess insulin stimulates skin cell growth, causing thickening and darkening. It is NOT a hygiene problem — no amount of scrubbing will remove it. What helps: (1) Improving insulin resistance through weight loss, exercise, and diet. (2) Better blood sugar control. (3) As insulin levels normalize, the patches often lighten. (4) If you notice these patches and have not been tested for diabetes, get a blood sugar and HbA1c test done.'
+        },
+        {
+            id: 'exp-diabetes-protein-kidney',
+            title: 'Protein Intake and Kidney Health in Diabetes',
+            tags: ['protein', 'kidney', 'nephropathy', 'high protein', 'diet'],
+            question: 'How much protein is safe for diabetic patients with kidney concerns?',
+            answer: 'Protein is important for diabetes management (it helps control blood sugar and maintains muscle), but excessive protein can strain kidneys that are already at risk from diabetes. Guidelines: (1) For people with normal kidney function: 0.8-1.0 grams of protein per kg body weight per day is generally safe and adequate. (2) For early kidney disease (microalbuminuria): 0.8 g/kg/day is typically recommended — do not exceed this without medical advice. (3) For advanced kidney disease: protein may need to be further restricted under dietitian guidance. (4) Choose lean protein sources: dal, fish, eggs, chicken breast, paneer, tofu. (5) Get kidney function tested annually (urine albumin and serum creatinine with eGFR). (6) High-protein diets like keto should only be done under medical supervision if you have diabetes.'
+        },
+        {
+            id: 'exp-diabetes-fructose',
+            title: 'Fructose and Blood Sugar',
+            tags: ['fructose', 'fruit sugar', 'HFCS', 'liver', 'corn syrup'],
+            question: 'Is fructose better than regular sugar for diabetes?',
+            answer: 'Fructose (fruit sugar) has a lower glycemic index than table sugar because it is processed differently — it goes to the liver first rather than directly raising blood sugar. However, this is misleading: (1) Excess fructose gets converted to fat in the liver, promoting fatty liver disease. (2) Large amounts of fructose worsen insulin resistance over time. (3) High-fructose corn syrup (HFCS) in processed foods and sodas is particularly harmful. (4) Fructose from whole fruit is fine because it comes with fiber, water, and nutrients that slow absorption. The key distinction: fructose in whole fruit = okay in moderation. Added fructose in processed foods = avoid. Do not use fructose powder or syrups as a sugar substitute for diabetes.'
+        },
+        {
+            id: 'exp-diabetes-probiotics',
+            title: 'Probiotics and Diabetes',
+            tags: ['probiotics', 'gut bacteria', 'microbiome', 'curd', 'fermented food'],
+            question: 'Are probiotics helpful for diabetes management?',
+            answer: 'Emerging research suggests that gut bacteria (microbiome) play a role in insulin resistance and blood sugar control. Probiotics may help: (1) Improve insulin sensitivity modestly. (2) Reduce systemic inflammation. (3) Some studies show small improvements in fasting blood sugar and HbA1c with regular probiotic use. Best food sources: unsweetened curd or yogurt, buttermilk, fermented vegetables (like idli/dosa batter, kanji, kimchi), and kefir. Probiotic supplements are available but choose reputable brands. Important: probiotics are a complement to diabetes management, not a treatment. They work best alongside proper diet, medication, and exercise. Results vary by individual and specific bacterial strains.'
+        },
+        {
+            id: 'exp-diabetes-pain-management',
+            title: 'Pain Management in Diabetes',
+            tags: ['pain', 'painkiller', 'NSAID', 'neuropathic pain', 'nerve pain'],
+            question: 'What painkillers are safe for people with diabetes?',
+            answer: 'Pain management in diabetes requires care: (1) Paracetamol (acetaminophen) is generally the safest first choice for pain and fever. (2) NSAIDs (ibuprofen, diclofenac) should be used cautiously and briefly — they can worsen kidney function, and kidneys are already at risk in diabetes. Avoid long-term use. (3) Aspirin is sometimes prescribed for heart protection in diabetes but should not be self-started. (4) For diabetic neuropathic pain (burning, tingling), specific medications like gabapentin, pregabalin, duloxetine, or amitriptyline are more effective than regular painkillers. (5) Avoid opioids unless absolutely necessary and prescribed. (6) Topical creams (capsaicin) can help localized nerve pain. Always consult your doctor before taking any painkiller regularly.'
+        },
+        {
+            id: 'exp-diabetes-altitude',
+            title: 'Diabetes at High Altitude',
+            tags: ['altitude', 'mountain', 'trekking', 'hiking', 'oxygen'],
+            question: 'How does high altitude affect diabetes management?',
+            answer: 'Traveling to high altitudes (mountains, trekking) can affect diabetes: (1) Some glucose meters may give inaccurate readings at high altitude due to changes in oxygen levels. (2) Physical exertion at altitude is greater, increasing hypoglycemia risk. (3) Altitude sickness symptoms (headache, nausea, dizziness) can mimic both high and low blood sugar. (4) Cold temperatures can affect insulin and test strip accuracy. (5) Appetite changes at altitude can affect meal timing. Preparation: carry extra supplies, check sugar more frequently, adjust insulin based on increased activity, keep insulin from freezing, carry glucose tablets, stay hydrated, and inform trekking companions about your diabetes and what to do in emergencies.'
+        },
+        {
+            id: 'exp-diabetes-night-sweats',
+            title: 'Night Sweats and Diabetes',
+            tags: ['night sweats', 'sweating', 'sleep', 'hypoglycemia', 'nocturnal'],
+            question: 'Why do diabetic patients experience night sweats?',
+            answer: 'Night sweats in diabetes are often caused by nocturnal hypoglycemia — low blood sugar during sleep. Your body releases adrenaline to counter the low sugar, causing sweating, rapid heartbeat, and sometimes nightmares. Other causes include: (1) Autonomic neuropathy affecting sweat gland regulation. (2) Certain medications. (3) Hormonal changes (in women). If you wake up sweating: (1) Check your blood sugar immediately. (2) If low, treat with the 15-15 rule. (3) Tell your doctor — evening medication doses may need adjustment. (4) A small protein snack at bedtime can help prevent overnight lows. (5) If night sweats are recurrent, your doctor may recommend checking 3 AM blood sugar to identify the pattern.'
+        },
+        {
+            id: 'exp-diabetes-c-peptide',
+            title: 'C-Peptide Test Explained',
+            tags: ['c-peptide', 'insulin production', 'beta cell', 'test', 'diagnosis'],
+            question: 'What is a C-peptide test and why is it important?',
+            answer: 'C-peptide is a substance produced by the pancreas in equal amounts to insulin. Measuring C-peptide tells your doctor how much insulin your body is still making on its own. This is important because: (1) It helps distinguish Type 1 (low or absent C-peptide) from Type 2 (normal or high C-peptide). (2) It helps diagnose LADA (Type 1.5) when C-peptide is low but declines slowly. (3) It guides treatment decisions — if your body still makes significant insulin, oral medicines may work; if C-peptide is very low, insulin therapy is needed. (4) It can monitor how much beta cell function remains over time. The test is done through a blood draw and does not require special preparation. Your doctor may order it if the type of diabetes is unclear or to evaluate whether insulin therapy is needed.'
+        },
+        {
+            id: 'exp-diabetes-micronutrient-testing',
+            title: 'Important Lab Tests Beyond Blood Sugar',
+            tags: ['lab tests', 'comprehensive', 'annual', 'thyroid', 'vitamin D', 'lipid'],
+            question: 'What lab tests should diabetics get besides blood sugar?',
+            answer: 'Comprehensive diabetes care involves more than just glucose monitoring. Important tests: (1) HbA1c — every 3-6 months. (2) Kidney function — serum creatinine, eGFR, and urine microalbumin annually. (3) Lipid profile — total cholesterol, LDL, HDL, triglycerides annually. (4) Liver function tests — especially if on diabetes medications. (5) Thyroid (TSH) — thyroid dysfunction is common in diabetes, especially Type 1. (6) Vitamin B12 — annually if on metformin. (7) Vitamin D levels — deficiency worsens insulin resistance. (8) Complete blood count — to check for anemia. (9) Eye exam — dilated fundus exam annually. (10) Foot examination — annual nerve and circulation check. Keep a record of all results to track trends over time.'
         }
     ];
 }

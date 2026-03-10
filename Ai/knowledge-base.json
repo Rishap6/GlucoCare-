@@ -383,5 +383,117 @@
     "tags": ["india", "maintenance", "checklist"],
     "question": "What should be followed to sustain diabetes control in India?",
     "answer": "Core checklist: regular medication use, portion-aware meal planning, weekly exercise goals, home glucose log, quarterly HbA1c, annual eye and kidney checks, foot care, sleep routine, and stress reduction. Consistency over months is the key to sustained control."
+  },
+  {
+    "id": "blood-sugar-measurement",
+    "title": "How Blood Sugar Is Measured and Calculated",
+    "tags": ["blood sugar", "measurement", "glucose", "calculation", "test", "glucometer"],
+    "question": "How is blood sugar measured or calculated?",
+    "answer": "Blood sugar (blood glucose) is measured using a chemical reaction between glucose in your blood and an enzyme on a test strip. Here is how it works: (1) A glucometer test strip contains an enzyme (usually glucose oxidase or glucose dehydrogenase) that reacts specifically with glucose. (2) When a drop of blood is placed on the strip, glucose in the blood reacts with the enzyme and produces a small electrical current or color change. (3) The glucometer reads this reaction and converts it into a number displayed as milligrams per deciliter (mg/dL) in India and the US, or millimoles per liter (mmol/L) in many other countries. (4) Lab tests like fasting blood sugar and HbA1c use more precise methods — typically enzymatic assays run on automated analyzers. (5) HbA1c measures what percentage of your hemoglobin protein has glucose attached to it, reflecting average sugar over 2-3 months. (6) Continuous Glucose Monitors (CGMs) use a tiny sensor under the skin that measures glucose in interstitial fluid every few minutes using a similar enzymatic reaction. The number you see on your meter is the concentration of glucose dissolved in your blood at that moment."
+  },
+  {
+    "id": "blood-sugar-percentage",
+    "title": "Sugar Percentage and Concentration in Blood",
+    "tags": ["blood sugar", "percentage", "concentration", "glucose", "normal range"],
+    "question": "How much sugar percentage is present in blood?",
+    "answer": "The actual amount of glucose in your blood is very small — about 0.07 to 0.1 percent in a healthy person. In exact terms: (1) Normal fasting blood sugar is 70-100 mg/dL, which means about 70 to 100 milligrams of glucose in every 100 milliliters (one deciliter) of blood. That is roughly 0.07 to 0.1 percent by weight. (2) The total amount of glucose circulating in your entire bloodstream at any moment is only about 4 to 5 grams — less than a teaspoon of sugar. (3) In a person with diabetes, fasting sugar above 126 mg/dL means the concentration rises to about 0.126 percent or higher. (4) Even at a dangerously high level of 400 mg/dL, glucose is still only about 0.4 percent of your blood. (5) HbA1c measures a different percentage — it shows what percentage of your hemoglobin molecules have glucose attached. Normal HbA1c is below 5.7 percent, meaning less than 5.7 percent of hemoglobin is glycated. So while the percentage sounds tiny, even small changes in this concentration significantly affect how your body functions, because your cells are very sensitive to glucose levels."
+  },
+  {
+    "id": "glucagon-emergency",
+    "title": "Glucagon Emergency Kit",
+    "tags": ["glucagon", "emergency", "hypoglycemia", "unconscious", "injection"],
+    "question": "What is a glucagon emergency kit and when is it used?",
+    "answer": "A glucagon emergency kit is a prescription medication used when someone with diabetes has severe low blood sugar and cannot eat or drink safely — for example, if they are unconscious, having a seizure, or too confused to swallow. Glucagon is a hormone that tells the liver to release stored sugar into the blood, raising blood sugar quickly. How to use it: (1) Traditional kits require mixing powder and liquid before injecting — follow the kit's instructions. (2) Newer nasal glucagon (like Baqsimi) is simply sprayed into one nostril — no injection needed. (3) Pre-mixed auto-injectors (like Gvoke) are ready to inject without mixing. After giving glucagon: place the person on their side (to prevent choking if they vomit), call emergency services, and once they wake up, give them a carbohydrate snack. Everyone close to a person on insulin should know where the kit is stored and how to use it. Check expiry dates regularly."
+  },
+  {
+    "id": "diabetes-driving",
+    "title": "Diabetes and Safe Driving",
+    "tags": ["driving", "car", "safety", "hypoglycemia", "travel"],
+    "question": "Is it safe to drive with diabetes?",
+    "answer": "Most people with diabetes can drive safely, but low blood sugar (hypoglycemia) while driving is a serious risk. Safety rules: (1) Always check your blood sugar before driving — do not drive if it is below 90 mg/dL. (2) Keep fast-acting glucose (tablets, juice box, candy) within easy reach in the car. (3) On long drives, stop every 2 hours to check blood sugar and have a snack. (4) If you feel any symptoms of low sugar while driving — shaking, sweating, confusion, blurred vision — pull over immediately, turn off the engine, treat the low, and wait until you feel completely normal before continuing. (5) Never skip meals before driving. (6) Carry your glucose meter and medical ID in the car. (7) If you have frequent or unpredictable lows, discuss with your doctor whether your medication needs adjustment before driving regularly."
+  },
+  {
+    "id": "diabetes-sexual-health",
+    "title": "Diabetes and Sexual Health",
+    "tags": ["sexual health", "erectile dysfunction", "libido", "intimacy"],
+    "question": "How does diabetes affect sexual health?",
+    "answer": "Diabetes can affect sexual health in both men and women due to nerve damage and blood vessel problems caused by long-term high blood sugar. In men: erectile dysfunction (ED) is 2-3 times more common in men with diabetes. High sugar damages the blood vessels and nerves needed for erection. In women: reduced lubrication, decreased sensation, pain during intercourse, and lower libido can occur. General effects: fatigue, mood changes, body image concerns, and medication side effects can also reduce sexual interest. What helps: (1) Good blood sugar control is the most important factor. (2) Talk to your doctor openly — effective treatments exist for ED and other issues. (3) Manage blood pressure and cholesterol. (4) Exercise regularly. (5) Address stress and mental health. (6) Some diabetes medications may affect sexual function — ask your doctor about alternatives if needed. Do not use over-the-counter supplements without medical advice."
+  },
+  {
+    "id": "diabetes-uti",
+    "title": "Diabetes and Urinary Tract Infections",
+    "tags": ["uti", "urinary", "infection", "bladder", "kidney infection"],
+    "question": "Why are UTIs more common in diabetes?",
+    "answer": "Urinary tract infections (UTIs) are significantly more common in people with diabetes, especially women. Here is why: (1) High blood sugar in urine creates a perfect breeding ground for bacteria. (2) Diabetes weakens the immune system, making it harder to fight infections. (3) Nerve damage can affect bladder function, preventing complete emptying which allows bacteria to grow. (4) SGLT2 inhibitor medications increase sugar in urine, which can increase UTI risk. Symptoms to watch for: burning during urination, frequent urge to urinate, cloudy or strong-smelling urine, lower abdominal pain, and fever. Prevention: (1) Keep blood sugar well controlled. (2) Stay well hydrated. (3) Do not hold urine for long periods. (4) Practice good hygiene. (5) Seek treatment early — UTIs in diabetes can progress quickly to kidney infections. See your doctor if symptoms appear."
+  },
+  {
+    "id": "diabetes-seasonal",
+    "title": "Seasonal Effects on Blood Sugar",
+    "tags": ["seasonal", "weather", "summer", "winter", "heat", "cold"],
+    "question": "Does weather or season affect blood sugar?",
+    "answer": "Yes, weather and seasonal changes can affect blood sugar in several ways. Hot weather: (1) Heat can cause blood sugar to fluctuate — both highs and lows become more common. (2) Dehydration happens faster, concentrating blood sugar. (3) Insulin absorption from injection sites may be faster in heat, increasing low sugar risk. (4) Test strips and insulin can degrade if left in a hot car or direct sunlight. (5) Stay hydrated, store insulin properly, and monitor more often. Cold weather: (1) People tend to exercise less and eat more comfort food, raising blood sugar. (2) Cold can make fingers harder to prick for testing. (3) Insulin should not freeze — keep it at room temperature or in an insulated case. (4) Winter illness (flu, cold) can raise blood sugar. Monsoon season: increased infection risk (foot infections, skin problems) in humid weather. General tip: monitor blood sugar more closely during seasonal transitions."
+  },
+  {
+    "id": "diabetes-dental-detail",
+    "title": "Diabetes and Dental Health",
+    "tags": ["dental", "teeth", "gum disease", "gingivitis", "periodontitis", "oral"],
+    "question": "How does diabetes affect teeth and gums?",
+    "answer": "Diabetes and dental health have a two-way relationship — each affects the other. High blood sugar increases the risk of: (1) Gum disease (periodontitis) — bacteria thrive on excess sugar in saliva, causing infection and inflammation that can destroy gum tissue and bone supporting teeth. (2) Dry mouth — diabetes can reduce saliva production, increasing bacteria growth and decay risk. (3) Thrush (oral candidiasis) — a fungal infection more common when sugar is high. (4) Slow healing after dental procedures. The reverse is also true: severe gum disease makes blood sugar harder to control due to chronic inflammation. Prevention: (1) Brush twice daily with fluoride toothpaste. (2) Floss daily. (3) See your dentist every 6 months and inform them you have diabetes. (4) Keep blood sugar well controlled. (5) Do not smoke. (6) Report any gum bleeding, swelling, loose teeth, or persistent bad breath to your dentist."
+  },
+  {
+    "id": "diabetes-work",
+    "title": "Managing Diabetes at Work",
+    "tags": ["work", "office", "job", "employment", "workplace"],
+    "question": "How to manage diabetes at work?",
+    "answer": "Managing diabetes alongside a busy work schedule requires some planning but is very doable. Key strategies: (1) Keep glucose testing supplies and fast-acting sugar at your desk or in your bag. (2) Set phone alarms for medication times so meetings do not make you forget. (3) Pack diabetes-friendly snacks and meals to avoid relying on canteen food or vending machines. (4) Take short walking breaks every 30-45 minutes if you have a desk job — even a 2-minute walk helps. (5) Stay hydrated — keep a water bottle at your desk. (6) If you take insulin, identify a comfortable private space for injections. (7) Inform a trusted colleague about your diabetes so they can help if you have a low sugar emergency. (8) Manage work stress through deep breathing, short walks, and setting boundaries. (9) You are not legally required to disclose diabetes to your employer in most cases, but informing them can ensure accommodations if needed."
+  },
+  {
+    "id": "diabetes-children-care",
+    "title": "Diabetes in Children",
+    "tags": ["children", "kids", "pediatric", "school", "type 1", "parent"],
+    "question": "How is diabetes managed in children?",
+    "answer": "Managing diabetes in children requires a team effort between parents, the child, school, and healthcare providers. Key points: (1) Type 1 is the most common form in children — it requires insulin (injections or pump), frequent blood sugar checks (4-8 times daily or CGM), and carbohydrate counting. (2) School management: create a written diabetes management plan, train school staff on recognition and treatment of highs and lows, ensure access to glucose meter and snacks, and establish when the child can self-manage vs needs adult supervision. (3) Exercise: children should stay active but carry fast-acting sugar during sports. Check sugar before and after activity. (4) Emotional support: children may feel different from peers — normalize their condition, involve them in age-appropriate self-management, and watch for signs of diabetes distress. (5) Growth and puberty affect insulin needs — expect dose changes during growth spurts. (6) Regular checkups every 3 months with a pediatric endocrinologist."
+  },
+  {
+    "id": "diabetes-apps-technology",
+    "title": "Diabetes Management Apps",
+    "tags": ["apps", "technology", "digital", "tracker", "logging", "smartphone"],
+    "question": "Are diabetes management apps helpful?",
+    "answer": "Yes, diabetes management apps can be very helpful tools when used consistently. What they offer: (1) Blood sugar logging — track readings with timestamps, notes about meals, and medication. Seeing trends helps identify patterns. (2) Carb counting — many apps have food databases that help estimate carbs in meals. (3) Medication reminders — set alarms so you never miss a dose. (4) CGM integration — some apps connect directly to your continuous glucose monitor, displaying real-time data with alerts. (5) Report generation — create printable summaries to share with your doctor, saving time during appointments. (6) Community features — connect with other people managing diabetes for tips and support. Tips for choosing an app: pick one that is simple enough to use daily, check if it syncs with your glucose meter or CGM, look for local food databases relevant to your diet, and remember that the best app is the one you actually use consistently. An app complements but does not replace your doctor's guidance."
+  },
+  {
+    "id": "diabetes-postpartum",
+    "title": "Postpartum Care After Gestational Diabetes",
+    "tags": ["postpartum", "after pregnancy", "gestational", "follow up", "screening"],
+    "question": "What care is needed after gestational diabetes?",
+    "answer": "Having gestational diabetes means your risk of developing Type 2 diabetes later in life is significantly higher — about 50% within 5-10 years. Postpartum care is essential: (1) Get tested for diabetes 6-12 weeks after delivery with an OGTT (oral glucose tolerance test). (2) If results are normal, rescreen every 1-3 years for the rest of your life. (3) If prediabetes is found, start lifestyle modifications immediately — diet, exercise, and weight management can prevent progression. (4) Breastfeeding is encouraged — it helps with weight loss and may improve insulin sensitivity. (5) Maintain healthy eating habits established during pregnancy. (6) Stay physically active — aim for 150 minutes per week. (7) Plan future pregnancies with your doctor as GDM tends to recur. (8) Monitor for symptoms of diabetes: increased thirst, frequent urination, fatigue, or blurry vision. Early intervention at the prediabetes stage gives the best chance of preventing Type 2 diabetes."
+  },
+  {
+    "id": "diabetes-liver",
+    "title": "Diabetes and Liver Health",
+    "tags": ["liver", "fatty liver", "NAFLD", "NASH", "hepatic"],
+    "question": "How is diabetes related to liver disease?",
+    "answer": "Diabetes and liver disease are closely connected. Non-alcoholic fatty liver disease (NAFLD) affects up to 70% of people with Type 2 diabetes. Here is the connection: (1) Insulin resistance causes the liver to accumulate excess fat. (2) This fatty liver can progress to inflammation (NASH — non-alcoholic steatohepatitis), fibrosis, and eventually cirrhosis. (3) A fatty liver also worsens insulin resistance, creating a vicious cycle. (4) The liver plays a central role in blood sugar regulation — a damaged liver may release too much glucose, raising blood sugar. What helps: (1) Weight loss of 5-10% significantly reduces liver fat. (2) Exercise — both aerobic and resistance training help even without weight loss. (3) Avoid alcohol. (4) Certain diabetes medications (like pioglitazone and GLP-1 agonists) may benefit the liver. (5) Monitor liver enzymes regularly. (6) Avoid unnecessary over-the-counter medications that stress the liver. Tell your doctor if you experience fatigue, right-side abdominal discomfort, or jaundice."
+  },
+  {
+    "id": "diabetes-vitamins",
+    "title": "Vitamins and Supplements in Diabetes",
+    "tags": ["vitamins", "supplements", "vitamin D", "vitamin B12", "chromium", "magnesium"],
+    "question": "Which vitamins are important for people with diabetes?",
+    "answer": "Certain vitamin and mineral deficiencies are more common in diabetes and can affect blood sugar control. Key ones to know: (1) Vitamin B12 — metformin, the most common diabetes drug, can cause B12 deficiency over time. Symptoms include fatigue, numbness, and tingling (which can mimic neuropathy). Get B12 levels checked annually if on metformin. (2) Vitamin D — deficiency is common in people with diabetes and is linked to worsened insulin resistance. Many Indian adults are D-deficient. Get levels checked and supplement if low. (3) Magnesium — low magnesium worsens insulin resistance. Good sources: nuts, seeds, green leafy vegetables, and whole grains. (4) Chromium — plays a small role in insulin signaling. Found in broccoli, whole grains, and nuts. (5) Omega-3 fatty acids — from fish oil or flaxseed, may help with inflammation and heart health. Important: do not self-prescribe high-dose supplements. Get blood levels tested first and supplement based on your doctor's recommendation. No supplement can replace diabetes medication."
+  },
+  {
+    "id": "diabetes-fiber",
+    "title": "Importance of Fiber in Diabetes",
+    "tags": ["fiber", "soluble fiber", "insoluble fiber", "digestion", "blood sugar"],
+    "question": "Why is fiber important for diabetes management?",
+    "answer": "Fiber is one of the most powerful dietary tools for blood sugar management. Here is why: (1) Soluble fiber (found in oats, barley, legumes, apples, and flaxseed) forms a gel in your gut that slows glucose absorption, reducing post-meal spikes. (2) Insoluble fiber (found in whole grains, vegetables, and wheat bran) adds bulk, promotes fullness, and aids digestion. (3) High-fiber meals have a lower glycemic index than low-fiber versions of the same food. (4) Fiber improves cholesterol levels — important because diabetes increases heart disease risk. (5) It helps with weight management by keeping you full longer. (6) Improves gut bacteria diversity, which is linked to better metabolic health. How much: aim for 25-30 grams daily. Most people only get 10-15 grams. Tips: eat whole fruits instead of juice, choose whole grains over refined, add beans or lentils to meals, include vegetables at every meal, and increase fiber gradually to avoid bloating."
+  },
+  {
+    "id": "diabetes-dawn-effect",
+    "title": "Dawn Phenomenon Explained",
+    "tags": ["dawn phenomenon", "morning sugar", "fasting glucose", "liver", "hormones"],
+    "question": "What is the dawn phenomenon and how to manage it?",
+    "answer": "The dawn phenomenon is a natural rise in blood sugar that occurs in the early morning hours, typically between 3 AM and 8 AM. It happens because your body releases hormones (cortisol, growth hormone, glucagon) that signal the liver to produce more glucose to prepare you for waking up. In people without diabetes, the pancreas releases extra insulin to handle this. In diabetes, this insulin response is insufficient, so blood sugar rises. How to manage it: (1) Eat dinner earlier and keep it light. (2) Include protein in your evening meal. (3) Take a short walk after dinner. (4) Ask your doctor about adjusting evening medication timing or adding a bedtime dose. (5) For insulin users, adjusting long-acting insulin timing or using an insulin pump with different overnight rates can help. (6) Do not skip dinner — this can actually worsen the dawn effect. It is different from the Somogyi effect, where overnight low sugar triggers a rebound high. Your doctor can distinguish between them by checking 3 AM blood sugar."
   }
 ]

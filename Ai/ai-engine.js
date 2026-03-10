@@ -63,6 +63,33 @@ const TERM_CANONICAL = {
     fruits: 'fruit',
     vegetables: 'vegetable',
     veggies: 'vegetable',
+    cramps: 'cramp',
+    cramping: 'cramp',
+    sweats: 'sweat',
+    sweating: 'sweat',
+    floaters: 'floater',
+    tattoos: 'tattoo',
+    piercings: 'piercing',
+    gums: 'gum',
+    teeth: 'tooth',
+    nerves: 'nerve',
+    livers: 'liver',
+    brains: 'brain',
+    surgeries: 'surgery',
+    infections: 'infection',
+    children: 'child',
+    kids: 'child',
+    babies: 'baby',
+    periods: 'period',
+    supplements: 'supplement',
+    fibers: 'fiber',
+    fibres: 'fiber',
+    fibre: 'fiber',
+    constipated: 'constipation',
+    numb: 'numbness',
+    tingling: 'numbness',
+    driving: 'drive',
+    drivers: 'driver',
 };
 
 /* ------------------------------------------------------------------ */
@@ -74,11 +101,17 @@ function pickRandom(arr) {
 }
 
 function detectTopic(normalizedQ) {
-    if (/food|eat|diet|meal|sweet|sweets|fruit|rice|roti|snack|breakfast|lunch|dinner|gulab|jalebi|samosa|biryani|chapati|dosa|idli|drink|juice|tea|coffee|cook|recipe|mango|banana|apple|milk|curd|yogurt|ghee|egg|chicken|fish|dal|paneer|oats|millet|bread|chocolate|cake|ice cream/.test(normalizedQ)) return 'food';
-    if (/sugar|glucose|reading|level|number|high|low|spike|drop|fasting|hba1c|a1c|240|300|400|450|500|200|150|70|80|monitor|check|test|normal|range|prediabetes|borderline/.test(normalizedQ)) return 'glucose';
-    if (/medicine|medication|drug|tablet|insulin|metformin|allergy|side effect|dose|prescription|pharmacy|glimepiride|sitagliptin|dapagliflozin|empagliflozin|before food|after food/.test(normalizedQ)) return 'medicine';
-    if (/exercise|walk|run|gym|activity|yoga|swim|cycling|sport|workout|training|step|jogging|dancing|weight lifting|stretching/.test(normalizedQ)) return 'exercise';
-    if (/tired|fatigue|thirst|urination|blur|vision|numb|tingling|wound|heal|itch|skin|shak|sweat|dizzy|pain|symptom|sign|feel/.test(normalizedQ)) return 'glucose';
+    if (/food|eat|diet|meal|sweet|sweets|fruit|rice|roti|snack|breakfast|lunch|dinner|gulab|jalebi|samosa|biryani|chapati|dosa|idli|drink|juice|tea|coffee|cook|recipe|mango|banana|apple|milk|curd|yogurt|ghee|egg|chicken|fish|dal|paneer|oats|millet|bread|chocolate|cake|ice cream|fructose|fiber|fibre|isabgol|probiotic|ferment/.test(normalizedQ)) return 'food';
+    if (/sugar|glucose|reading|level|number|high|low|spike|drop|fasting|hba1c|a1c|240|300|400|450|500|200|150|70|80|monitor|check|test|normal|range|prediabetes|borderline|dawn phenomenon|dawn effect|morning.*high|c.peptide/.test(normalizedQ)) return 'glucose';
+    if (/medicine|medication|drug|tablet|insulin|metformin|allergy|side effect|dose|prescription|pharmacy|glimepiride|sitagliptin|dapagliflozin|empagliflozin|before food|after food|glucagon|painkiller|pain.?killer|nsaid|ibuprofen|paracetamol/.test(normalizedQ)) return 'medicine';
+    if (/exercise|walk|run|gym|activity|yoga|swim|cycling|sport|workout|training|step|jogging|dancing|weight lifting|stretching|altitude|trek|hiking/.test(normalizedQ)) return 'exercise';
+    if (/tired|fatigue|thirst|urination|blur|vision|numb|tingling|wound|heal|itch|skin|shak|sweat|dizzy|pain|symptom|sign|feel|cramp|hair.*loss|floater|constipat|gastroparesis|night.*sweat|acanthosis|dark.*patch/.test(normalizedQ)) return 'glucose';
+    if (/dental|teeth|tooth|gum|oral health|periodontal/.test(normalizedQ)) return 'general';
+    if (/sex|erect|libido|impotence|vaginal/.test(normalizedQ)) return 'general';
+    if (/driv|work|office|job|career|school|child|kid|teen|surgery|operat|insurance|tattoo|pierc/.test(normalizedQ)) return 'general';
+    if (/liver|fatty liver|nafld|brain|memory|dementia|kidney|retinopath|eye|neuropath/.test(normalizedQ)) return 'general';
+    if (/period|menstr|pcos|menopause|postpartum|pregnan|gestational|honeymoon phase/.test(normalizedQ)) return 'general';
+    if (/vitamin|b12|supplement|deficien/.test(normalizedQ)) return 'general';
     return 'general';
 }
 
@@ -463,7 +496,7 @@ function synthesizeDirectAnswer(normalizedQ, kbAnswer) {
     }
 
     // === AT WHAT AGE CAN DIABETES START ===
-    if (/age|how old|when.*start|when.*develop|young|child|kid|teenager/.test(normalizedQ) && /diabetes|sugar/.test(normalizedQ)) {
+    if (/\bage\b|how old|when.*start|when.*develop|young|child|kid|teenager/.test(normalizedQ) && /diabetes|sugar/.test(normalizedQ)) {
         return `Diabetes can start at any age — there is no safe threshold. Type 1 diabetes most commonly appears in children and young adults (ages 5-15), though it can develop at any age. Type 2 diabetes was traditionally seen in adults over 40, but it is increasingly being diagnosed in younger people, even teenagers, due to rising obesity and sedentary lifestyles. Gestational diabetes occurs during pregnancy, usually in the second or third trimester. Risk factors that may cause earlier onset of Type 2: (1) Family history of diabetes. (2) Being overweight, especially around the belly. (3) Sedentary lifestyle. (4) PCOS in women. (5) History of gestational diabetes. If you have risk factors, screening should start at age 35 or earlier. For children with risk factors like obesity and family history, screening may start even younger.`;
     }
 
@@ -817,9 +850,189 @@ function synthesizeDirectAnswer(normalizedQ, kbAnswer) {
         return `The ketogenic diet (very low carb, high fat, moderate protein) has shown some promising results for Type 2 diabetes, but it comes with important nuances: Potential benefits: (1) Significant reduction in blood sugar levels — fewer carbs means less glucose entering the blood. (2) Improved insulin sensitivity in some studies. (3) Weight loss — often substantial in the short term. (4) Some people achieve medication reduction or discontinuation under medical supervision. (5) Reduced HbA1c by 0.5-1.5% in some trials. Important concerns: (1) Sustainability — very few people maintain strict keto long-term. (2) Nutritional deficiencies if not carefully planned. (3) Kidney stress — high protein variants can strain kidneys already at risk in diabetes. (4) LDL cholesterol increase in some people. (5) Risk of diabetic ketoacidosis — especially in Type 1 or insulin-dependent Type 2. (6) Medication adjustments are absolutely necessary — continuing the same diabetes medication on keto can cause dangerous hypoglycemia. Bottom line: keto can be a tool for Type 2 management, but it requires medical supervision, careful monitoring, medication adjustments, and a realistic assessment of long-term sustainability. It is NOT recommended for Type 1 diabetes. A moderate low-carb approach is often more sustainable and achieves much of the benefit.`;
     }
 
+    // === HOW BLOOD SUGAR IS MEASURED / CALCULATED ===
+    if (/how.*(sugar|glucose).*(calculat|measur|test|check|determin|work)|how.*(measur|calculat|test|check|determin).*(sugar|glucose|blood sugar)|how.*(glucometer|meter|strip).*work|blood sugar.*(calculat|measur)|(measur|check|test).*(blood sugar|blood glucose)/.test(normalizedQ)) {
+        return `Blood sugar is measured using an enzyme-based chemical reaction. Here is how it works step by step: (1) Your glucometer test strip contains a special enzyme — usually glucose oxidase or glucose dehydrogenase — that reacts only with glucose. (2) When you prick your finger and place a tiny drop of blood on the strip, the glucose in your blood reacts with this enzyme. (3) This reaction produces a small electrical current. The more glucose present, the stronger the current. (4) The glucometer measures this current and converts it into a number — displayed as mg/dL (milligrams per deciliter) in India and the US, or mmol/L in many other countries. To convert: divide mg/dL by 18 to get mmol/L. (5) Lab blood tests use more precise versions of the same enzymatic method, run on automated machines for higher accuracy. (6) HbA1c is calculated differently — it measures what percentage of your hemoglobin (a protein in red blood cells) has glucose permanently attached to it, reflecting your average blood sugar over the past 2-3 months. (7) Continuous Glucose Monitors (CGMs) use a tiny sensor inserted under the skin that measures glucose in the fluid between your cells every 1-5 minutes, using a similar enzyme reaction. So the number on your meter is the concentration of glucose dissolved in your blood at that exact moment — like measuring how much salt is dissolved in a glass of water.`;
+    }
+
+    // === SUGAR PERCENTAGE / CONCENTRATION IN BLOOD ===
+    if (/percentage|percent|concentrat/.test(normalizedQ) && /sugar|glucose|blood/.test(normalizedQ)) {
+        return `The actual amount of glucose (sugar) in your blood is surprisingly tiny. Here are the exact numbers: (1) In a healthy person with normal fasting blood sugar (70-100 mg/dL), glucose makes up only about 0.07 to 0.1 percent of your blood by weight. (2) Your entire bloodstream (about 5 liters) contains only 4 to 5 grams of glucose at any given moment — that is less than one teaspoon of sugar dissolved in all your blood. (3) For someone with diabetes with a fasting sugar of 126 mg/dL or above, the concentration is about 0.126 percent or higher — still a very small amount. (4) Even at a dangerously high reading of 400 mg/dL, glucose is only about 0.4 percent of your blood. (5) Your body works hard to keep this concentration in a very narrow range because your cells, especially brain cells, are extremely sensitive to even small changes. (6) HbA1c measures a different kind of percentage — it tells you what percentage of your hemoglobin molecules have glucose stuck to them. Normal is below 5.7%, prediabetes is 5.7-6.4%, and diabetes is 6.5% or above. So even though the percentage sounds small, the difference between 0.07% and 0.15% is the difference between healthy and diabetic — your body is that finely tuned.`;
+    }
+
     // === CLOSED-LOOP SYSTEMS / ARTIFICIAL PANCREAS ===
     if (/closed.loop|artificial pancreas/.test(normalizedQ) && /how|automate|work|diabetes|manage|what/.test(normalizedQ)) {
         return `Closed-loop systems, often called artificial pancreas systems, automate insulin delivery by combining three components: (1) A Continuous Glucose Monitor (CGM) that measures glucose levels every few minutes. (2) An insulin pump that delivers insulin through a cannula under the skin. (3) A control algorithm (software) that continuously analyzes CGM data and calculates exactly how much insulin to deliver. How it works: the algorithm receives glucose readings, predicts where levels are heading, and adjusts insulin delivery in real time — increasing it when sugar is rising and reducing or suspending it when sugar is falling. This happens automatically, typically every 5 minutes. Types of systems: (1) Hybrid closed-loop — handles basal insulin automatically but still requires the user to announce meals and enter carb counts for bolus insulin. Most current commercial systems are this type. (2) Fully closed-loop — aims to handle both basal and meal insulin without user input. Still largely in research. Benefits: significantly improved time in range (70-180 mg/dL), reduced hypoglycemia especially overnight, better sleep for patients and parents of children with diabetes, and improved HbA1c. Limitations: still requires set changes, calibrations, and some user input. Cost and insurance coverage remain barriers.`;
+    }
+
+    // === GLUCAGON EMERGENCY ===
+    if (/glucagon/.test(normalizedQ) && /emergenc|inject|how|when|use|kit|nasal/.test(normalizedQ)) {
+        return `Glucagon is a life-saving emergency hormone used when a person with diabetes has severe hypoglycemia (very low blood sugar) and cannot eat or drink safely. Here is what you need to know: (1) When to use: blood sugar below 54 mg/dL with confusion, seizures, unconsciousness, or inability to swallow. (2) Available forms: traditional injection kit (powder + diluent you mix), pre-mixed auto-injector (like Gvoke HypoPen), and nasal powder (like Baqsimi — no injection needed, just spray into one nostril). (3) How it works: glucagon signals the liver to release stored glucose into the bloodstream, raising blood sugar within 10-15 minutes. (4) Steps: place the person on their side (to prevent choking if they vomit), administer glucagon, call emergency services, and once they wake up, give them a fast-acting carbohydrate followed by a snack. (5) Side effects: nausea and vomiting are common after glucagon. (6) Storage: kits are typically stored at room temperature. Check expiration dates regularly. (7) Everyone close to a person on insulin should know where the glucagon kit is and how to use it. Practice with expired kits so you are prepared.`;
+    }
+
+    // === DRIVING AND DIABETES ===
+    if (/driv/.test(normalizedQ) && /diabet|sugar|glucose|insulin|hypo/.test(normalizedQ)) {
+        return `Driving with diabetes requires extra precautions to stay safe: (1) Always check blood sugar before driving — your level should be at least 100 mg/dL (5.5 mmol/L). If below 100, eat a snack before starting. (2) Keep fast-acting glucose in the car at all times: glucose tablets, juice boxes, or candy. (3) On long drives, stop every 2 hours to check your blood sugar. (4) Never drive if you feel symptoms of low sugar: shakiness, sweating, confusion, blurred vision. Pull over safely and treat immediately. (5) Hypoglycemia unawareness (not feeling lows) is a special risk — talk to your doctor about CGM and driving fitness. (6) Wear a medical ID bracelet. (7) In India, there is no specific law banning diabetics from driving, but commercial license applicants may need a medical fitness certificate. (8) After a severe hypo episode, wait at least 45 minutes and confirm stable sugar before driving again. (9) Keep your doctor informed about your driving habits so they can adjust medication timing if needed.`;
+    }
+
+    // === SEXUAL HEALTH AND DIABETES ===
+    if (/sex|erect|libido|intimacy|impotence|vaginal dry/.test(normalizedQ) && /diabet|sugar|glucose/.test(normalizedQ)) {
+        return `Diabetes can affect sexual health in both men and women due to nerve damage, blood vessel issues, and hormonal changes: For men: (1) Erectile dysfunction (ED) affects 35-75% of men with diabetes. High blood sugar damages blood vessels and nerves needed for erections. (2) Retrograde ejaculation can occur due to nerve damage. (3) Low testosterone is more common in men with type 2 diabetes. (4) Treatment: good blood sugar control is the first step. Medications like sildenafil (after doctor consultation), vacuum devices, and counseling can help. For women: (1) Vaginal dryness and reduced lubrication due to nerve damage and reduced blood flow. (2) Higher risk of vaginal yeast infections and UTIs when sugars are elevated. (3) Reduced libido may be linked to fatigue, hormonal changes, or depression. (4) Treatment: lubricants, treating infections promptly, and blood sugar management help significantly. For everyone: (1) Good HbA1c control (below 7%) reduces risk of sexual complications. (2) Mental health support is important — anxiety, depression, and body image issues are common. (3) Open communication with your partner and doctor is crucial. Do not feel embarrassed discussing these issues.`;
+    }
+
+    // === DIABETES AND UTIs ===
+    if (/uti|urinary tract|urine infection|bladder infect/.test(normalizedQ) && /diabet|sugar|glucose|why|prevent|recurr/.test(normalizedQ)) {
+        return `People with diabetes are significantly more likely to get urinary tract infections (UTIs): (1) High blood sugar creates a sugar-rich environment in urine, which feeds bacteria. (2) Diabetes can damage nerves controlling the bladder (neurogenic bladder), causing incomplete emptying, which lets bacteria grow. (3) Reduced immune function makes it harder to fight off infections. (4) SGLT2 inhibitor medications (like dapagliflozin, empagliflozin) increase glucose in urine, which can raise UTI risk. (5) Women with diabetes are especially vulnerable. Prevention tips: (a) Keep blood sugar well controlled — this is the single most effective step. (b) Stay well hydrated — drink 8-10 glasses of water daily. (c) Do not hold urine; empty your bladder regularly. (d) Practice front-to-back wiping. (e) Urinate after intercourse. (f) Wear cotton underwear. (g) Cranberry supplements may offer mild protection. (7) Warning signs: burning during urination, frequent urge, cloudy or foul-smelling urine, pelvic pain, fever. (8) See a doctor promptly — UTIs in diabetics can escalate quickly to kidney infections. Do not delay treatment.`;
+    }
+
+    // === SEASONAL / WEATHER EFFECTS ===
+    if (/season|weather|summer|winter|cold weather|hot weather|monsoon|humid|rain/.test(normalizedQ) && /diabet|sugar|glucose|affect|insulin|manage/.test(normalizedQ)) {
+        return `Weather and seasons significantly affect diabetes management: Summer / Hot weather: (1) Heat can cause blood sugar to drop faster because blood vessels dilate and insulin absorbs more quickly. (2) Risk of dehydration is higher, which can concentrate blood sugar and lead to hyperglycemia. (3) Insulin and test strips degrade in heat — never leave them in a hot car. Use insulated bags. (4) Stay hydrated with water and buttermilk (chaas). Avoid sugary drinks. (5) Check blood sugar more frequently. Winter / Cold weather: (1) Cold can make insulin absorb slower, potentially causing higher readings. (2) People tend to be less active and eat heavier foods in winter, raising blood sugar. (3) Cold numbness may mask symptoms of foot injuries — inspect feet daily. (4) Flu season increases infection risk — get vaccinated. Monsoon / Humid: (1) Humidity can affect glucose meter accuracy. Store strips in dry places. (2) Higher risk of fungal infections on feet — keep feet dry and clean. (3) Waterlogged roads may limit exercise and clinic visits. General: check supplies before season changes, adjust diet and activity, test more often, and talk to your doctor about seasonal medication adjustments.`;
+    }
+
+    // === DENTAL HEALTH AND DIABETES ===
+    if (/dental|teeth|tooth|gum|periodontal|oral health|mouth|dentist/.test(normalizedQ) && /diabet|sugar|glucose/.test(normalizedQ)) {
+        return `Diabetes and oral health are closely linked in both directions: (1) High blood sugar increases glucose in saliva, feeding bacteria that cause plaque, cavities, and gum disease. (2) Gum disease (periodontitis) is the 6th complication of diabetes — about 1 in 3 people with diabetes have severe gum disease. (3) Gum disease can make blood sugar harder to control, creating a vicious cycle. (4) Symptoms to watch: red, swollen, or bleeding gums, persistent bad breath, loose teeth, receding gumline, mouth sores that heal slowly. Prevention and care: (a) Brush twice daily with fluoride toothpaste. (b) Floss daily. (c) Visit your dentist every 6 months — inform them you have diabetes. (d) Keep blood sugar controlled — HbA1c below 7% significantly reduces gum disease risk. (e) Do not smoke — smoking combined with diabetes dramatically worsens gum disease. (f) Watch for dry mouth (xerostomia), common in diabetes, which increases cavity risk. Use sugar-free gum or artificial saliva. (g) If you need dental procedures, inform your dentist about all diabetes medications. Schedule appointments after breakfast when blood sugar is most stable.`;
+    }
+
+    // === DIABETES AT WORK ===
+    if (/work|office|job|career|employ|workplace/.test(normalizedQ) && /diabet|sugar|glucose|manage|handle/.test(normalizedQ)) {
+        return `Managing diabetes at work requires some planning but is very achievable: (1) Keep diabetes supplies at your desk: glucose meter, test strips, lancets, glucose tablets, healthy snacks. (2) Set alarms for medication times and meal times — do not skip meals due to work pressure. (3) If you take insulin, have a private space for injections or use a pen for discretion. (4) Stay hydrated — keep a water bottle at your desk. (5) If your job involves physical labor or shift work, discuss medication timing adjustments with your doctor. Shift work especially disrupts meal timing and sleep, affecting blood sugar. (6) Know your rights: in India, diabetes alone cannot be grounds for job termination. Many countries have workplace disability protections. (7) Consider telling your manager or a trusted colleague about your diabetes so they can help in an emergency. (8) For desk jobs: take short walking breaks every hour, avoid sitting for long stretches. (9) Manage workplace stress with breathing exercises or short walks — stress hormones raise blood sugar. (10) Pack lunch and snacks from home to avoid relying on canteen food that may be high in carbs and oil.`;
+    }
+
+    // === CHILDREN AND DIABETES ===
+    if (/child|kid|pediatric|school|teen|adolescent|baby|infant|toddler/.test(normalizedQ) && /diabet|sugar|glucose|type.1|insulin/.test(normalizedQ)) {
+        return `Managing diabetes in children requires special attention: (1) Type 1 diabetes is the most common form in children, caused by autoimmune destruction of insulin-producing cells. (2) Warning signs in children: excessive thirst, frequent urination (or bedwetting in a previously dry child), unexplained weight loss, extreme hunger, fatigue, irritability, fruity breath. (3) Insulin therapy is essential for type 1 — children cannot manage with diet alone. Insulin pumps and CGMs are increasingly used in pediatric care. (4) School management: create a diabetes management plan with the school, train teachers to recognize low blood sugar, ensure the child can access snacks and testing supplies. (5) Carb counting is important — use visual aids and apps to help children learn. (6) Emotional support: children with diabetes may feel different from peers. Encourage diabetes camps and support groups. (7) Type 2 diabetes is rising in Indian children due to obesity and sedentary lifestyles. Prevention: limit screen time, encourage outdoor play, serve balanced meals. (8) Growth and puberty: hormonal changes in adolescence can make blood sugar volatile. HbA1c targets may need to be adjusted during puberty. (9) Hypoglycemia in young children: they may not recognize symptoms. Watch for behavioral changes, pallor, or clumsiness.`;
+    }
+
+    // === DIABETES APPS AND TECHNOLOGY ===
+    if (/app|technology|gadget|device|wearable|smart.?watch|cgm|continuous glucose/.test(normalizedQ) && /diabet|sugar|glucose|track|monitor|manage|recommend/.test(normalizedQ)) {
+        return `Technology can greatly enhance diabetes management: (1) Continuous Glucose Monitors (CGMs): devices like Freestyle Libre, Dexcom G7, and Guardian that track glucose every few minutes. They show trends with arrows, alert for highs and lows, and generate reports. Freestyle Libre is widely available in India. (2) Blood Glucose Meters: Accu-Chek, OneTouch, and Contour are reliable brands. Look for Bluetooth-enabled meters that sync with phone apps. (3) Insulin Pumps: deliver precise insulin doses throughout the day. Medtronic, Omnipod, and Tandem are major brands. (4) Smartphone Apps: MySugr, BeatO, Diabetes:M, and GlucoCare can log readings, meals, medications, and generate patterns. (5) Smart Insulin Pens: remember your last dose and time, preventing accidental double-dosing. NovoPen 6 and InPen track injections. (6) Telehealth: many diabetes clinics now offer video consultations — especially helpful in rural India. (7) AI-based tools can analyze patterns and suggest adjustments. (8) Tips for using technology: always carry backup manual supplies, do not rely solely on technology. Calibrate devices as recommended. Share data with your doctor before appointments for better consultations. (9) Cost: CGMs like Libre cost roughly 2500-3500 INR per sensor (14 days). Discuss with your doctor whether the investment matches your needs.`;
+    }
+
+    // === POSTPARTUM DIABETES / GESTATIONAL FOLLOW-UP ===
+    if (/postpartum|after pregnanc|after deliver|gestational.*after|gdm.*after|baby born/.test(normalizedQ) && /diabet|sugar|glucose|test|risk|follow/.test(normalizedQ)) {
+        return `After gestational diabetes (GDM), careful follow-up is essential: (1) Blood sugar usually returns to normal within hours to days after delivery, but you should be retested. (2) Get an oral glucose tolerance test (OGTT) at 6-12 weeks postpartum to confirm GDM has resolved. (3) If the test is normal, repeat screening every 1-3 years because your risk of developing type 2 diabetes is 50-60% higher over the next 10-20 years. (4) Breastfeeding is strongly encouraged — it helps reduce insulin resistance, aids weight loss, and may lower your risk of developing type 2 diabetes. Aim for 6+ months. (5) Postpartum diet: continue eating balanced meals with controlled carbs. Do not crash diet while breastfeeding. (6) Gradual exercise — start with walking and build up as recovery allows. Aim for 150 minutes/week. (7) Weight management: losing pregnancy weight within the first year significantly reduces future diabetes risk. (8) Mental health: postpartum depression is more common in women who had GDM. Seek support if needed. (9) Future pregnancies: GDM is likely to recur (~50% chance). Plan pregnancies with pre-conception blood sugar testing. (10) If you had GDM, your child has a higher risk of obesity and diabetes — model healthy eating and exercise habits early.`;
+    }
+
+    // === LIVER HEALTH AND DIABETES ===
+    if (/liver|fatty liver|nafld|nash|hepat/.test(normalizedQ) && /diabet|sugar|glucose|connect|affect|cause|risk/.test(normalizedQ)) {
+        return `The liver plays a central role in blood sugar regulation and is closely linked to diabetes: (1) Non-Alcoholic Fatty Liver Disease (NAFLD) affects up to 70% of people with type 2 diabetes. Insulin resistance drives fat accumulation in liver cells. (2) NAFLD can progress to NASH (Non-Alcoholic Steatohepatitis), which involves inflammation and can lead to cirrhosis. (3) The liver stores and releases glucose — when it becomes fatty, it overproduces glucose, worsening blood sugar. (4) Metformin, a first-line diabetes medication, is generally safe for fatty liver and may even help reduce liver fat. (5) Pioglitazone has shown liver benefits in studies. (6) Signs of liver problems: fatigue, right upper abdominal discomfort, elevated liver enzymes (ALT, AST) on blood tests. Many people have no symptoms until advanced stages. (7) Management: weight loss of just 5-10% can dramatically reduce liver fat. (8) Diet: avoid fructose-heavy foods and drinks (sodas, fruit juices), limit alcohol completely. Eat more fiber, vegetables, and healthy fats. (9) Exercise: 150+ minutes of moderate exercise per week helps reduce liver fat even without weight loss. (10) Get liver function tests (LFT) annually if you have type 2 diabetes. An ultrasound can detect fatty liver.`;
+    }
+
+    // === VITAMINS AND DIABETES ===
+    if (/vitamin|b12|vitamin.?d|supplement|deficien/.test(normalizedQ) && /diabet|sugar|glucose|metformin|take|need|help/.test(normalizedQ)) {
+        return `Several vitamins are especially important for people with diabetes: (1) Vitamin B12: Metformin, the most common diabetes medication, can reduce B12 absorption over time. B12 deficiency causes fatigue, numbness, tingling (which can be confused with diabetic neuropathy), and memory problems. Get B12 levels checked annually if on metformin. Supplement if below 300 pg/mL. (2) Vitamin D: Low vitamin D is very common in India (up to 70-80% of the population) and is linked to insulin resistance. Adequate vitamin D may improve insulin sensitivity. Get tested; supplement if below 30 ng/mL, typically 60,000 IU weekly for 8 weeks then monthly maintenance. (3) Magnesium: Low magnesium is common in diabetes and can worsen insulin resistance. Found in nuts, seeds, green leafy vegetables. (4) Chromium: may improve insulin sensitivity in small amounts. Found in broccoli, whole grains. (5) Zinc: important for insulin storage and wound healing. (6) Omega-3: helps with inflammation and heart health, important for diabetics at cardiovascular risk. (7) Alpha-lipoic acid: an antioxidant that may help with neuropathy symptoms. (8) Do not self-supplement high doses without medical advice — some vitamins interact with diabetes medications. Always get blood tests to check actual levels before starting supplements.`;
+    }
+
+    // === FIBER AND DIABETES ===
+    if (/fiber|fibre|roughage|soluble fiber|psyllium|isabgol/.test(normalizedQ) && /diabet|sugar|glucose|help|benefit|how much|eat/.test(normalizedQ)) {
+        return `Fiber is one of the most powerful dietary tools for managing diabetes: (1) Soluble fiber (oats, barley, beans, apples, isabgol/psyllium) forms a gel in the gut that slows sugar absorption, reducing post-meal blood sugar spikes. (2) Insoluble fiber (whole wheat, vegetables, nuts) adds bulk, improves digestion, and helps with weight management. (3) Recommended intake: 25-30 grams per day. Most Indians get only 15-20g. (4) Indian high-fiber foods: rajma, chana, moong dal, oats dosa, ragi, jowar roti, guava, amla, flaxseeds, methi seeds. (5) Isabgol (psyllium husk): 1-2 teaspoons in water before meals can reduce post-meal sugar spikes by 15-20%. Start slowly to avoid bloating. (6) Tips to increase fiber: swap maida products for whole grain, eat whole fruits instead of juice, add vegetables to every meal, snack on roasted chana or makhana. (7) Fiber also helps lower cholesterol, reduce heart disease risk, improve gut bacteria, and promote satiety (feeling full), aiding weight loss. (8) Caution: increase fiber gradually and drink plenty of water to avoid gas and bloating. Very high fiber intake can reduce absorption of some medications — take medicines 1-2 hours before high-fiber meals.`;
+    }
+
+    // === DAWN PHENOMENON ===
+    if (/dawn|morning.*(high|sugar|spike|rise)|fasting.*(high|elevat)|wake.*high|sugar.*high.*morning/.test(normalizedQ)) {
+        return `The dawn phenomenon is a natural rise in blood sugar in the early morning hours (typically 3-8 AM): (1) Cause: your body releases counter-regulatory hormones (cortisol, growth hormone, adrenaline) in the early morning to prepare you for waking up. These hormones make the liver produce more glucose. In people without diabetes, insulin compensates. In diabetes, this compensation is insufficient. (2) How to identify: check blood sugar at bedtime, at 3 AM, and upon waking. If 3 AM sugar is normal or high and morning sugar is high, it is likely the dawn phenomenon. (3) If 3 AM sugar is LOW and morning is high, it might be the Somogyi effect (rebound hyperglycemia after nocturnal hypoglycemia) — this needs different management. (4) Management: eat a low-carb, high-protein evening snack (a handful of nuts works well). (5) Exercise in the evening can help. (6) If on medications, your doctor may adjust timing — for example, taking metformin XR at bedtime or adjusting basal insulin timing/dose. (7) A CGM can reveal overnight patterns that fingerstick testing misses. (8) The dawn phenomenon is very common and not a sign of treatment failure. It may account for fasting readings of 120-160 mg/dL even when your overall control is good.`;
+    }
+
+    // === FEVER AND DIABETES ===
+    if (/fever|flu|cold|sick|ill/.test(normalizedQ) && /diabet|sugar|glucose|manage|what.*do|take|sick day/.test(normalizedQ)) {
+        return `Sick days with fever, flu, or cold need special diabetes management: (1) Illness raises stress hormones (cortisol, adrenaline) which increase blood sugar — even if you are eating less. (2) NEVER stop diabetes medications when sick, especially insulin. You may actually need MORE insulin during illness. (3) Check blood sugar every 2-4 hours. (4) Stay hydrated: sip water, clear broths, electrolyte drinks (like ORS). Aim for a glass every hour. (5) If you cannot eat regular food, consume small frequent amounts of easy-to-digest carbs: khichdi, toast, crackers, banana, curd rice. (6) Check for ketones if blood sugar stays above 240 mg/dL (especially type 1) — use urine ketone strips. If ketones are moderate to high, contact your doctor immediately. (7) Seek urgent help if: vomiting for more than 6 hours, blood sugar above 300 mg/dL repeatedly, signs of dehydration, confusion, rapid breathing. (8) Some cough syrups and cold medications contain sugar — choose sugar-free versions. (9) After recovery: illness can affect blood sugar for days. Monitor closely and return to normal routine gradually. (10) Prevention: get annual flu and pneumonia vaccines as recommended for diabetics.`;
+    }
+
+    // === FOOT NUMBNESS / NEUROPATHY PREVENTION ===
+    if (/numb|tingl|burning.*feet|nerve.*damage|neuropath|pins.*needles/.test(normalizedQ) && /foot|feet|leg|hand|toe|finger|diabet|prevent|treat/.test(normalizedQ)) {
+        return `Diabetic neuropathy (nerve damage) is one of the most common complications, affecting up to 50% of people with diabetes over time: (1) Cause: chronic high blood sugar damages the tiny blood vessels that supply nerves, especially in the feet and legs. (2) Symptoms: numbness, tingling, burning, pins-and-needles sensation, sharp shooting pains, or loss of sensation. Usually starts in toes and progresses upward. (3) Prevention is key: keeping HbA1c below 7% reduces neuropathy risk by 60%. (4) Daily foot inspection: check for cuts, blisters, redness, swelling, temperature changes. Use a mirror for soles. (5) Footwear: wear well-fitting shoes with soft insoles. Never walk barefoot, even at home. (6) Blood sugar control is the single most effective treatment — medications can manage symptoms but cannot reverse nerve damage. (7) Medications for pain: pregabalin (Lyrica), gabapentin, duloxetine, or amitriptyline — prescribed by doctors based on severity. (8) Supplements: alpha-lipoic acid and methylcobalamin (active B12) may help. (9) Regular exercise improves blood flow to nerves. (10) Avoid alcohol and smoking — both worsen nerve damage. (11) Get a monofilament test at your doctor annually to assess sensation. Early detection and aggressive sugar control can slow progression significantly.`;
+    }
+
+    // === HAIR LOSS AND DIABETES ===
+    if (/hair.*loss|hair.*fall|bald|thin.*hair|hair.*diabet/.test(normalizedQ)) {
+        return `Hair loss is a common but often overlooked concern for people with diabetes: (1) High blood sugar impairs blood circulation to hair follicles, slowing growth and causing thinning. (2) Hormonal imbalances linked to insulin resistance (especially in women with PCOS and type 2 diabetes) can worsen hair loss. (3) Nutritional deficiencies common in diabetes: low iron, vitamin D, B12 (especially on metformin), zinc, and biotin all contribute to hair loss. (4) Thyroid disorders are more common in people with diabetes (especially type 1) and are a major cause of hair loss. Get thyroid tested if losing hair. (5) Stress from managing a chronic condition and mental health impact can trigger telogen effluvium (temporary diffuse hair loss). (6) Certain medications: while metformin can cause B12-related hair loss indirectly, other conditions and medications may also contribute. (7) Management: control blood sugar to improve circulation, correct nutritional deficiencies, manage thyroid if needed, reduce stress, use gentle hair care, and eat protein-rich diet. (8) When to see a dermatologist: patchy hair loss, rapid hair loss, scalp inflammation, or if basic interventions do not help within 3-6 months.`;
+    }
+
+    // === BRAIN AND MEMORY ===
+    if (/brain|memory|cognitive|dementia|alzheimer|forget|concentrat|fog/.test(normalizedQ) && /diabet|sugar|glucose/.test(normalizedQ)) {
+        return `Diabetes significantly impacts brain health: (1) The brain uses about 20% of the body's glucose, so blood sugar fluctuations directly affect cognitive function. (2) Chronic hyperglycemia damages blood vessels in the brain, similar to how it damages eyes and kidneys, increasing risk of vascular dementia. (3) Type 2 diabetes increases the risk of Alzheimer's disease by 50-65%. Some researchers call Alzheimer's 'type 3 diabetes' due to the insulin resistance connection. (4) Frequent hypoglycemia (especially severe episodes) can cause cumulative brain damage, particularly in older adults. (5) Symptoms of diabetes-related cognitive decline: difficulty concentrating, brain fog, memory lapses, slower processing, trouble multitasking. (6) Prevention: maintain stable blood sugar (avoid extreme highs and lows). Target HbA1c below 7%. (7) Exercise is protective — it increases blood flow to the brain and promotes growth of new brain connections. 150 minutes/week of moderate exercise. (8) Heart-healthy diet (Mediterranean pattern or Indian equivalent with vegetables, nuts, fish, whole grains) protects the brain. (9) Quality sleep is critical — diabetes-related sleep apnea worsens cognitive decline. (10) Stay mentally active: reading, puzzles, social interaction. (11) Manage blood pressure and cholesterol — both affect brain blood flow.`;
+    }
+
+    // === MENSTRUAL CYCLE AND DIABETES ===
+    if (/period|menstr|cycle|pms|menopause|pcos/.test(normalizedQ) && /diabet|sugar|glucose|affect|insulin|blood/.test(normalizedQ)) {
+        return `Hormonal changes throughout the menstrual cycle significantly affect blood sugar: (1) In the days before your period (luteal phase), progesterone rises, which increases insulin resistance. Many women see blood sugar run 20-50 mg/dL higher than usual. (2) Once your period starts, hormone levels drop and blood sugar may drop too — increasing the risk of hypoglycemia. (3) PCOS (Polycystic Ovary Syndrome) and type 2 diabetes are closely linked — both involve insulin resistance. Up to 70% of women with PCOS develop insulin resistance. (4) Metformin is sometimes used to treat PCOS even without diabetes diagnosis. (5) Menopause: declining estrogen increases insulin resistance, so blood sugar may rise. Hot flashes and sleep disruption also affect levels. HbA1c targets may need reassessment. (6) Tracking tips: log your cycle alongside blood sugar readings for 3-4 months to identify your personal pattern. This helps your doctor adjust medication timing. (7) Premenstrual cravings are real and driven by hormone shifts — plan healthy snacks rather than fighting cravings. (8) Contraception: hormonal methods can affect blood sugar. Discuss options with your endocrinologist. (9) If periods are irregular, get tested for thyroid problems and PCOS — both are more common with diabetes.`;
+    }
+
+    // === SURGERY AND DIABETES ===
+    if (/surgery|operat|anesthesia|procedure|pre.?op|post.?op/.test(normalizedQ) && /diabet|sugar|glucose|prepar|manag|risk|safe/.test(normalizedQ)) {
+        return `Surgery requires careful planning for people with diabetes: Pre-operative: (1) Inform your surgeon and anesthesiologist about your diabetes, all medications, and recent HbA1c. Target HbA1c below 8% for elective surgery. (2) Metformin is usually stopped 24-48 hours before surgery. (3) SGLT2 inhibitors (dapagliflozin, empagliflozin) should be stopped 3 days before surgery to prevent diabetic ketoacidosis. (4) Insulin users: your doctor may adjust doses the night before. Long-acting insulin is usually continued. (5) Fasting instructions: you cannot eat before surgery, but blood sugar still needs monitoring. During surgery: (6) Blood sugar is monitored and managed with IV insulin if needed. The target is typically 140-180 mg/dL during the procedure. Post-operative: (7) Blood sugar often runs high after surgery due to stress, pain, and inflammation. Sliding scale insulin may be used. (8) Healing takes longer with diabetes — wound infection risk is 2-5 times higher. Keep blood sugar tightly controlled for better healing. (9) Resume diabetes medications as directed once eating normally. (10) Watch for signs of infection at the surgical site: redness, warmth, swelling, pus, delayed healing. Report immediately.`;
+    }
+
+    // === EYE FLOATERS AND DIABETIC EYE ===
+    if (/floater|flash|spot.*eye|vision.*spot|blurr.*vision|eye.*diabet|retinopath/.test(normalizedQ) && /diabet|sugar|glucose|danger|normal|serious|why/.test(normalizedQ)) {
+        return `Eye floaters and vision changes in diabetes need attention: (1) Floaters (small dark spots, threads, or cobwebs in your vision) can be harmless or can signal diabetic retinopathy. (2) Diabetic retinopathy occurs when high blood sugar damages tiny blood vessels in the retina. It affects about 1 in 3 people with diabetes over time. (3) Warning signs needing URGENT evaluation: sudden increase in floaters, flashes of light, a curtain or shadow across your vision, sudden blurring, or loss of vision in one area. These could indicate vitreous hemorrhage or retinal detachment. (4) Blurry vision that comes and goes may simply reflect blood sugar fluctuations — high sugar makes the lens swell. This resolves when sugar stabilizes. Do not get new glasses during a period of unstable sugar. (5) Prevention: annual dilated eye exams are essential. Retinopathy can be present with no symptoms. (6) Good HbA1c control, blood pressure control, and cholesterol management reduce retinopathy risk by 50-70%. (7) Treatments: laser photocoagulation, anti-VEGF injections, and vitrectomy surgery can prevent vision loss if detected early. (8) If starting insulin or improving sugar control rapidly, temporary worsening of retinopathy can occur — your doctor should increase monitoring frequency.`;
+    }
+
+    // === CONSTIPATION AND GASTROPARESIS ===
+    if (/constipat|gastroparesis|stomach.*slow|digest.*slow|bloat.*diabet|bowel/.test(normalizedQ) && /diabet|sugar|glucose/.test(normalizedQ)) {
+        return `Digestive issues are common in diabetes due to nerve damage affecting the gut: (1) Diabetic gastroparesis: the vagus nerve controlling stomach emptying is damaged, causing food to sit in the stomach much longer than normal. Symptoms: early fullness, nausea, vomiting undigested food, bloating, erratic blood sugar (delayed spikes). Affects up to 20-50% of long-standing diabetes. (2) Constipation: affects up to 60% of people with diabetes. Causes include autonomic neuropathy, dehydration from high blood sugar, medications, and low-fiber diets. (3) Management of constipation: increase fiber gradually (25-30g/day), drink plenty of water, regular physical activity, isabgol (psyllium) 1-2 tsp at bedtime, and consider stool softeners. (4) Gastroparesis management: eat small frequent meals (6 small instead of 3 large), chew food thoroughly, choose lower-fiber and lower-fat foods (fiber can worsen gastroparesis), stay upright after eating, walk gently after meals. (5) Blood sugar control is essential — high sugar further slows stomach emptying, creating a vicious cycle. (6) Medications: domperidone or metoclopramide may help. Some newer GLP-1 medications can worsen gastroparesis. (7) Insulin timing may need adjustment — taking insulin after eating rather than before if stomach emptying is unpredictable.`;
+    }
+
+    // === HONEYMOON PHASE ===
+    if (/honeymoon|remission|sugar.*normal.*type.1|need.*less.*insulin|insulin.*reduce/.test(normalizedQ) && /diabet|type.1|newly diagnos/.test(normalizedQ)) {
+        return `The honeymoon phase is a temporary period after type 1 diabetes diagnosis when the pancreas still produces some insulin: (1) It typically begins weeks to months after starting insulin therapy and can last from a few months to 1-2 years (rarely longer). (2) During this phase, blood sugars are easier to control and insulin requirements drop significantly — sometimes to very low doses. (3) This does NOT mean diabetes is going away. The autoimmune destruction of beta cells is ongoing. Eventually, the remaining cells will be destroyed and insulin needs will rise. (4) It can be emotionally confusing — patients or parents may wonder if the diagnosis was wrong. It was not. (5) Continuing insulin during the honeymoon phase (even if doses are tiny) may actually help preserve remaining beta cells longer. Do not stop insulin. (6) The honeymoon phase is more common in: older children/adults at diagnosis, those who started insulin quickly, and those with higher C-peptide levels at diagnosis. (7) Type 2 diabetes remission is different — some type 2 patients achieve remission through weight loss, diet, and exercise, especially early in the disease. This is a more sustained effect related to reducing insulin resistance. (8) Always work with your endocrinologist to adjust insulin doses during this period rather than stopping on your own.`;
+    }
+
+    // === REACTIVE HYPOGLYCEMIA ===
+    if (/reactive|postprandial.*low|sugar.*(drop|crash|low).*after.*eat|after.*meal.*(low|hypo|dizz)|sugar.*crash/.test(normalizedQ)) {
+        return `Reactive hypoglycemia is a drop in blood sugar 2-5 hours after eating, especially after high-carb meals: (1) Symptoms: shakiness, sweating, dizziness, anxiety, hunger, brain fog, rapid heartbeat — occurring 2-4 hours after a meal rather than from skipping meals. (2) Common in prediabetes and early type 2 diabetes: the pancreas overproduces insulin in delayed response to a carb-heavy meal, causing sugar to crash. (3) It can also occur after gastric surgery or in people without diabetes. (4) Diagnosis: monitor blood sugar during symptoms. If below 70 mg/dL at 2-4 hours post-meal with symptoms that resolve after eating, it strongly suggests reactive hypoglycemia. A mixed-meal tolerance test can confirm. (5) Management: eat smaller, more frequent meals (5-6 per day). (6) Pair carbs with protein and healthy fat — never eat carbs alone. Example: do not eat plain rice; add dal, vegetables, and curd. (7) Choose low-glycemic-index carbs: brown rice, oats, whole wheat over white rice, maida, and sugar. (8) Avoid sugary drinks, sweets, and refined carbs — they cause the biggest insulin spike and crash. (9) A small snack between meals (handful of nuts, cheese, yogurt) prevents troughs. (10) Exercise moderately after meals. (11) If episodes are frequent or severe, consult a doctor to rule out insulinoma or other causes.`;
+    }
+
+    // === LEG CRAMPS AND DIABETES ===
+    if (/cramp|leg.*pain|calf.*pain|muscle.*cramp|charlie horse|night.*cramp/.test(normalizedQ) && /diabet|sugar|glucose/.test(normalizedQ)) {
+        return `Leg cramps are very common in people with diabetes, especially at night: (1) Causes: high blood sugar causes dehydration and electrolyte loss (magnesium, potassium, calcium) through excessive urination. (2) Diabetic neuropathy (nerve damage) can cause cramping and muscle spasms. (3) Peripheral artery disease (PAD) — narrowed blood vessels reducing blood flow to legs — is more common in diabetes and causes cramping during walking (claudication). (4) Some diabetes medications (especially diuretics given for blood pressure) can worsen electrolyte imbalances. (5) Immediate relief: gently stretch the cramped muscle, massage it, apply warm compress, walk around. (6) Prevention: stay well hydrated, ensure adequate magnesium (nuts, seeds, green vegetables), potassium (bananas, coconut water, dal), and calcium intake. (7) Stretch calf muscles before bed: stand at arm's length from a wall, lean forward with heels on ground. (8) Regular exercise improves circulation than prevents cramps. (9) Keep blood sugar well controlled — fluctuations worsen cramping. (10) When to see a doctor: cramps that are very frequent, extremely painful, cause muscle swelling, do not improve with basic measures, or if you notice cold/pale/blue legs (signs of PAD). (11) Your doctor may check ABI (ankle-brachial index) to assess circulation.`;
+    }
+
+    // === NIGHT SWEATS AND DIABETES ===
+    if (/night.*sweat|sweat.*night|wake.*sweat|nocturnal.*sweat|diaphoresis/.test(normalizedQ) && /diabet|sugar|glucose|caus|why|normal/.test(normalizedQ)) {
+        return `Night sweats in people with diabetes can have several causes: (1) Nocturnal hypoglycemia is the most important cause to rule out. Low blood sugar at night triggers adrenaline release, causing sweating, rapid heartbeat, nightmares, and morning headaches. This is common with long-acting insulin or sulfonylureas. (2) To check: test blood sugar at 2-3 AM for a few nights. If below 70 mg/dL, discuss medication adjustment with your doctor. (3) Autonomic neuropathy: damage to nerves that control sweating can cause excessive sweating (especially in the upper body) even without temperature changes. This is called gustatory sweating when triggered by certain foods. (4) High blood sugar: persistent hyperglycemia can also cause night sweats as the body tries to cope. (5) Medications: some diabetes and blood pressure medications list night sweats as a side effect. (6) Other causes to consider: thyroid disorders, infections, sleep apnea (very common in type 2 diabetes and obesity), and in women, perimenopause. (7) Management: treat the underlying cause. For nocturnal hypos: bedtime snack with protein and fat, medication adjustment. For neuropathy: topical treatments and good sugar control. (8) Keep bedroom cool, use breathable cotton bedding, and keep water by the bed. See your doctor if night sweats are recurrent.`;
+    }
+
+    // === C-PEPTIDE TEST ===
+    if (/c.?peptide|c peptide/.test(normalizedQ) && /what|test|level|mean|low|high|check|diabet/.test(normalizedQ)) {
+        return `C-peptide is a valuable blood test that measures how much insulin your pancreas is making: (1) When the pancreas makes insulin, it also produces C-peptide in equal amounts. C-peptide stays in the blood longer, making it a reliable marker of insulin production. (2) Normal fasting C-peptide: 0.5-2.0 ng/mL. (3) Low C-peptide (below 0.5): means the pancreas is making little or no insulin, typical of type 1 diabetes, LADA (latent autoimmune diabetes in adults), or very advanced type 2 diabetes. (4) Normal or high C-peptide: means the pancreas makes enough or excess insulin but the body is resistant to it, typical of early-to-mid type 2 diabetes. (5) Uses: (a) distinguishing type 1 from type 2 diabetes, (b) determining if a type 2 patient has progressed to needing insulin, (c) monitoring beta cell function over time, (d) evaluating honeymoon phase in type 1. (6) Can be tested fasting or stimulated (after a meal or glucagon injection). (7) Unlike insulin, C-peptide is not affected by injected insulin — so it shows true pancreatic output even in patients taking insulin. (8) LADA diagnosis: an adult diagnosed as type 2 but with low C-peptide and positive autoantibodies (GAD, IA-2) likely has LADA and will need insulin sooner. (9) Discuss with your endocrinologist if you are unsure about your diabetes type.`;
+    }
+
+    // === ACANTHOSIS NIGRICANS ===
+    if (/acanthosis|dark.*patch|dark.*skin.*neck|dark.*armpit|skin.*dark.*fold|black.*neck/.test(normalizedQ) && /diabet|sugar|glucose|insulin|what|cause|mean/.test(normalizedQ)) {
+        return `Acanthosis nigricans is a skin condition commonly linked to insulin resistance and diabetes: (1) Appearance: dark, thick, velvety patches typically on the neck, armpits, groin, elbows, knees, and knuckles. (2) Cause: excess insulin in the blood stimulates skin cells and melanin production in the skin folds. It is primarily a sign of insulin resistance. (3) It is one of the earliest visible warning signs of prediabetes and type 2 diabetes, often appearing years before blood sugar becomes abnormal. (4) Very common in India — seen frequently in overweight children and adults. (5) PCOS-related insulin resistance also causes acanthosis in women. (6) It is NOT a hygiene problem — scrubbing will not remove it and can irritate the skin. (7) Treatment: the most effective treatment is addressing the underlying insulin resistance through weight loss, diet changes, exercise, and blood sugar control. As insulin resistance improves, the dark patches gradually lighten. (8) Topical treatments (retinoids, vitamin C serums) can help cosmetically but will not resolve the underlying cause. (9) If a child or teenager has dark patches on the neck, screening for prediabetes with fasting blood sugar and HbA1c is strongly recommended. (10) Rarely, sudden severe acanthosis can indicate an underlying malignancy — this is uncommon and usually appears differently.`;
+    }
+
+    // === PAIN MANAGEMENT AND DIABETES ===
+    if (/pain.?killer|painkiller|analgesic|ibuprofen|aspirin|nsaid|pain.*medic|diclofenac|paracetamol/.test(normalizedQ) && /diabet|sugar|glucose|safe|kidney|take|can i/.test(normalizedQ)) {
+        return `Pain medication choices need care in diabetes due to kidney and cardiovascular risks: (1) Paracetamol (acetaminophen) is generally the safest first-choice painkiller. It does not affect blood sugar, kidneys, or blood pressure at normal doses. Avoid exceeding 3g/day and limit alcohol. (2) NSAIDs (ibuprofen, diclofenac, naproxen): use with caution. They can worsen kidney function (a concern since diabetes already stresses kidneys), raise blood pressure, and increase cardiovascular risk. Short-term use is usually acceptable if kidneys are healthy. Avoid if eGFR is below 60. (3) Aspirin: low-dose aspirin (75-150mg) is often prescribed for diabetics with cardiovascular risk. Regular-dose aspirin for pain carries similar NSAID risks. (4) Opioids: do not directly affect blood sugar but cause constipation (already a diabetes problem), and gabapentin/pregabalin are preferred for neuropathic pain anyway. (5) Topical pain relief (diclofenac gel, capsaicin cream): much safer than oral NSAIDs since minimal systemic absorption. Good for localized pain. (6) For chronic pain: non-medication approaches like physiotherapy, heat/cold therapy, gentle exercise, and stress management should be first line. (7) Always inform your doctor about your diabetes and kidney function (eGFR, creatinine) before starting any regular pain medication.`;
+    }
+
+    // === PROBIOTICS AND DIABETES ===
+    if (/probiotic|gut.*bacteria|microbiome|curd.*benefit|yogurt.*diabet|ferment/.test(normalizedQ) && /diabet|sugar|glucose|help|benefit|gut/.test(normalizedQ)) {
+        return `Emerging research shows gut health significantly impacts diabetes management: (1) The gut microbiome influences insulin sensitivity, inflammation, and blood sugar regulation. People with type 2 diabetes often have less diverse gut bacteria. (2) Probiotics (beneficial bacteria) may improve insulin sensitivity and reduce fasting blood sugar modestly. Lactobacillus and Bifidobacterium strains have the most evidence. (3) Indian probiotic foods: fresh homemade curd/dahi (rich in Lactobacillus), buttermilk/chaas, idli/dosa batter (naturally fermented), pickles (naturally fermented, not commercial), kanji. (4) Commercial probiotic supplements: look for multi-strain products with at least 10 billion CFU. Take consistently for 8-12 weeks to see effects. (5) Prebiotics (fiber that feeds good bacteria) are equally important: garlic, onion, banana, oats, flaxseeds, chicory. (6) Fermented foods help but choose wisely — sweetened yogurt, commercial kombucha with added sugar, and sugary probiotic drinks may do more harm than good. (7) Metformin affects the gut microbiome — some of its benefits (and GI side effects) are mediated through gut bacteria changes. (8) Antibiotics can disrupt gut flora and temporarily worsen blood sugar control. Replenish with probiotics after antibiotic courses. (9) This is an active research area — while promising, probiotics are not a replacement for medications but may provide complementary benefits.`;
+    }
+
+    // === FRUCTOSE AND DIABETES ===
+    if (/fructose|fruit sugar|high fructose|hfcs|corn syrup/.test(normalizedQ) && /diabet|sugar|glucose|safe|bad|avoid|harm|eat/.test(normalizedQ)) {
+        return `Fructose and diabetes — what you need to know: (1) Fructose is fruit sugar, naturally found in fruits, honey, and some vegetables. It is also used commercially as high-fructose corn syrup (HFCS) in sodas and processed foods. (2) Natural fructose from whole fruits is generally SAFE for diabetics because whole fruits contain fiber, vitamins, and antioxidants that slow absorption. Eating 2-3 servings of whole fruit per day is recommended even for diabetics. (3) Added/processed fructose (HFCS, table sugar) is harmful: it is processed entirely by the liver, promoting fatty liver, insulin resistance, high triglycerides, and visceral fat. (4) Fructose does not raise blood sugar directly (low glycemic index) which misleads some people into thinking it is safe. But it worsens insulin resistance through liver pathways — so it harms diabetes management even without spiking glucose. (5) Fruit juices — even 100% juice — deliver concentrated fructose without fiber. Avoid or limit to 100 ml. (6) Honey: though natural, it is 40-50% fructose. Use sparingly (1-2 tsp occasionally) if at all. (7) Indian context: avoid packaged fruit drinks (Frooti, Real juice, etc.), mithai made with sugar, and anything containing HFCS or added fructose. (8) Best fruits for diabetics (low-medium fructose, high fiber): guava, apple, papaya, pear, berries. Limit: mango, chiku, grapes, banana (high fructose content).`;
+    }
+
+    // === ALTITUDE AND DIABETES ===
+    if (/altitude|mountain|trek|hiking|high altitude|hill station|leh|ladakh|manali/.test(normalizedQ) && /diabet|sugar|glucose|insulin|safe|prepar|manage|affect/.test(normalizedQ)) {
+        return `Traveling to high altitude with diabetes needs preparation: (1) Altitude affects blood sugar unpredictably — some people see higher readings due to stress and altitude sickness, others see lows due to increased physical exertion. (2) Cold temperatures at altitude make insulin absorb differently and can cause glucose meters to give inaccurate readings. Keep devices and insulin close to your body for warmth. (3) Insulin does not freeze at typical hill station temperatures but should be protected below 2°C and above 30°C. (4) Altitude sickness symptoms (headache, nausea, fatigue) overlap with both hypo- and hyperglycemia — always test rather than assume. (5) Physical exertion during trekking can cause dramatic blood sugar drops. Test before, during, and after activity. Carry glucose tablets and snacks accessible in your pack. (6) Acetazolamide (Diamox), used for altitude sickness prevention, can rarely affect blood sugar. Monitor closely. (7) Dehydration risk is higher at altitude — drink extra water. (8) If on an insulin pump: check that the pump functions correctly at altitude. Air pressure changes can cause small air bubbles in the reservoir. (9) Carry double your usual supply of medications, testing supplies, and snacks. Keep supplies in two separate bags in case one is lost. (10) Medical facilities may be limited — know the nearest hospital. In India, places like Leh have basic medical facilities but not endocrinologists.`;
+    }
+
+    // === INSURANCE AND DIABETES ===
+    if (/insurance|health cover|mediclaim|policy|premium|claim|cashless/.test(normalizedQ) && /diabet|sugar|glucose|pre.?exist|cover/.test(normalizedQ)) {
+        return `Health insurance with diabetes in India — key points: (1) Diabetes is classified as a pre-existing condition. Most policies cover it after a waiting period of 2-4 years from the policy start date. (2) Policies purchased before diabetes diagnosis typically cover all diabetes-related expenses after the waiting period. (3) If diagnosed before purchasing: some insurers accept diabetics (with higher premiums or co-pay clauses), while others may exclude diabetes complications. Disclose your condition honestly — hiding it can lead to claim rejection. (4) What is typically covered after the waiting period: hospitalization for diabetes emergencies (DKA, severe hypoglycemia, infections), diabetes-related surgeries (amputation, cardiac procedures), and sometimes medications during hospitalization. (5) What is typically NOT covered: outpatient consultations, routine blood tests, insulin and daily medications (OPD), glucose monitors and strips. (6) CGHS and ESI (government schemes) cover diabetes treatment comprehensively for eligible employees. (7) Ayushman Bharat (PM-JAY) covers hospitalization for diabetes complications for eligible families. (8) Tips: (a) Buy insurance early before diagnosis if you have risk factors. (b) Look for policies with diabetic-friendly riders or OPD coverage. (c) Companies like Star Health offer specific diabetes plans (like Star Diabetes Safe). (d) Top-up plans can supplement existing coverage affordably.`;
+    }
+
+    // === TATTOOS AND PIERCINGS ===
+    if (/tattoo|pierc|body art|ink/.test(normalizedQ) && /diabet|sugar|glucose|safe|risk|can i|infection/.test(normalizedQ)) {
+        return `Getting tattoos or piercings with diabetes requires extra precautions: (1) Diabetes is not an absolute contraindication — but timing and blood sugar control matter. (2) Only proceed if your HbA1c is well controlled (ideally below 8%). Poor sugar control significantly increases healing time and infection risk. (3) Avoid areas prone to diabetic complications: feet/ankles (poor circulation), insulin injection sites, and areas with neuropathy (you may not feel infection developing). (4) Choose a reputable, licensed studio that follows strict hygiene — autoclaved equipment, single-use needles, sterile technique. (5) Inform the artist about your diabetes. (6) Healing concerns: diabetes slows wound healing and impairs immune response. Tattoos take longer to heal (potentially 4-6 weeks instead of 2-3). Piercings carry similar risks. (7) Post-care: keep the area clean and moisturized, watch closely for signs of infection (redness, warmth, swelling, pus, fever), and monitor blood sugar more frequently during healing as infection or stress can raise levels. (8) Avoid non-sterile traditional tattoo methods. (9) Avoid getting tattooed during illness or when sugar is not controlled. (10) MRI concern: metallic-ink tattoos may react during MRI scans — this is rare but worth noting for patients who may need regular imaging.`;
     }
 
     return null;
@@ -847,6 +1060,22 @@ function normalizeQuestionText(text) {
         [/\bweight loss\b|\bweightloss\b/g, 'weight loss'],
         [/\bbp\b/g, 'blood pressure'],
         [/\bbs\b/g, 'blood sugar'],
+        // New topic misspellings and shorthand
+        [/\bnueropath\b|\bnuropath\b|\bneropathy\b/g, 'neuropathy'],
+        [/\bgastroparisis\b|\bgastroparasis\b/g, 'gastroparesis'],
+        [/\bacanthosys\b|\bacanthoses\b/g, 'acanthosis'],
+        [/\bretinopthy\b|\bretinopath\b/g, 'retinopathy'],
+        [/\bglucogon\b|\bglucagen\b/g, 'glucagon'],
+        [/\bperiodontle\b|\bperiodontal disease\b/g, 'periodontal'],
+        [/\bgestationl\b|\bgestasional\b/g, 'gestational'],
+        [/\bpostpartm\b|\bpost partum\b/g, 'postpartum'],
+        [/\bmenstraul\b|\bmenstrul\b|\bmenstral\b/g, 'menstrual'],
+        [/\bconstipaton\b|\bconstipashun\b/g, 'constipation'],
+        [/\bvitamn\b|\bvitamins?\b/g, 'vitamin'],
+        [/\bfibr\b/g, 'fiber'],
+        [/\bprobiotik\b|\bprobiotc\b/g, 'probiotic'],
+        [/\bfructos\b/g, 'fructose'],
+        [/\binsurnce\b|\binsurance\b/g, 'insurance'],
         // Number words → digits
         [/\btwo forty\b/g, '240'],
         [/\btwo hundred\b/g, '200'],
@@ -915,7 +1144,7 @@ function matchSmallTalkIntent(question) {
     const text = normalizeQuestionText(question).trim();
     if (!text) return null;
 
-    if (/^(h+i+|he+l+o+|hey+|yo+|hola+|namaste|good\s*(morning|afternoon|evening)|howdy)\b/.test(text)) {
+    if (/^(h+i+|he+l+o+|hey+|yo+|hola+|gay|namaste|good\s*(morning|afternoon|evening)|howdy)\b/.test(text)) {
         return 'greeting';
     }
 
@@ -1145,11 +1374,155 @@ function buildContextualSuggestions(normalizedQ, topic) {
 
     // Glucose/general follow-ups
     if (topic === 'glucose') {
+        if (/dawn|morning.*high|fasting.*high/.test(normalizedQ)) {
+            return [
+                'What is the difference between the dawn phenomenon and Somogyi effect?',
+                'What kind of bedtime snack helps prevent morning sugar spikes?',
+                'Should I adjust my medication timing for morning highs?',
+            ];
+        }
+        if (/numb|tingl|neuropath|nerve/.test(normalizedQ)) {
+            return [
+                'Can diabetic neuropathy be reversed?',
+                'What medications help with diabetic nerve pain?',
+                'How often should I get foot sensation checked?',
+            ];
+        }
+        if (/hair.*loss|hair.*fall/.test(normalizedQ)) {
+            return [
+                'Should I get my thyroid checked for hair loss?',
+                'Does metformin cause hair loss through B12 deficiency?',
+                'What vitamins help with diabetes-related hair loss?',
+            ];
+        }
+        if (/cramp|leg.*pain/.test(normalizedQ)) {
+            return [
+                'What electrolytes help with diabetes leg cramps?',
+                'How do I know if leg pain is from neuropathy or poor circulation?',
+                'When should I see a doctor for leg cramps?',
+            ];
+        }
+        if (/constipat|gastroparesis|bloat/.test(normalizedQ)) {
+            return [
+                'What foods help with diabetic constipation?',
+                'How is gastroparesis diagnosed?',
+                'Can gastroparesis affect my medication absorption?',
+            ];
+        }
+        if (/night.*sweat|wake.*sweat/.test(normalizedQ)) {
+            return [
+                'How do I check if night sweats are from low blood sugar?',
+                'What is nocturnal hypoglycemia and how do I prevent it?',
+                'Should I test my blood sugar in the middle of the night?',
+            ];
+        }
+        if (/acanthosis|dark.*patch|dark.*skin/.test(normalizedQ)) {
+            return [
+                'Can acanthosis nigricans go away with diabetes control?',
+                'Should dark neck patches be a reason to screen for diabetes?',
+                'What treatments help lighten acanthosis patches?',
+            ];
+        }
         return [
             'What are normal blood sugar levels before and after meals?',
             'How often should I check my blood sugar?',
             'What is HbA1c and what should my target be?',
         ];
+    }
+
+    // New topic-specific follow-ups for general category
+    if (topic === 'general') {
+        if (/dental|teeth|gum|oral/.test(normalizedQ)) {
+            return [
+                'How often should a diabetic visit the dentist?',
+                'Can gum disease make blood sugar harder to control?',
+                'What are signs of diabetic gum disease?',
+            ];
+        }
+        if (/liver|fatty liver|nafld/.test(normalizedQ)) {
+            return [
+                'How does fatty liver affect blood sugar?',
+                'What diet changes help reverse fatty liver?',
+                'Should I get liver function tests regularly?',
+            ];
+        }
+        if (/sex|erect|libido|impotence/.test(normalizedQ)) {
+            return [
+                'Can blood sugar control improve erectile dysfunction?',
+                'What treatments are available for diabetes-related sexual problems?',
+                'Is it safe to take ED medication with diabetes medicines?',
+            ];
+        }
+        if (/driv/.test(normalizedQ)) {
+            return [
+                'What blood sugar level is safe for driving?',
+                'What should I keep in my car as a diabetic?',
+                'What do I do if I feel a hypo while driving?',
+            ];
+        }
+        if (/child|kid|teen|school|pediatric/.test(normalizedQ)) {
+            return [
+                'How do I manage my child\'s diabetes at school?',
+                'What are the first signs of diabetes in children?',
+                'Are insulin pumps suitable for children?',
+            ];
+        }
+        if (/vitamin|b12|supplement|deficien/.test(normalizedQ)) {
+            return [
+                'How often should I check B12 while on metformin?',
+                'Do I need vitamin D supplements with diabetes?',
+                'What blood tests check for vitamin deficiencies?',
+            ];
+        }
+        if (/fiber|fibre|isabgol/.test(normalizedQ)) {
+            return [
+                'How much fiber should a diabetic eat per day?',
+                'What are the best high-fiber Indian foods?',
+                'Can isabgol really reduce post-meal sugar spikes?',
+            ];
+        }
+        if (/surgery|operat/.test(normalizedQ)) {
+            return [
+                'Which diabetes medicines should I stop before surgery?',
+                'How does diabetes affect wound healing after surgery?',
+                'What HbA1c is needed for safe elective surgery?',
+            ];
+        }
+        if (/insurance|mediclaim/.test(normalizedQ)) {
+            return [
+                'Which insurance companies cover diabetes in India?',
+                'What is the waiting period for pre-existing diabetes coverage?',
+                'Does health insurance cover insulin pump costs?',
+            ];
+        }
+        if (/period|menstr|pcos|menopause/.test(normalizedQ)) {
+            return [
+                'Why does blood sugar go up before my period?',
+                'How does PCOS relate to diabetes?',
+                'Does menopause affect blood sugar control?',
+            ];
+        }
+        if (/c.peptide/.test(normalizedQ)) {
+            return [
+                'What does a low C-peptide mean for my diabetes type?',
+                'How is C-peptide different from an insulin test?',
+                'When should I ask my doctor for a C-peptide test?',
+            ];
+        }
+        if (/altitude|trek|mountain|hiking/.test(normalizedQ)) {
+            return [
+                'How does altitude affect blood sugar levels?',
+                'What extra supplies should I carry when trekking?',
+                'Is it safe to use an insulin pump at high altitude?',
+            ];
+        }
+        if (/probiotic|gut|microbiome|ferment/.test(normalizedQ)) {
+            return [
+                'Which probiotics are best for diabetes management?',
+                'Is homemade curd a good probiotic for diabetics?',
+                'Can improving gut health reduce insulin resistance?',
+            ];
+        }
     }
 
     return [
@@ -1234,17 +1607,19 @@ function formatHumanResponse(parts) {
 
 function isVagueQuestion(normalizedQuestion) {
     const tokens = tokenize(normalizedQuestion);
-    const hasSpecificIntent = /low|high|hypoglycemia|hyperglycemia|hba1c|type\s*1|type\s*2|metformin|insulin|allergy|diet|food|meal|exercise|kidney|eye|foot|pregnancy|stress|sleep|weight|smoking|alcohol|fasting|cgm|neuropathy|thyroid|infection|cure|reverse|prevent|symptom|normal|range|level|walk|yoga|obesity|obese|hereditary|genetic|age|complication|prediabetes|controlled|uncontrolled|heart|vision|affect|body|risk|cause|diagnos|early sign|warning sign|snack|numbness|tingling|pancreas|glucagon|resistance|mody|monogenic|gestational|ogtt|glucose tolerance|pump|injection|pharmacokinetic|dawn phenomenon|hypoglycemic|glycemic index|carbohydrate|complex carb|simple sugar|intermittent|ketogenic|keto|hydration|cortisol|burnout|distress|anxiety|coping|journal|adherence|caregiver|peer support|cgm|closed.loop|artificial pancreas|predictive|algorithm|machine learning|metric|tracking|barrier|dangerous|sugar.free|screen|vegetable|potato|carb.*per day/.test(normalizedQuestion);
-    const hasFoodItem = /juice|tea|coffee|rice|roti|bread|fruit|sweet|gulab|jalebi|samosa|egg|milk|curd|dal|paneer|chicken|fish|oats|idli|dosa|chapati|biryani|poha|upma|breakfast|lunch|dinner|snack|mango|banana|apple|watermelon|grapes|dates|chocolate|cake|ghee|butter|yogurt|coconut|millet|bajra|ragi|water|drink|beverage|coke|cola|soda|pepsi|sprite|beer|wine|alcohol|lassi|smoothie|ice cream|jaggery|lemon|vegetable|potato/.test(normalizedQuestion);
+    const hasSpecificIntent = /low|high|hypoglycemia|hyperglycemia|hba1c|type\s*1|type\s*2|metformin|insulin|allergy|diet|food|meal|exercise|kidney|eye|foot|pregnancy|stress|sleep|weight|smoking|alcohol|fasting|cgm|neuropathy|thyroid|infection|cure|reverse|prevent|symptom|normal|range|level|walk|yoga|obesity|obese|hereditary|genetic|age|complication|prediabetes|controlled|uncontrolled|heart|vision|affect|body|risk|cause|diagnos|early sign|warning sign|snack|numbness|tingling|pancreas|glucagon|resistance|mody|monogenic|gestational|ogtt|glucose tolerance|pump|injection|pharmacokinetic|dawn phenomenon|hypoglycemic|glycemic index|carbohydrate|complex carb|simple sugar|intermittent|ketogenic|keto|hydration|cortisol|burnout|distress|anxiety|coping|journal|adherence|caregiver|peer support|cgm|closed.loop|artificial pancreas|predictive|algorithm|machine learning|metric|tracking|barrier|dangerous|sugar.free|screen|vegetable|potato|carb.*per day|dental|teeth|gum|periodontal|liver|fatty liver|nafld|sexual|erect|libido|impotence|uti|urinary|bladder|season|weather|summer|winter|monsoon|driving|driv|workplace|office|job|child|kid|teen|school|pediatric|app|technology|wearable|smartwatch|postpartum|after pregnanc|menstrual|period|pcos|menopause|surgery|operat|anesthesia|floater|retinopath|constipat|gastroparesis|honeymoon|remission|reactive hypoglycemia|leg.*cramp|night.*sweat|c.peptide|acanthosis|dark.*patch|hair.*loss|brain|memory|dementia|fiber|fibre|isabgol|vitamin|b12|supplement|fructose|probiotic|microbiome|pain.*killer|painkiller|nsaid|altitude|trek|mountain|insurance|mediclaim|tattoo|pierc/.test(normalizedQuestion);
+    const hasFoodItem = /juice|tea|coffee|rice|roti|bread|fruit|sweet|gulab|jalebi|samosa|egg|milk|curd|dal|paneer|chicken|fish|oats|idli|dosa|chapati|biryani|poha|upma|breakfast|lunch|dinner|snack|mango|banana|apple|watermelon|grapes|dates|chocolate|cake|ghee|butter|yogurt|coconut|millet|bajra|ragi|water|drink|beverage|coke|cola|soda|pepsi|sprite|beer|wine|alcohol|lassi|smoothie|ice cream|jaggery|lemon|vegetable|potato|fructose|fiber|fibre|isabgol|probiotic|ferment/.test(normalizedQuestion);
     const hasNumber = /\b\d{2,3}\b/.test(normalizedQuestion);
-    const hasSymptom = /tired|fatigue|thirst|urination|blur|vision|numb|tingling|wound|heal|itch|skin|shak|sweat|dizzy|pain|headache|nausea|vomit|hungry|hunger|weight loss/.test(normalizedQuestion);
-    const hasMedicineName = /metformin|glimepiride|gliclazide|sitagliptin|dapagliflozin|empagliflozin|insulin|lantus|novorapid|statin|aspirin/.test(normalizedQuestion);
-    const hasGeneralAwareness = /what is diabetes|how does diabetes|how is diabetes|hereditary|genetic|at what age|what happens if|can.*cause|does.*affect|does.*increase|is.*helpful|is.*good for|when should.*visit|when should.*doctor|can.*controlled|complications|early signs|first signs|warning signs|signs of diabetes|symptoms of diabetes|how does the pancreas|role.*insulin|what is gestational|what is prediabetes|insulin resistance|what is monogenic|what is mody|glucagon|oral glucose|fasting plasma|how do.*cgm|insulin pump|closed.loop|what.*metric|pharmacokinetic|dawn phenomenon|how does metformin|hypoglycemic episode|predictive algorithm|complex carb|glycemic index|intermittent fasting|ketogenic|hydration.*blood sugar|cortisol.*stress|coping strateg|psychological barrier|journaling|diabetes burnout|diabetes distress|peer support|caregiver/.test(normalizedQuestion);
+    const hasSymptom = /tired|fatigue|thirst|urination|blur|vision|numb|tingling|wound|heal|itch|skin|shak|sweat|dizzy|pain|headache|nausea|vomit|hungry|hunger|weight loss|hair loss|cramp|floater|constipat|dark patch|night sweat|brain fog/.test(normalizedQuestion);
+    const hasMedicineName = /metformin|glimepiride|gliclazide|sitagliptin|dapagliflozin|empagliflozin|insulin|lantus|novorapid|statin|aspirin|glucagon|paracetamol|ibuprofen|diclofenac|pregabalin|gabapentin|pioglitazone/.test(normalizedQuestion);
+    const hasGeneralAwareness = /what is diabetes|how does diabetes|how is diabetes|hereditary|genetic|at what age|what happens if|can.*cause|does.*affect|does.*increase|is.*helpful|is.*good for|when should.*visit|when should.*doctor|can.*controlled|complications|early signs|first signs|warning signs|signs of diabetes|symptoms of diabetes|how does the pancreas|role.*insulin|what is gestational|what is prediabetes|insulin resistance|what is monogenic|what is mody|glucagon|oral glucose|fasting plasma|how do.*cgm|insulin pump|closed.loop|what.*metric|pharmacokinetic|dawn phenomenon|how does metformin|hypoglycemic episode|predictive algorithm|complex carb|glycemic index|intermittent fasting|ketogenic|hydration.*blood sugar|cortisol.*stress|coping strateg|psychological barrier|journaling|diabetes burnout|diabetes distress|peer support|caregiver|c.peptide|honeymoon phase|reactive hypoglycemia|acanthosis nigricans|somogyi effect|fatty liver|nafld|gastroparesis|diabetic retinopathy|diabetic neuropathy/.test(normalizedQuestion);
+    const hasBloodSugarScience = /calculat|measur|percentage|concentrat|how much sugar|how.*sugar.*work|sugar.*blood.*percent|blood.*sugar.*percent|how.*check.*sugar|how.*test.*sugar|how.*measure.*sugar|check.*blood sugar|test.*blood sugar|measure.*blood sugar/.test(normalizedQuestion);
     if (hasNumber) return false;
     if (hasFoodItem) return false;
     if (hasSymptom) return false;
     if (hasMedicineName) return false;
     if (hasGeneralAwareness) return false;
+    if (hasBloodSugarScience) return false;
     if (tokens.length <= 1 && !hasSpecificIntent) return true;
     if (hasSpecificIntent && tokens.length >= 2) return false;
     if (tokens.length <= 3 && /diabetes|sugar|medicine|diet|help|problem|issue/.test(normalizedQuestion)) return true;
