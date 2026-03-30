@@ -1,3 +1,21 @@
+// Logout logic
+function logoutDoctor() {
+    // Remove any session tokens (example: localStorage/sessionStorage)
+    localStorage.removeItem('token');
+    sessionStorage.removeItem('token');
+    // Redirect to login page
+    window.location.href = '/auth/login/login.html';
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    var logoutBtn = document.getElementById('doctor-logout-link');
+    if (logoutBtn) {
+        logoutBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            logoutDoctor();
+        });
+    }
+});
 var doctorState = {
     patients: [],
     assignedPatients: [],
@@ -44,6 +62,46 @@ function initials(name) {
     var parts = String(name || '').trim().split(/\s+/).slice(0, 2);
     if (parts.length === 0) return 'PT';
     return parts.map(function (part) { return part[0] ? part[0].toUpperCase() : ''; }).join('') || 'PT';
+}
+
+function parseReportInsights(report) {
+    if (!report || typeof report !== 'object') return null;
+
+    var parsedRaw = report.parsedJson || report.parsed_json || null;
+    if (parsedRaw && typeof parsedRaw === 'string') {
+        try {
+            var parsedJson = JSON.parse(parsedRaw);
+            if (parsedJson && typeof parsedJson === 'object') return parsedJson;
+        } catch (_) {
+        }
+    }
+
+    if (parsedRaw && typeof parsedRaw === 'object') {
+        return parsedRaw;
+    }
+
+    return null;
+}
+
+function summarizeExtracted(result) {
+    if (!result || typeof result !== 'object') return '';
+    var extracted = result.extracted || {};
+    var summary = [];
+    if (result.review && result.review.label) summary.push('Review: ' + result.review.label);
+    if (result.summary) summary.push(String(result.summary));
+    if (extracted.hba1c !== null && extracted.hba1c !== undefined && extracted.hba1c !== '') {
+        summary.push('HbA1c ' + Number(extracted.hba1c).toFixed(1) + '%');
+    }
+    if (Array.isArray(extracted.glucoseReadingsMgDl) && extracted.glucoseReadingsMgDl.length) {
+        summary.push(extracted.glucoseReadingsMgDl.length + ' glucose value(s)');
+    }
+    if (Array.isArray(extracted.bloodPressure) && extracted.bloodPressure.length) {
+        summary.push(extracted.bloodPressure.length + ' BP value(s)');
+    }
+    if (extracted.weightKg !== null && extracted.weightKg !== undefined && extracted.weightKg !== '') {
+        summary.push('Weight ' + Number(extracted.weightKg).toFixed(1) + ' kg');
+    }
+    return summary.join(', ');
 }
 
 function setDoctorHeader(user) {
@@ -464,9 +522,12 @@ function renderPatientReports(reports) {
     }
 
     box.innerHTML = reports.slice(0, 12).map(function (r) {
+        var insights = parseReportInsights(r);
+        var summary = summarizeExtracted(insights);
         return '<div style="padding:6px 0; border-bottom:1px solid var(--gray-100);">' +
             '<strong>' + escapeHtml(r.reportName || 'Report') + '</strong> (' + escapeHtml(r.type || '--') + ') - ' + formatDate(r.date) +
             ' <span style="color:var(--gray-500);">[' + escapeHtml(r.status || 'Pending') + ']</span>' +
+            (summary ? '<div style="font-size:12px; color:var(--gray-500); margin-top:4px;">' + escapeHtml(summary) + '</div>' : '') +
             '</div>';
     }).join('');
 }
@@ -689,8 +750,7 @@ async function submitDoctorCreateReport() {
         reportName: (document.getElementById('doctor-report-name').value || '').trim(),
         type: (document.getElementById('doctor-report-type').value || '').trim(),
         date: (document.getElementById('doctor-report-date').value || '').trim(),
-        status: (document.getElementById('doctor-report-status').value || 'Pending').trim(),
-        notes: (document.getElementById('doctor-report-notes').value || '').trim()
+        status: (document.getElementById('doctor-report-status').value || 'Pending').trim()
     };
 
     if (!payload.patient || !payload.reportName || !payload.type || !payload.date) {
@@ -975,7 +1035,8 @@ function renderDoctorChatThreads() {
     if (searchVal) {
         threads = threads.filter(function(t) {
             return (t.patientName || '').toLowerCase().indexOf(searchVal) >= 0 ||
-                   (t.subject || '').toLowerCase().indexOf(searchVal) >= 0;
+                   (t.subject || '').toLowerCase().indexOf(searchVal) >= 0 ||
+                   (t.lastMessageBody || '').toLowerCase().indexOf(searchVal) >= 0;
         });
     }
 
@@ -987,12 +1048,16 @@ function renderDoctorChatThreads() {
     container.innerHTML = threads.map(function(t) {
         var tid = Number(t.id || t._id);
         var isActive = tid === doctorState.chatSelectedThreadId;
+        var snippet = t.lastMessageBody || t.subject || 'Tap to start chatting';
+        if (t.lastMessageBody && t.lastMessageSenderRole === 'doctor') {
+            snippet = 'You: ' + snippet;
+        }
         return [
             '<div class="dcp-thread-item' + (isActive ? ' active' : '') + '" onclick="openDoctorThread(' + tid + ')" data-thread-id="' + tid + '">',
             '  <div class="dcp-thread-avatar">' + escapeHtml(initials(t.patientName)) + '</div>',
             '  <div class="dcp-thread-info">',
             '    <div class="dcp-thread-name">' + escapeHtml(t.patientName || 'Patient') + '</div>',
-            '    <div class="dcp-thread-snippet">' + escapeHtml(t.subject || '') + '</div>',
+            '    <div class="dcp-thread-snippet">' + escapeHtml(snippet) + '</div>',
             '  </div>',
             '  <div style="text-align:right; flex-shrink:0;">',
             '    <div class="dcp-thread-time">' + escapeHtml(dcpShortTime(t.last_message_at)) + '</div>',

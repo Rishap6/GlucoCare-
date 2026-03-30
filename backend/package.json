@@ -6,7 +6,8 @@
   "scripts": {
     "start": "node server.js",
     "dev": "nodemon --ignore glucocare.db --ignore glucocare.db-wal --ignore glucocare.db-shm server.js",
-    "train:ai": "node ../Ai/train.js"
+    "train:ai": "node ../Ai/train.js",
+    "train:csv": "node ../Ai/train-csv.js"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
@@ -18,8 +19,11 @@
     "helmet": "^8.1.0",
     "hpp": "^0.2.3",
     "jsonwebtoken": "^9.0.2",
+    "mammoth": "^1.9.0",
+    "pdf-parse": "^1.1.1",
     "socket.io": "^4.8.3",
-    "sql.js": "^1.11.0"
+    "sql.js": "^1.11.0",
+    "tesseract.js": "^6.0.1"
   },
   "devDependencies": {
     "nodemon": "^3.1.9"

@@ -10,6 +10,8 @@ const Alert = require('../models/Alert');
 const User = require('../models/User');
 const { getDb } = require('../database');
 const { answerQuestion } = require('../../Ai/ai-engine');
+const { extractProjectDataFromDocument } = require('../../Ai/document-intelligence');
+const { parseDocumentToText } = require('../../Ai/document-reader');
 const { askLlmFallback } = require('../services/llm');
 
 const router = express.Router();
@@ -379,7 +381,7 @@ router.post('/reports', async (req, res) => {
         const reportName = sanitize(req.body.reportName);
         const type = sanitize(req.body.type);
         const date = sanitize(req.body.date);
-        const { doctor, status, notes } = req.body;
+        const { doctor, status } = req.body;
 
         if (!reportName || !type || !date) {
             return res.status(400).json({ error: 'Report name, type, and date are required.' });
@@ -400,7 +402,6 @@ router.post('/reports', async (req, res) => {
             date,
             doctor,
             status: status || 'Pending',
-            notes: sanitize(notes || ''),
         });
 
         res.status(201).json(report);
@@ -880,7 +881,34 @@ router.get('/biometrics/trends', async (req, res) => {
 
 router.get('/messages/threads', async (req, res) => {
     try {
-        const rows = db.prepare('SELECT * FROM message_threads WHERE patient_id = ? ORDER BY last_message_at DESC').all(req.user._id);
+        const rows = db.prepare(`
+            SELECT
+                mt.*,
+                (
+                    SELECT m.body
+                    FROM messages m
+                    WHERE m.thread_id = mt.id
+                    ORDER BY m.id DESC
+                    LIMIT 1
+                ) AS lastMessageBody,
+                (
+                    SELECT m.sender_role
+                    FROM messages m
+                    WHERE m.thread_id = mt.id
+                    ORDER BY m.id DESC
+                    LIMIT 1
+                ) AS lastMessageSenderRole,
+                (
+                    SELECT COUNT(*)
+                    FROM messages m
+                    WHERE m.thread_id = mt.id
+                      AND m.sender_role = 'doctor'
+                      AND m.read_at IS NULL
+                ) AS unreadCount
+            FROM message_threads mt
+            WHERE mt.patient_id = ?
+            ORDER BY mt.last_message_at DESC
+        `).all(req.user._id);
         res.json(rows);
     } catch (err) {
         res.status(500).json({ error: 'Failed to fetch threads.' });
@@ -1017,14 +1045,15 @@ router.post('/appointments/:id/checklist', async (req, res) => {
 
 router.post('/reports/upload', async (req, res) => {
     try {
-        const { reportName, type, date, doctor, status, notes, fileUrl, fileType, parsed } = req.body;
+        const { reportName, type, date, doctor, status, fileUrl, fileType, parsed } = req.body;
         if (!reportName || !type || !date) {
             return res.status(400).json({ error: 'Report name, type, and date are required.' });
         }
 
-        const mergedNotes = [notes, fileUrl ? `fileUrl:${fileUrl}` : null, fileType ? `fileType:${fileType}` : null]
-            .filter(Boolean)
-            .join(' | ');
+        const parsedJson = parsed && typeof parsed === 'object' ? JSON.stringify(parsed) : null;
+        const reviewJson = parsed && parsed.review && typeof parsed.review === 'object'
+            ? JSON.stringify(parsed.review)
+            : null;
 
         const report = Report.create({
             patient: req.user._id,
@@ -1033,7 +1062,10 @@ router.post('/reports/upload', async (req, res) => {
             date,
             doctor,
             status,
-            notes: parsed ? `${mergedNotes} | parsed:${JSON.stringify(parsed)}` : mergedNotes,
+            fileUrl: fileUrl ? sanitize(String(fileUrl)) : null,
+            fileType: fileType ? sanitize(String(fileType)) : null,
+            parsedJson,
+            reviewJson,
         });
         res.status(201).json(report);
     } catch (err) {
@@ -1150,6 +1182,49 @@ router.post('/ai/ask', async (req, res) => {
         res.json(withDebug(localResponse, 'local-ai'));
     } catch (err) {
         res.status(500).json({ error: 'Failed to process AI question.' });
+    }
+});
+
+router.post('/ai/extract-document', async (req, res) => {
+    try {
+        const fileName = String(req.body.fileName || '').trim() || null;
+        const fileType = String(req.body.fileType || '').trim() || null;
+        const text = req.body.text;
+        const base64Content = req.body.base64Content;
+
+        if (!text && !base64Content) {
+            return res.status(400).json({
+                error: 'Provide either text or base64Content from uploaded document.',
+            });
+        }
+
+        const parsed = await parseDocumentToText({
+            fileName,
+            fileType,
+            text,
+            base64Content,
+        });
+
+        if (!parsed.text) {
+            return res.status(422).json({
+                error: 'Could not read text from the provided document.',
+                parser: parsed.parser,
+                inferredType: parsed.inferredType,
+            });
+        }
+
+        const extracted = extractProjectDataFromDocument(parsed.text, {
+            fileName,
+            fileType: parsed.inferredType,
+        });
+
+        res.json({
+            parser: parsed.parser,
+            inferredType: parsed.inferredType,
+            result: extracted,
+        });
+    } catch (err) {
+        res.status(500).json({ error: 'Failed to extract data from document.' });
     }
 });
 

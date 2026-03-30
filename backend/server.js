@@ -15,6 +15,7 @@ const { requireJsonContentType } = require('./middleware/validate');
 const authRoutes = require('./routes/auth');
 const patientRoutes = require('./routes/patient');
 const doctorRoutes = require('./routes/doctor');
+const predictRoutes = require('./routes/predict');
 
 const ALLOWED_ORIGINS = process.env.ALLOWED_ORIGINS
     ? process.env.ALLOWED_ORIGINS.split(',').map(s => s.trim())
@@ -64,8 +65,8 @@ app.use(cors({
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],
 }));
-app.use(express.json({ limit: '100kb' }));
-app.use(express.urlencoded({ extended: false, limit: '100kb' }));
+app.use(express.json({ limit: '12mb' }));
+app.use(express.urlencoded({ extended: false, limit: '12mb' }));
 app.use(requireJsonContentType);
 // Disable X-Powered-By (belt & suspenders — helmet already does this)
 app.disable('x-powered-by');
@@ -77,6 +78,7 @@ app.use(express.static(path.join(__dirname, '..', 'public')));
 app.use('/api/auth', authLimiter, authRoutes);
 app.use('/api/patient', apiLimiter, patientRoutes);
 app.use('/api/doctor', apiLimiter, doctorRoutes);
+app.use('/api/predict', apiLimiter, predictRoutes);
 
 // Serve frontend pages
 app.get('/', (req, res) => {

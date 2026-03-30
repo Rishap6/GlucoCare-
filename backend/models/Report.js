@@ -7,6 +7,22 @@ const db = {
 function transform(row) {
     if (!row) return null;
     const obj = { ...row, _id: row.id };
+    if (row.file_url !== undefined) {
+        obj.fileUrl = row.file_url;
+        delete obj.file_url;
+    }
+    if (row.file_type !== undefined) {
+        obj.fileType = row.file_type;
+        delete obj.file_type;
+    }
+    if (row.parsed_json !== undefined) {
+        obj.parsedJson = row.parsed_json;
+        delete obj.parsed_json;
+    }
+    if (row.review_json !== undefined) {
+        obj.reviewJson = row.review_json;
+        delete obj.review_json;
+    }
     if (row.doctorFullName !== undefined) {
         obj.doctor = row.doctor ? { _id: row.doctor, fullName: row.doctorFullName, specialization: row.doctorSpecialization } : null;
         delete obj.doctorFullName;
@@ -41,18 +57,13 @@ const Report = {
             WHERE r.patient = ?
             ORDER BY r.date DESC
         `).all(patientId);
-        return rows.map(row => {
-            const obj = { ...row, _id: row.id };
-            obj.doctor = row.doctor ? { _id: row.doctor, fullName: row.doctorFullName } : null;
-            delete obj.doctorFullName;
-            return obj;
-        });
+        return rows.map(transform);
     },
 
     create(data) {
         const result = db.prepare(`
-            INSERT INTO reports (patient, reportName, type, date, doctor, status, notes)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO reports (patient, reportName, type, date, doctor, status, file_url, file_type, parsed_json, review_json)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `).run(
             data.patient,
             data.reportName,
@@ -60,9 +71,12 @@ const Report = {
             data.date,
             data.doctor || null,
             data.status || 'Pending',
-            data.notes || null,
+            data.fileUrl || null,
+            data.fileType || null,
+            data.parsedJson || null,
+            data.reviewJson || null,
         );
-        return { ...db.prepare('SELECT * FROM reports WHERE id = ?').get(result.lastInsertRowid), _id: result.lastInsertRowid };
+        return transform(db.prepare('SELECT * FROM reports WHERE id = ?').get(result.lastInsertRowid));
     },
 };
 

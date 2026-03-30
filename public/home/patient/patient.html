@@ -33,6 +33,17 @@
                 </div>
             </div>
 
+            <div class="sidebar-footer">
+                <a href="#" class="sidebar-profile" id="patient-logout-link">
+                    <div class="profile-avatar">PT</div>
+                    <div class="profile-info">
+                        <div class="profile-name">Logout</div>
+                        <div class="profile-role">Sign out of your account</div>
+                    </div>
+                    <svg class="logout-icon" viewBox="0 0 24 24"><path d="M17 7l-1.41 1.41L18.17 11H8v2h10.17l-2.58 2.58L17 17l5-5-5-5zM4 5h8V3H4c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h8v-2H4V5z"/></svg>
+                </a>
+            </div>
+
             <nav class="sidebar-nav">
                 <div class="nav-section">
                     <div class="nav-section-title">Main</div>
@@ -937,38 +948,91 @@
                 </div>
             </section>
 
-            <!-- Chat Section -->
+            <!-- Chat Section — Premium AI Health Assistant -->
             <section id="ai-assistant" class="dashboard-section">
-                <div class="section-header">
-                    <h2 class="section-title">
-                        <i class="fas fa-comments"></i>
-                        Chat
-                    </h2>
-                    <button class="ai-popup-close" type="button" onclick="closeAiAssistantPanel()" aria-label="Close Chat">&times;</button>
-                </div>
-
-                <div class="card chat-card">
-                    <div class="chat-mode-bar">
-                        <button class="btn btn-primary btn-sm" onclick="document.getElementById('ai-question').focus()">AI Chat</button>
-                        <button class="btn btn-outline btn-sm" onclick="updateNav('doctor-chat'); closeAiAssistantPanel();">Doctor Chat</button>
-                    </div>
-
-                    <h3 class="card-title" style="margin-bottom: 12px;">Conversation</h3>
-                    <div id="ai-conversation" class="message-log">
-                        <div class="empty-state">No AI conversation yet. Ask your first question.</div>
-                    </div>
-
-                    <div class="chat-input-wrap">
-                        <label class="form-label">Message</label>
-                        <textarea id="ai-question" class="form-textarea ai-chat-input" placeholder="Ask anything about diabetes care, symptoms, food, medicine, or safety."></textarea>
-                        <p class="muted-note" style="margin: 0 0 10px 0;">Press Enter to send. Use Shift+Enter for a new line.</p>
-                        <div class="chat-actions">
-                            <button id="ai-send-btn" class="btn btn-primary" onclick="askAiAssistant()">
-                                <i class="fas fa-paper-plane"></i>
-                                Send to AI
-                            </button>
+                <!-- Glassmorphism Header -->
+                <div class="ai-chat-header-bar">
+                    <div class="ai-chat-header-left">
+                        <div class="ai-avatar-glow">
+                            <svg class="ai-brain-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M12 2a7 7 0 0 0-7 7c0 2.38 1.19 4.47 3 5.74V17a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2v-2.26c1.81-1.27 3-3.36 3-5.74a7 7 0 0 0-7-7Z"/>
+                                <path d="M10 17v2a2 2 0 0 0 4 0v-2"/>
+                                <path d="M8 13h8"/>
+                                <path d="M9 9h.01"/>
+                                <path d="M15 9h.01"/>
+                            </svg>
+                        </div>
+                        <div class="ai-chat-header-text">
+                            <h2 class="ai-chat-title">AI Health Assistant</h2>
+                            <p class="ai-chat-subtitle">Powered by GlucoCare+ AI</p>
                         </div>
                     </div>
+                    <div class="ai-chat-header-right">
+                        <button class="ai-mode-switch active" onclick="document.getElementById('ai-question').focus()" title="AI Chat">
+                            <i class="fas fa-robot"></i>
+                            <span>AI Chat</span>
+                        </button>
+                        <button class="ai-mode-switch" onclick="updateNav('doctor-chat'); closeAiAssistantPanel();" title="Doctor Chat">
+                            <i class="fas fa-user-md"></i>
+                            <span>Doctor</span>
+                        </button>
+                        <button class="ai-popup-close" type="button" onclick="closeAiAssistantPanel()" aria-label="Close Chat">&times;</button>
+                    </div>
+                </div>
+
+                <!-- Chat Body -->
+                <div class="ai-chat-body">
+                    <!-- Messages Area -->
+                    <div id="ai-conversation" class="ai-message-area">
+                        <div class="ai-welcome-state">
+                            <div class="ai-welcome-icon">
+                                <svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="1.2">
+                                    <circle cx="24" cy="24" r="20" stroke-opacity="0.15"/>
+                                    <path d="M24 8a12 12 0 0 0-12 12c0 4.1 2 7.7 5.2 9.9V34a3 3 0 0 0 3 3h7.6a3 3 0 0 0 3-3v-4.1C34 27.7 36 24.1 36 20a12 12 0 0 0-12-12Z" stroke-opacity="0.5"/>
+                                    <path d="M18 31v3a3 3 0 0 0 6 0 3 3 0 0 0 6 0v-3" stroke-opacity="0.3"/>
+                                    <circle cx="19" cy="18" r="1.5" fill="currentColor" fill-opacity="0.5"/>
+                                    <circle cx="29" cy="18" r="1.5" fill="currentColor" fill-opacity="0.5"/>
+                                    <path d="M16 24h16" stroke-opacity="0.3"/>
+                                </svg>
+                            </div>
+                            <h3>How can I help you today?</h3>
+                            <p>Ask me anything about diabetes care, symptoms, nutrition, medications, or safety.</p>
+                        </div>
+                    </div>
+
+                    <!-- Quick Suggestion Chips -->
+                    <div class="ai-suggestions-row" id="ai-suggestions-row">
+                        <button class="ai-suggestion-chip" onclick="askAiPreset('What foods help lower blood sugar?')">
+                            <i class="fas fa-apple-alt"></i> Foods that lower blood sugar
+                        </button>
+                        <button class="ai-suggestion-chip" onclick="askAiPreset('Explain what HbA1c means and how to improve it')">
+                            <i class="fas fa-vial"></i> Explain my HbA1c
+                        </button>
+                        <button class="ai-suggestion-chip" onclick="askAiPreset('What are the best exercises for managing diabetes?')">
+                            <i class="fas fa-running"></i> Exercise tips
+                        </button>
+                        <button class="ai-suggestion-chip" onclick="askAiPreset('What are symptoms of low blood sugar?')">
+                            <i class="fas fa-exclamation-triangle"></i> Low sugar symptoms
+                        </button>
+                    </div>
+
+                    <!-- File Preview Area (hidden by default) -->
+                    <div id="ai-file-preview" class="ai-file-preview" style="display: none;">
+                        <!-- File chips will be inserted here dynamically -->
+                    </div>
+
+                    <!-- Frosted Glass Input Bar -->
+                    <div class="ai-input-bar">
+                        <input type="file" id="ai-file-input" accept=".pdf,.png,.jpg,.jpeg,.webp,.bmp,.tif,.tiff,image/*,application/pdf" multiple style="display: none;" onchange="handleAiFileSelect(event)">
+                        <button class="ai-attach-btn" onclick="document.getElementById('ai-file-input').click()" title="Upload image or PDF" aria-label="Upload image or PDF">
+                            <i class="fas fa-paperclip"></i>
+                        </button>
+                        <textarea id="ai-question" class="ai-input-field" placeholder="Ask about your health..." rows="1"></textarea>
+                        <button id="ai-send-btn" class="ai-send-btn" onclick="askAiAssistant()" title="Send message" aria-label="Send">
+                            <i class="fas fa-paper-plane"></i>
+                        </button>
+                    </div>
+                    <p class="ai-input-hint">Press Enter to send · Shift+Enter for new line · Attach images or PDFs for AI analysis</p>
                 </div>
             </section>
 
@@ -1205,6 +1269,16 @@
                     <input type="text" class="form-input" id="report-name" placeholder="e.g., Blood Test Results" required>
                 </div>
                 <div class="form-group">
+                    <label class="form-label">Upload Report File</label>
+                    <input
+                        type="file"
+                        class="form-input"
+                        id="report-file"
+                        accept=".pdf,.png,.jpg,.jpeg,.webp,.bmp,.tif,.tiff,.txt,.docx,application/pdf,image/*,text/plain,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                    >
+                    <div class="form-helper">Supported: PDF, PNG, JPG, JPEG, WEBP, BMP, TIFF, TXT, DOCX.</div>
+                </div>
+                <div class="form-group">
                     <label class="form-label">Report Type</label>
                     <select class="form-select" id="report-type">
                         <option value="lab">Lab Results</option>
@@ -1216,10 +1290,6 @@
                 <div class="form-group">
                     <label class="form-label">Report Date</label>
                     <input type="date" class="form-input" id="report-date">
-                </div>
-                <div class="form-group">
-                    <label class="form-label">Notes</label>
-                    <textarea class="form-textarea" id="report-notes" placeholder="Additional notes about the report..."></textarea>
                 </div>
                 <div class="modal-actions">
                     <button type="button" class="btn btn-outline" onclick="closeModal('report-modal')">Cancel</button>

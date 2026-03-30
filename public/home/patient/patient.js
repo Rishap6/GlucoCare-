@@ -1,3 +1,21 @@
+// Logout logic
+function logoutPatient() {
+    // Remove any session tokens (example: localStorage/sessionStorage)
+    localStorage.removeItem('token');
+    sessionStorage.removeItem('token');
+    // Redirect to login page
+    window.location.href = '/auth/login/login.html';
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    var logoutBtn = document.getElementById('patient-logout-link');
+    if (logoutBtn) {
+        logoutBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            logoutPatient();
+        });
+    }
+});
 var state = {
     reports: [],
     records: [],
@@ -15,11 +33,118 @@ var state = {
     shares: [],
     aiConversation: [],
     aiRequestPending: false,
+    aiAttachedFiles: [],
     charts: {},
 };
 
 var aiTypingTimer = null;
 var chatSocket = null;
+
+// ── AI File Upload Handling ──────────────────────────────────────────
+
+function handleAiFileSelect(event) {
+    var files = event.target.files;
+    if (!files || files.length === 0) return;
+
+    var maxFiles = 3;
+    var maxSizeMB = 10;
+
+    for (var i = 0; i < files.length; i++) {
+        if (state.aiAttachedFiles.length >= maxFiles) {
+            alert('Maximum ' + maxFiles + ' files can be attached.');
+            break;
+        }
+        var file = files[i];
+        if (file.size > maxSizeMB * 1024 * 1024) {
+            alert('File "' + file.name + '" is too large. Maximum size is ' + maxSizeMB + 'MB.');
+            continue;
+        }
+        var isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
+        var isImage = file.type.startsWith('image/');
+        if (!isPdf && !isImage) {
+            alert('Only images and PDF files are supported.');
+            continue;
+        }
+
+        var entry = {
+            id: Date.now() + '_' + Math.random().toString(36).slice(2, 8),
+            file: file,
+            name: file.name,
+            size: file.size,
+            type: file.type,
+            isImage: isImage,
+            isPdf: isPdf,
+            thumbUrl: null,
+        };
+
+        if (isImage) {
+            entry.thumbUrl = URL.createObjectURL(file);
+        }
+
+        state.aiAttachedFiles.push(entry);
+    }
+
+    event.target.value = '';
+    renderAiFilePreview();
+}
+
+function removeAiFile(fileId) {
+    state.aiAttachedFiles = state.aiAttachedFiles.filter(function(f) {
+        if (f.id === fileId && f.thumbUrl) {
+            URL.revokeObjectURL(f.thumbUrl);
+        }
+        return f.id !== fileId;
+    });
+    renderAiFilePreview();
+}
+
+function renderAiFilePreview() {
+    var container = document.getElementById('ai-file-preview');
+    var attachBtn = document.querySelector('.ai-attach-btn');
+    if (!container) return;
+
+    if (state.aiAttachedFiles.length === 0) {
+        container.style.display = 'none';
+        container.innerHTML = '';
+        if (attachBtn) attachBtn.classList.remove('has-files');
+        return;
+    }
+
+    container.style.display = 'flex';
+    if (attachBtn) attachBtn.classList.add('has-files');
+
+    container.innerHTML = state.aiAttachedFiles.map(function(f) {
+        var icon = f.isPdf ? 'fas fa-file-pdf' : 'fas fa-image';
+        var sizeStr = f.size < 1024 ? f.size + ' B' : (f.size < 1048576 ? Math.round(f.size / 1024) + ' KB' : (f.size / 1048576).toFixed(1) + ' MB');
+        var thumb = f.thumbUrl ? '<img class="ai-file-chip-thumb" src="' + f.thumbUrl + '" alt="">' : '<i class="ai-file-chip-icon ' + icon + '"></i>';
+        return [
+            '<div class="ai-file-chip">',
+            thumb,
+            '<span class="ai-file-chip-name">' + escapeHtml(f.name) + '</span>',
+            '<span class="ai-file-chip-size">' + sizeStr + '</span>',
+            '<button class="ai-file-chip-remove" onclick="removeAiFile(\'' + f.id + '\')" title="Remove">&times;</button>',
+            '</div>',
+        ].join('');
+    }).join('');
+}
+
+function fileToBase64(file) {
+    return new Promise(function(resolve, reject) {
+        var reader = new FileReader();
+        reader.onload = function() {
+            var base64 = reader.result.split(',')[1];
+            resolve(base64);
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+    });
+}
+
+function formatFileSize(bytes) {
+    if (bytes < 1024) return bytes + ' B';
+    if (bytes < 1048576) return Math.round(bytes / 1024) + ' KB';
+    return (bytes / 1048576).toFixed(1) + ' MB';
+}
 
 var reportTypeMap = {
     lab: 'Lab Report',
@@ -54,6 +179,62 @@ function formatDate(value) {
 function formatDateInput(value) {
     if (!value) return '';
     return String(value).slice(0, 10);
+}
+
+function toNumberOrNull(value) {
+    var num = Number(value);
+    return Number.isFinite(num) ? num : null;
+}
+
+function inRange(value, min, max) {
+    return Number.isFinite(value) && value >= min && value <= max;
+}
+
+function fileToBase64DataUrl(file) {
+    return new Promise(function(resolve, reject) {
+        var reader = new FileReader();
+        reader.onload = function() { resolve(reader.result); };
+        reader.onerror = function() { reject(new Error('Failed to read file.')); };
+        reader.readAsDataURL(file);
+    });
+}
+
+function parseReportInsights(report) {
+    if (!report || typeof report !== 'object') return null;
+
+    var parsedRaw = report.parsedJson || report.parsed_json || null;
+    if (parsedRaw && typeof parsedRaw === 'string') {
+        try {
+            var parsedJson = JSON.parse(parsedRaw);
+            if (parsedJson && typeof parsedJson === 'object') return parsedJson;
+        } catch (_) {
+        }
+    }
+
+    if (parsedRaw && typeof parsedRaw === 'object') {
+        return parsedRaw;
+    }
+
+    return null;
+}
+
+function summarizeExtracted(result) {
+    if (!result || typeof result !== 'object') return '';
+    var extracted = result.extracted || {};
+    var summary = [];
+    if (result.review && result.review.label) summary.push('Review: ' + result.review.label);
+    if (result.summary) summary.push(String(result.summary));
+    if (toNumberOrNull(extracted.hba1c) !== null) summary.push('HbA1c ' + Number(extracted.hba1c).toFixed(1) + '%');
+    if (Array.isArray(extracted.glucoseReadingsMgDl) && extracted.glucoseReadingsMgDl.length) {
+        summary.push(extracted.glucoseReadingsMgDl.length + ' glucose value(s)');
+    }
+    if (Array.isArray(extracted.bloodPressure) && extracted.bloodPressure.length) {
+        summary.push(extracted.bloodPressure.length + ' BP value(s)');
+    }
+    if (toNumberOrNull(extracted.weightKg) !== null) {
+        summary.push('Weight ' + Number(extracted.weightKg).toFixed(1) + ' kg');
+    }
+    return summary.join(', ');
 }
 
 function formatNameInitials(fullName) {
@@ -102,6 +283,9 @@ function updateNav(section) {
     if (activeSection) {
         activeSection.classList.add('active');
     }
+
+    var isChatSection = section === 'ai-assistant' || section === 'doctor-chat';
+    document.body.classList.toggle('chat-section-active', isChatSection);
 
     var titles = {
         overview: 'Dashboard Overview',
@@ -249,10 +433,15 @@ function renderReports() {
     }
 
     tbody.innerHTML = state.reports.map(function(report) {
-        var statusClass = String(report.status || '').toLowerCase().indexOf('complete') >= 0 ? 'normal' : 'warning';
+        var statusLower = String(report.status || '').toLowerCase();
+        var statusClass = (statusLower.indexOf('stable') >= 0 || statusLower.indexOf('reviewed') >= 0 || statusLower.indexOf('not bad') >= 0 || statusLower.indexOf('complete') >= 0)
+            ? 'normal'
+            : 'warning';
+        var insights = parseReportInsights(report);
+        var summary = summarizeExtracted(insights);
         return [
             '<tr data-report-id="' + report._id + '">',
-            '<td>' + escapeHtml(report.reportName) + '</td>',
+            '<td><div class="report-name-cell">' + escapeHtml(report.reportName) + '</div>' + (summary ? '<div class="report-insight">' + escapeHtml(summary) + '</div>' : '') + '</td>',
             '<td>' + escapeHtml(report.type) + '</td>',
             '<td>' + formatDate(report.date) + '</td>',
             '<td>' + escapeHtml(extractDoctorName(report.doctor)) + '</td>',
@@ -698,6 +887,9 @@ function renderMessageThreads() {
         var thread = state.threads.find(function(t) { return Number(t.doctor_id) === docId; });
         var lastMsg = thread ? shortTime(thread.last_message_at) : '';
         var snippet = thread && thread.lastMessageBody ? thread.lastMessageBody : (thread ? (thread.subject || '') : 'Tap to start chatting');
+        if (thread && thread.lastMessageBody && thread.lastMessageSenderRole === 'patient') {
+            snippet = 'You: ' + snippet;
+        }
         var unread = thread && thread.unreadCount ? thread.unreadCount : 0;
 
         return [
@@ -927,21 +1119,61 @@ function renderAiConversation() {
     var container = document.getElementById('ai-conversation');
     if (!container) return;
 
+    // Hide suggestion chips once conversation starts
+    var suggestionsRow = document.getElementById('ai-suggestions-row');
+    if (suggestionsRow) {
+        suggestionsRow.style.display = state.aiConversation.length > 0 ? 'none' : 'flex';
+    }
+
     if (state.aiConversation.length === 0) {
-        container.innerHTML = '<div class="empty-state">No AI conversation yet. Ask your first question.</div>';
+        container.innerHTML = [
+            '<div class="ai-welcome-state">',
+            '<div class="ai-welcome-icon">',
+            '<svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="1.2">',
+            '<circle cx="24" cy="24" r="20" stroke-opacity="0.15"/>',
+            '<path d="M24 8a12 12 0 0 0-12 12c0 4.1 2 7.7 5.2 9.9V34a3 3 0 0 0 3 3h7.6a3 3 0 0 0 3-3v-4.1C34 27.7 36 24.1 36 20a12 12 0 0 0-12-12Z" stroke-opacity="0.5"/>',
+            '<circle cx="19" cy="18" r="1.5" fill="currentColor" fill-opacity="0.5"/>',
+            '<circle cx="29" cy="18" r="1.5" fill="currentColor" fill-opacity="0.5"/>',
+            '<path d="M16 24h16" stroke-opacity="0.3"/>',
+            '</svg>',
+            '</div>',
+            '<h3>How can I help you today?</h3>',
+            '<p>Ask me anything about diabetes care, symptoms, nutrition, medications, or safety.</p>',
+            '</div>',
+        ].join('');
         return;
     }
 
-    container.innerHTML = state.aiConversation.map(function(item) {
+    var html = state.aiConversation.map(function(item, index) {
         var roleClass = item.role === 'assistant' ? 'doctor' : 'patient';
+        // Stability fix: Only animate if it's the last message AND NOT currently typing.
+        // Typing messages are updated via targeted DOM manipulation to avoid the dreaded innerHTML "flicker".
+        var isLast = (index === state.aiConversation.length - 1);
+        var noAnimate = (!isLast || item.typing) ? ' no-animate' : '';
+
         if (item.loading) {
             var loadingText = escapeHtml(item.loadingText || 'Thinking...');
             return [
-                '<div class="message-bubble ' + roleClass + ' is-loading">',
+                '<div class="message-bubble ' + roleClass + ' is-loading' + noAnimate + '">',
                 '<div class="ai-loading-dots" aria-hidden="true"><span></span><span></span><span></span></div>',
                 '<div class="message-bubble-meta">' + loadingText + '</div>',
                 '</div>',
             ].join('');
+        }
+
+        // File attachments in user message
+        var attachmentsHtml = '';
+        if (item.attachments && item.attachments.length > 0) {
+            attachmentsHtml = item.attachments.map(function(att) {
+                var h = '';
+                if (att.isImage && att.thumbUrl) {
+                    h += '<img class="ai-msg-image-preview" src="' + att.thumbUrl + '" alt="' + escapeHtml(att.name) + '">';
+                } else {
+                    var icon = att.isPdf ? 'fas fa-file-pdf' : 'fas fa-file';
+                    h += '<div class="ai-msg-attachment"><i class="' + icon + '"></i><span class="ai-msg-attachment-name">' + escapeHtml(att.name) + '</span><span class="ai-msg-attachment-size">' + formatFileSize(att.size) + '</span></div>';
+                }
+                return h;
+            }).join('');
         }
 
         var safeText = escapeHtml(item.text || '');
@@ -961,8 +1193,11 @@ function renderAiConversation() {
                 return '<button class="btn btn-outline btn-sm ai-rephrase-btn" onclick="askAiSuggestion(\'' + encoded + '\')">' + escapeHtml(suggestion) + '</button>';
             }).join('') + '</div>';
         }
-        return '<div class="message-bubble ' + roleClass + typingClass + '">' + safeText + meta + debugMeta + suggestions + '</div>';
+        // Use a span container for the AI text to allow efficient direct updates.
+        return '<div class="message-bubble ' + roleClass + typingClass + noAnimate + '">' + attachmentsHtml + '<span class="bubble-txt">' + safeText + '</span>' + meta + debugMeta + suggestions + '</div>';
     }).join('');
+
+    container.innerHTML = html;
     container.scrollTop = container.scrollHeight;
 }
 
@@ -983,73 +1218,16 @@ function stopAiTypingAnimation() {
 
 function animateAssistantMessage(messageItem, finalText, done) {
     stopAiTypingAnimation();
-
-    var words = String(finalText || '').split(/\s+/).filter(function(word) { return Boolean(word); });
-    var idx = 0;
-
-    messageItem.typing = true;
-    messageItem.text = '';
+    messageItem.typing = false;
+    messageItem.text = finalText;
     renderAiConversation();
-
-    if (words.length === 0) {
-        messageItem.typing = false;
-        if (typeof done === 'function') done();
-        return;
+    
+    var container = document.getElementById('ai-conversation');
+    if (container) {
+        container.scrollTop = container.scrollHeight;
     }
-
-    // Human-like cadence: short messages feel quick, longer ones stay readable.
-    var baseDelay;
-    if (words.length <= 12) {
-        baseDelay = 44;
-    } else if (words.length <= 36) {
-        baseDelay = 52;
-    } else if (words.length <= 90) {
-        baseDelay = 58;
-    } else {
-        baseDelay = 62;
-    }
-
-    var maxTypingDuration = 6800;
-    if ((words.length * baseDelay) > maxTypingDuration) {
-        baseDelay = Math.max(28, Math.round(maxTypingDuration / words.length));
-    }
-
-    function getStepDelay(word) {
-        var token = String(word || '');
-        var delay = baseDelay;
-
-        // Small pause after punctuation for a more natural rhythm.
-        if (/[.!?]$/.test(token)) {
-            delay += 140;
-        } else if (/[,;:]$/.test(token)) {
-            delay += 70;
-        }
-
-        if (token.length >= 10) {
-            delay += 18;
-        }
-
-        // Light jitter avoids machine-perfect cadence.
-        delay += Math.floor(Math.random() * 18) - 7;
-        return Math.max(24, delay);
-    }
-
-    function typeStep() {
-        if (idx >= words.length) {
-            messageItem.typing = false;
-            renderAiConversation();
-            if (typeof done === 'function') done();
-            return;
-        }
-
-        messageItem.text = messageItem.text ? (messageItem.text + ' ' + words[idx]) : words[idx];
-        var delay = getStepDelay(words[idx]);
-        idx += 1;
-        renderAiConversation();
-        aiTypingTimer = setTimeout(typeStep, delay);
-    }
-
-    aiTypingTimer = setTimeout(typeStep, 180);
+    
+    if (typeof done === 'function') done();
 }
 
 async function askAiAssistant() {
@@ -1058,19 +1236,43 @@ async function askAiAssistant() {
     if (state.aiRequestPending) return;
 
     var question = String(input.value || '').trim();
-    if (!question) {
-        alert('Please enter a question for AI chat.');
+    var hasFiles = state.aiAttachedFiles.length > 0;
+
+    if (!question && !hasFiles) {
+        alert('Please enter a question or attach a file.');
         return;
     }
 
-    state.aiConversation.push({ role: 'patient', text: question });
+    // Prepare user message with attachments
+    var userMsg = { role: 'patient', text: question, attachments: [] };
+
+    // Copy attached files info for display
+    var filesToProcess = state.aiAttachedFiles.slice();
+    if (filesToProcess.length > 0) {
+        userMsg.attachments = filesToProcess.map(function(f) {
+            return {
+                name: f.name,
+                size: f.size,
+                isImage: f.isImage,
+                isPdf: f.isPdf,
+                thumbUrl: f.thumbUrl || null,
+            };
+        });
+    }
+
+    state.aiConversation.push(userMsg);
     input.value = '';
+    autoResizeAiInput();
+
+    // Clear attached files
+    state.aiAttachedFiles = [];
+    renderAiFilePreview();
 
     var loadingEntry = {
         role: 'assistant',
         text: '',
         loading: true,
-        loadingText: 'Thinking...',
+        loadingText: hasFiles ? 'Analyzing your file...' : 'Thinking...',
     };
     state.aiConversation.push(loadingEntry);
     renderAiConversation();
@@ -1079,15 +1281,46 @@ async function askAiAssistant() {
 
     var slowHintTimer = setTimeout(function() {
         if (loadingEntry.loading) {
-            loadingEntry.loadingText = 'Still thinking. Preparing the best answer...';
+            loadingEntry.loadingText = hasFiles
+                ? 'Still analyzing. Processing document content...'
+                : 'Still thinking. Preparing the best answer...';
             renderAiConversation();
         }
     }, 12000);
 
     var result;
     try {
-        result = await API.post('/api/patient/ai/ask', { question: question });
-    } catch {
+        if (hasFiles) {
+            // Process files: extract text and ask about them
+            var extractedTexts = [];
+            for (var i = 0; i < filesToProcess.length; i++) {
+                var f = filesToProcess[i];
+                try {
+                    var base64 = await fileToBase64(f.file);
+                    var extractResult = await API.post('/api/patient/ai/extract-document', {
+                        fileName: f.name,
+                        fileType: f.type,
+                        base64Content: base64,
+                    });
+                    if (extractResult.ok && extractResult.data && extractResult.data.result) {
+                        var docText = extractResult.data.result.summary || extractResult.data.result.extractedText || JSON.stringify(extractResult.data.result);
+                        extractedTexts.push('--- File: ' + f.name + ' ---\n' + docText);
+                    } else {
+                        extractedTexts.push('--- File: ' + f.name + ' --- (Could not extract content)');
+                    }
+                } catch (err) {
+                    extractedTexts.push('--- File: ' + f.name + ' --- (Error reading file)');
+                }
+            }
+
+            var contextQuestion = question || 'Please analyze the attached document(s) and provide relevant health insights.';
+            var fullQuestion = contextQuestion + '\n\n[Attached Document Content]:\n' + extractedTexts.join('\n\n');
+
+            result = await API.post('/api/patient/ai/ask', { question: fullQuestion });
+        } else {
+            result = await API.post('/api/patient/ai/ask', { question: question });
+        }
+    } catch (e) {
         result = { ok: false, data: { error: 'AI request failed. Please try again.' } };
     }
 
@@ -1153,6 +1386,13 @@ function closeAiAssistantPanel() {
     document.body.classList.remove('ai-panel-open');
 }
 
+function autoResizeAiInput() {
+    var textarea = document.getElementById('ai-question');
+    if (!textarea) return;
+    textarea.style.height = 'auto';
+    textarea.style.height = Math.min(textarea.scrollHeight, 120) + 'px';
+}
+
 function initAiAssistantPanel() {
     var overlay = document.getElementById('ai-panel-overlay');
     if (overlay) {
@@ -1166,6 +1406,41 @@ function initAiAssistantPanel() {
             closeAiAssistantPanel();
         }
     });
+
+    // Auto-resize textarea on input
+    var aiInput = document.getElementById('ai-question');
+    if (aiInput) {
+        aiInput.addEventListener('input', autoResizeAiInput);
+        aiInput.addEventListener('keydown', function(event) {
+            if (event.key === 'Enter' && !event.shiftKey) {
+                event.preventDefault();
+                askAiAssistant();
+            }
+        });
+    }
+
+    // Support drag-and-drop on the chat area
+    var chatBody = document.querySelector('.ai-chat-body');
+    if (chatBody) {
+        chatBody.addEventListener('dragover', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            chatBody.style.outline = '2px dashed rgba(107, 216, 203, 0.4)';
+            chatBody.style.outlineOffset = '-8px';
+        });
+        chatBody.addEventListener('dragleave', function(e) {
+            e.preventDefault();
+            chatBody.style.outline = 'none';
+        });
+        chatBody.addEventListener('drop', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            chatBody.style.outline = 'none';
+            if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+                handleAiFileSelect({ target: { files: e.dataTransfer.files } });
+            }
+        });
+    }
 }
 
 async function openDoctorChat(doctorId) {
@@ -1530,20 +1805,56 @@ async function addReport(e) {
     var reportTypeKey = document.getElementById('report-type').value || 'lab';
     var reportType = reportTypeMap[reportTypeKey] || 'Lab Report';
     var date = document.getElementById('report-date').value || new Date().toISOString().slice(0, 10);
-    var notes = (document.getElementById('report-notes').value || '').trim();
+    var reportFileInput = document.getElementById('report-file');
+    var reportFile = reportFileInput && reportFileInput.files && reportFileInput.files[0] ? reportFileInput.files[0] : null;
 
     if (!reportName) {
         alert('Report name is required.');
         return;
     }
 
+    var parsedResult = null;
+    if (reportFile) {
+        try {
+            var base64Content = await fileToBase64DataUrl(reportFile);
+            var extracted = await API.post('/api/patient/ai/extract-document', {
+                fileName: reportFile.name,
+                fileType: reportFile.type || null,
+                base64Content: base64Content,
+            });
+
+            if (!extracted.ok) {
+                alert((extracted.data && extracted.data.error) || 'Failed to extract report data from file.');
+                return;
+            }
+
+            parsedResult = extracted.data && extracted.data.result ? extracted.data.result : null;
+        } catch (err) {
+            alert('Failed to read uploaded file.');
+            return;
+        }
+    }
+
     try {
-        var result = await API.post('/api/patient/reports', {
+        var reportStatus = 'Pending';
+        if (parsedResult && parsedResult.review && parsedResult.review.label) {
+            if (parsedResult.review.level === 'bad' || parsedResult.review.level === 'caution') {
+                reportStatus = 'Needs Attention';
+            } else {
+                reportStatus = 'Reviewed - Not Bad';
+            }
+        } else if (parsedResult) {
+            reportStatus = 'Analyzed';
+        }
+
+        var result = await API.post('/api/patient/reports/upload', {
             reportName: reportName,
             type: reportType,
             date: date,
-            notes: notes,
-            status: 'Pending',
+            status: reportStatus,
+            fileUrl: reportFile ? reportFile.name : null,
+            fileType: reportFile ? (reportFile.type || null) : null,
+            parsed: parsedResult,
         });
 
         if (!result.ok) {
@@ -1551,10 +1862,48 @@ async function addReport(e) {
             return;
         }
 
-        alert('Report added successfully.');
+        if (parsedResult && parsedResult.extracted) {
+            var extractedValues = parsedResult.extracted;
+            var healthPayload = { recordedAt: date };
+            var hba1c = toNumberOrNull(extractedValues.hba1c);
+            if (inRange(hba1c, 2, 20)) healthPayload.hba1c = hba1c;
+            var weightKg = toNumberOrNull(extractedValues.weightKg);
+            if (inRange(weightKg, 1, 700)) healthPayload.weight = weightKg;
+
+            if (Array.isArray(extractedValues.bloodPressure) && extractedValues.bloodPressure.length > 0) {
+                var bp = extractedValues.bloodPressure[0] || {};
+                var systolic = toNumberOrNull(bp.systolic);
+                var diastolic = toNumberOrNull(bp.diastolic);
+                if (inRange(systolic, 40, 300)) healthPayload.systolic = systolic;
+                if (inRange(diastolic, 20, 200)) healthPayload.diastolic = diastolic;
+            }
+
+            var ingestionTasks = [];
+            if (healthPayload.hba1c !== undefined || healthPayload.systolic !== undefined || healthPayload.diastolic !== undefined || healthPayload.weight !== undefined) {
+                ingestionTasks.push(API.post('/api/patient/health-metrics', healthPayload));
+            }
+
+            var glucoseValues = Array.isArray(extractedValues.glucoseReadingsMgDl) ? extractedValues.glucoseReadingsMgDl : [];
+            glucoseValues.slice(0, 8).forEach(function(value, index) {
+                var glucose = toNumberOrNull(value);
+                if (!inRange(glucose, 1, 900)) return;
+                ingestionTasks.push(API.post('/api/patient/glucose', {
+                    value: glucose,
+                    type: index === 0 ? 'fasting' : 'random',
+                    notes: 'Imported from AI report upload',
+                    recordedAt: date,
+                }));
+            });
+
+            if (ingestionTasks.length > 0) {
+                await Promise.allSettled(ingestionTasks);
+            }
+        }
+
+        alert(parsedResult ? 'Report uploaded, analyzed, review generated, and charts updated.' : 'Report added successfully.');
         closeModal('report-modal');
         document.getElementById('report-form').reset();
-        await loadReports();
+        await Promise.all([loadReports(), loadOverview(), loadTrends()]);
     } catch (err) {
         alert('Network error while adding report.');
     }
@@ -1997,6 +2346,9 @@ window.askAiPreset = askAiPreset;
 window.askAiSuggestion = askAiSuggestion;
 window.openAiAssistantPanel = openAiAssistantPanel;
 window.closeAiAssistantPanel = closeAiAssistantPanel;
+window.handleAiFileSelect = handleAiFileSelect;
+window.removeAiFile = removeAiFile;
+window.autoResizeAiInput = autoResizeAiInput;
 
 bootstrap();
 

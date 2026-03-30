@@ -4,6 +4,55 @@ const path = require('path');
 
 let _wrapper = null;
 
+function parseLegacyReportNotes(notesValue) {
+    const text = String(notesValue || '').trim();
+    const out = {
+        fileUrl: null,
+        fileType: null,
+        parsedJson: null,
+        reviewJson: null,
+    };
+
+    if (!text) return out;
+
+    const parts = text.split(' | ').map((item) => item.trim()).filter(Boolean);
+    for (const part of parts) {
+        if (part.startsWith('fileUrl:')) {
+            out.fileUrl = part.slice('fileUrl:'.length).trim() || null;
+            continue;
+        }
+        if (part.startsWith('fileType:')) {
+            out.fileType = part.slice('fileType:'.length).trim() || null;
+            continue;
+        }
+        if (part.startsWith('parsed:')) {
+            const raw = part.slice('parsed:'.length).trim();
+            if (!raw) continue;
+            try {
+                const parsed = JSON.parse(raw);
+                out.parsedJson = JSON.stringify(parsed);
+                if (parsed && typeof parsed === 'object' && parsed.review) {
+                    out.reviewJson = JSON.stringify(parsed.review);
+                }
+            } catch (_e) {
+            }
+        }
+    }
+
+    if (!out.parsedJson) {
+        try {
+            const parsed = JSON.parse(text);
+            out.parsedJson = JSON.stringify(parsed);
+            if (parsed && typeof parsed === 'object' && parsed.review) {
+                out.reviewJson = JSON.stringify(parsed.review);
+            }
+        } catch (_e) {
+        }
+    }
+
+    return out;
+}
+
 class SqliteWrapper {
     constructor(db, dbPath) {
         this._db = db;
@@ -142,12 +191,76 @@ async function initDatabase() {
             type TEXT NOT NULL CHECK(type IN ('Lab Report', 'Imaging', 'Clinical Note', 'Diabetes Report')),
             date TEXT NOT NULL,
             doctor INTEGER REFERENCES users(id),
-            status TEXT DEFAULT 'Pending' CHECK(status IN ('Completed', 'Pending', 'In Progress')),
-            notes TEXT,
+            status TEXT DEFAULT 'Pending',
+            file_url TEXT,
+            file_type TEXT,
+            parsed_json TEXT,
+            review_json TEXT,
             createdAt TEXT DEFAULT (datetime('now')),
             updatedAt TEXT DEFAULT (datetime('now'))
         )
     `);
+
+    try {
+        const reportColumns = _wrapper.prepare('PRAGMA table_info(reports)').all().map((col) => String(col.name || ''));
+        const needsReportMigration = reportColumns.includes('notes')
+            || !reportColumns.includes('file_url')
+            || !reportColumns.includes('file_type')
+            || !reportColumns.includes('parsed_json')
+            || !reportColumns.includes('review_json');
+
+        if (needsReportMigration) {
+            const legacyRows = _wrapper.prepare('SELECT * FROM reports').all();
+
+            _wrapper.exec('DROP INDEX IF EXISTS idx_reports_patient');
+            _wrapper.exec('ALTER TABLE reports RENAME TO reports_legacy');
+
+            _wrapper.exec(`
+                CREATE TABLE reports (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    patient INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                    reportName TEXT NOT NULL,
+                    type TEXT NOT NULL CHECK(type IN ('Lab Report', 'Imaging', 'Clinical Note', 'Diabetes Report')),
+                    date TEXT NOT NULL,
+                    doctor INTEGER REFERENCES users(id),
+                    status TEXT DEFAULT 'Pending',
+                    file_url TEXT,
+                    file_type TEXT,
+                    parsed_json TEXT,
+                    review_json TEXT,
+                    createdAt TEXT DEFAULT (datetime('now')),
+                    updatedAt TEXT DEFAULT (datetime('now'))
+                )
+            `);
+
+            const insertReport = _wrapper.prepare(`
+                INSERT INTO reports (id, patient, reportName, type, date, doctor, status, file_url, file_type, parsed_json, review_json, createdAt, updatedAt)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            `);
+
+            for (const row of legacyRows) {
+                const legacyParsed = parseLegacyReportNotes(row.notes);
+                insertReport.run(
+                    row.id,
+                    row.patient,
+                    row.reportName,
+                    row.type,
+                    row.date,
+                    row.doctor || null,
+                    row.status || 'Pending',
+                    row.file_url || legacyParsed.fileUrl,
+                    row.file_type || legacyParsed.fileType,
+                    row.parsed_json || legacyParsed.parsedJson,
+                    row.review_json || legacyParsed.reviewJson,
+                    row.createdAt || null,
+                    row.updatedAt || null,
+                );
+            }
+
+            _wrapper.exec('DROP TABLE reports_legacy');
+        }
+    } catch (_e) {
+    }
 
     _wrapper.exec(`
         CREATE TABLE IF NOT EXISTS medical_records (
