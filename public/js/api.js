@@ -16,42 +16,77 @@ var API = {
     },
     request: function(url, options) {
         options = options || {};
+        var timeoutMs = Number(options.timeoutMs || 0);
+        if (Object.prototype.hasOwnProperty.call(options, 'timeoutMs')) {
+            delete options.timeoutMs;
+        }
+
+        var controller = null;
+        var timeoutHandle = null;
+        if (typeof AbortController !== 'undefined' && Number.isFinite(timeoutMs) && timeoutMs > 0) {
+            controller = new AbortController();
+            options.signal = controller.signal;
+            timeoutHandle = setTimeout(function() {
+                controller.abort();
+            }, timeoutMs);
+        }
+
         options.headers = options.headers || {};
         options.headers['Content-Type'] = 'application/json';
         var token = this.getToken();
         if (token) {
             options.headers['Authorization'] = 'Bearer ' + token;
         }
-        return fetch(url, options).then(function(response) {
-            if (response.status === 401) {
-                API.logout();
-                return Promise.reject(new Error('Session expired. Please log in again.'));
-            }
-            return response.text().then(function(raw) {
-                var data = {};
-                try {
-                    data = raw ? JSON.parse(raw) : {};
-                } catch (e) {
-                    data = { raw: raw };
+        return fetch(url, options)
+            .then(function(response) {
+                if (response.status === 401) {
+                    API.logout();
+                    return Promise.reject(new Error('Session expired. Please log in again.'));
                 }
-                return { ok: response.ok, data: data };
+                return response.text().then(function(raw) {
+                    var data = {};
+                    try {
+                        data = raw ? JSON.parse(raw) : {};
+                    } catch (e) {
+                        data = { raw: raw };
+                    }
+                    return { ok: response.ok, data: data };
+                });
+            })
+            .catch(function(err) {
+                if (err && err.name === 'AbortError') {
+                    return {
+                        ok: false,
+                        data: {
+                            error: 'Request timed out. Please try again.',
+                        },
+                    };
+                }
+                throw err;
+            })
+            .finally(function() {
+                if (timeoutHandle) clearTimeout(timeoutHandle);
             });
-        });
     },
-    get: function(url) {
-        return this.request(url, { method: 'GET' });
+    get: function(url, requestOptions) {
+        var options = Object.assign({}, requestOptions || {}, { method: 'GET' });
+        return this.request(url, options);
     },
-    post: function(url, body) {
-        return this.request(url, { method: 'POST', body: JSON.stringify(body) });
+    post: function(url, body, requestOptions) {
+        var options = Object.assign({}, requestOptions || {}, { method: 'POST', body: JSON.stringify(body) });
+        return this.request(url, options);
     },
-    put: function(url, body) {
-        return this.request(url, { method: 'PUT', body: JSON.stringify(body) });
+    put: function(url, body, requestOptions) {
+        var options = Object.assign({}, requestOptions || {}, { method: 'PUT', body: JSON.stringify(body) });
+        return this.request(url, options);
     },
-    patch: function(url, body) {
-        return this.request(url, { method: 'PATCH', body: JSON.stringify(body) });
+    patch: function(url, body, requestOptions) {
+        var options = Object.assign({}, requestOptions || {}, { method: 'PATCH', body: JSON.stringify(body) });
+        return this.request(url, options);
     },
-    delete: function(url) {
-        return this.request(url, { method: 'DELETE' });
+    delete: function(url, requestOptions) {
+        var options = Object.assign({}, requestOptions || {}, { method: 'DELETE' });
+        return this.request(url, options);
     }
 };
 

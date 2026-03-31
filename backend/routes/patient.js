@@ -16,6 +16,8 @@ const { askLlmFallback } = require('../services/llm');
 
 const router = express.Router();
 const IST_TIME_ZONE = 'Asia/Kolkata';
+const REPORT_IMPORT_GLUCOSE_NOTE = 'Imported from AI report upload';
+const REPORT_IMPORT_CLEANUP_WINDOW_MINUTES = 45;
 
 const db = {
     prepare: (...args) => getDb().prepare(...args),
@@ -179,6 +181,138 @@ function toFiniteNumberOrNull(value) {
     if (!cleaned) return null;
     const numeric = Number(cleaned);
     return Number.isFinite(numeric) ? numeric : null;
+}
+
+function toDateKey(value) {
+    if (!value) return null;
+    const direct = String(value).trim();
+    if (/^\d{4}-\d{2}-\d{2}$/.test(direct)) return direct;
+
+    const date = new Date(direct);
+    if (Number.isNaN(date.getTime())) return null;
+    return date.toISOString().slice(0, 10);
+}
+
+function nearlyEqual(left, right, tolerance) {
+    return Number.isFinite(left)
+        && Number.isFinite(right)
+        && Math.abs(Number(left) - Number(right)) <= Number(tolerance || 0);
+}
+
+function extractImportedSignalsFromReport(reportRow) {
+    const parsed = parseReportJsonObject(reportRow);
+    const extracted = parsed && parsed.extracted && typeof parsed.extracted === 'object'
+        ? parsed.extracted
+        : {};
+
+    const glucoseValues = (Array.isArray(extracted.glucoseReadingsMgDl) ? extracted.glucoseReadingsMgDl : [])
+        .map((value) => toFiniteNumberOrNull(value))
+        .filter((value) => Number.isFinite(value) && value >= 1 && value <= 900);
+
+    const primaryBp = getPrimaryBloodPressure(extracted);
+    const weight = toFiniteNumberOrNull(extracted.weightKg);
+    const hba1c = toFiniteNumberOrNull(extracted.hba1c);
+
+    return {
+        reportDateKey: toDateKey(reportRow && reportRow.date),
+        glucoseValues,
+        weight: Number.isFinite(weight) ? Number(weight) : null,
+        systolic: Number.isFinite(primaryBp.systolic) ? Number(primaryBp.systolic) : null,
+        diastolic: Number.isFinite(primaryBp.diastolic) ? Number(primaryBp.diastolic) : null,
+        hba1c: Number.isFinite(hba1c) ? Number(hba1c) : null,
+    };
+}
+
+function cleanupImportedBiometricsForReport(reportRow, patientId) {
+    if (!reportRow || !patientId || !reportRow.createdAt) {
+        return { glucoseDeleted: 0, healthMetricsDeleted: 0 };
+    }
+
+    const signals = extractImportedSignalsFromReport(reportRow);
+    const windowMinus = `-${REPORT_IMPORT_CLEANUP_WINDOW_MINUTES} minutes`;
+    const windowPlus = `+${REPORT_IMPORT_CLEANUP_WINDOW_MINUTES} minutes`;
+
+    const glucoseRows = db.prepare(`
+        SELECT id, value, recordedAt, notes
+        FROM glucose_readings
+        WHERE patient = ?
+          AND notes = ?
+          AND datetime(createdAt) >= datetime(?, ?)
+          AND datetime(createdAt) <= datetime(?, ?)
+    `).all(patientId, REPORT_IMPORT_GLUCOSE_NOTE, reportRow.createdAt, windowMinus, reportRow.createdAt, windowPlus);
+
+    const glucoseIds = glucoseRows
+        .filter((row) => {
+            if (signals.reportDateKey && toDateKey(row.recordedAt) !== signals.reportDateKey) return false;
+            const value = toFiniteNumberOrNull(row.value);
+            if (!Number.isFinite(value)) return false;
+            if (!signals.glucoseValues.length) return true;
+            return signals.glucoseValues.some((candidate) => nearlyEqual(value, candidate, 0.75));
+        })
+        .map((row) => Number(row.id))
+        .filter((id) => Number.isFinite(id));
+
+    let glucoseDeleted = 0;
+    glucoseIds.forEach((id) => {
+        glucoseDeleted += db.prepare('DELETE FROM glucose_readings WHERE id = ? AND patient = ?').run(id, patientId).changes;
+    });
+
+    const hasMetricSignals = [signals.weight, signals.systolic, signals.diastolic, signals.hba1c]
+        .some((value) => Number.isFinite(value));
+
+    let healthMetricsDeleted = 0;
+    if (hasMetricSignals) {
+        const metricRows = db.prepare(`
+            SELECT id, weight, systolic, diastolic, hba1c, recordedAt
+            FROM health_metrics
+            WHERE patient = ?
+              AND datetime(createdAt) >= datetime(?, ?)
+              AND datetime(createdAt) <= datetime(?, ?)
+        `).all(patientId, reportRow.createdAt, windowMinus, reportRow.createdAt, windowPlus);
+
+        const metricIds = metricRows
+            .filter((row) => {
+                if (signals.reportDateKey && toDateKey(row.recordedAt) !== signals.reportDateKey) return false;
+
+                let comparisons = 0;
+                let matches = 0;
+                let mismatches = 0;
+
+                if (Number.isFinite(signals.weight) && Number.isFinite(toFiniteNumberOrNull(row.weight))) {
+                    comparisons += 1;
+                    if (nearlyEqual(toFiniteNumberOrNull(row.weight), signals.weight, 0.15)) matches += 1;
+                    else mismatches += 1;
+                }
+                if (Number.isFinite(signals.systolic) && Number.isFinite(toFiniteNumberOrNull(row.systolic))) {
+                    comparisons += 1;
+                    if (nearlyEqual(toFiniteNumberOrNull(row.systolic), signals.systolic, 1)) matches += 1;
+                    else mismatches += 1;
+                }
+                if (Number.isFinite(signals.diastolic) && Number.isFinite(toFiniteNumberOrNull(row.diastolic))) {
+                    comparisons += 1;
+                    if (nearlyEqual(toFiniteNumberOrNull(row.diastolic), signals.diastolic, 1)) matches += 1;
+                    else mismatches += 1;
+                }
+                if (Number.isFinite(signals.hba1c) && Number.isFinite(toFiniteNumberOrNull(row.hba1c))) {
+                    comparisons += 1;
+                    if (nearlyEqual(toFiniteNumberOrNull(row.hba1c), signals.hba1c, 0.05)) matches += 1;
+                    else mismatches += 1;
+                }
+
+                return comparisons > 0 && matches > 0 && mismatches === 0;
+            })
+            .map((row) => Number(row.id))
+            .filter((id) => Number.isFinite(id));
+
+        metricIds.forEach((id) => {
+            healthMetricsDeleted += db.prepare('DELETE FROM health_metrics WHERE id = ? AND patient = ?').run(id, patientId).changes;
+        });
+    }
+
+    return {
+        glucoseDeleted,
+        healthMetricsDeleted,
+    };
 }
 
 function normalizeCorrectionFieldKey(value) {
@@ -1755,9 +1889,21 @@ router.get('/reports/:id', async (req, res) => {
 
 router.delete('/reports/:id', async (req, res) => {
     try {
+        const reportRow = db.prepare('SELECT * FROM reports WHERE id = ? AND patient = ?').get(req.params.id, req.user._id);
+        if (!reportRow) return res.status(404).json({ error: 'Report not found.' });
+
+        let cleanup = { glucoseDeleted: 0, healthMetricsDeleted: 0 };
+        try {
+            cleanup = cleanupImportedBiometricsForReport(reportRow, req.user._id);
+        } catch (_cleanupErr) {
+        }
+
         const result = db.prepare('DELETE FROM reports WHERE id = ? AND patient = ?').run(req.params.id, req.user._id);
         if (result.changes === 0) return res.status(404).json({ error: 'Report not found.' });
-        res.json({ message: 'Report deleted.' });
+        res.json({
+            message: 'Report deleted.',
+            cleanup,
+        });
     } catch (err) {
         res.status(500).json({ error: 'Failed to delete report.' });
     }

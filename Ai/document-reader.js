@@ -1,4 +1,5 @@
 const path = require('path');
+const crypto = require('crypto');
 
 function resolveBackendDependency(moduleName) {
     try {
@@ -14,6 +15,85 @@ const { createWorker, PSM } = resolveBackendDependency('tesseract.js');
 const jimpModule = resolveBackendDependency('jimp');
 const Jimp = jimpModule.Jimp || jimpModule;
 const JIMP_MIME_PNG = jimpModule.MIME_PNG || 'image/png';
+const OCR_MAX_VARIANTS = Math.max(1, Number(process.env.OCR_MAX_VARIANTS || 2));
+const OCR_MAX_ATTEMPTS = Math.max(1, Number(process.env.OCR_MAX_ATTEMPTS || 3));
+const OCR_EARLY_EXIT_SCORE = Math.max(80, Number(process.env.OCR_EARLY_EXIT_SCORE || 170));
+const OCR_MAX_MS = Math.max(5000, Number(process.env.OCR_MAX_MS || 12000));
+const OCR_UPSCALE_LIMIT_PIXELS = Math.max(100000, Number(process.env.OCR_UPSCALE_LIMIT_PIXELS || 1400000));
+const OCR_FAST_ACCEPT_SCORE = Math.max(60, Number(process.env.OCR_FAST_ACCEPT_SCORE || 120));
+const OCR_FAST_ACCEPT_CHARS = Math.max(40, Number(process.env.OCR_FAST_ACCEPT_CHARS || 120));
+const OCR_WARMUP_ON_START = String(process.env.OCR_WARMUP_ON_START || 'true').toLowerCase() !== 'false';
+const OCR_CACHE_MAX_ENTRIES = Math.max(10, Number(process.env.OCR_CACHE_MAX_ENTRIES || 120));
+const OCR_CACHE_TTL_MS = Math.max(60000, Number(process.env.OCR_CACHE_TTL_MS || 1800000));
+const PDF_MIN_TEXT_CHARS = Math.max(40, Number(process.env.PDF_MIN_TEXT_CHARS || 120));
+const PDF_MIN_TEXT_LINES = Math.max(2, Number(process.env.PDF_MIN_TEXT_LINES || 4));
+
+let sharedOcrWorkerPromise = null;
+let ocrQueue = Promise.resolve();
+const ocrResultCache = new Map();
+
+function enqueueOcrTask(task) {
+    const run = ocrQueue.then(task, task);
+    ocrQueue = run.catch(() => {});
+    return run;
+}
+
+async function getSharedOcrWorker() {
+    if (!sharedOcrWorkerPromise) {
+        sharedOcrWorkerPromise = createWorker('eng').catch((err) => {
+            sharedOcrWorkerPromise = null;
+            throw err;
+        });
+    }
+    return sharedOcrWorkerPromise;
+}
+
+function computeBufferHash(buffer) {
+    return crypto.createHash('sha1').update(buffer).digest('hex');
+}
+
+function getCachedOcrResult(hash) {
+    const entry = ocrResultCache.get(hash);
+    if (!entry) return null;
+
+    if ((Date.now() - Number(entry.storedAt || 0)) > OCR_CACHE_TTL_MS) {
+        ocrResultCache.delete(hash);
+        return null;
+    }
+
+    // Refresh entry recency.
+    ocrResultCache.delete(hash);
+    ocrResultCache.set(hash, entry);
+    return entry.payload;
+}
+
+function setCachedOcrResult(hash, payload) {
+    while (ocrResultCache.size >= OCR_CACHE_MAX_ENTRIES) {
+        const firstKey = ocrResultCache.keys().next().value;
+        if (!firstKey) break;
+        ocrResultCache.delete(firstKey);
+    }
+
+    ocrResultCache.set(hash, {
+        storedAt: Date.now(),
+        payload,
+    });
+}
+
+function shouldAcceptQuickOcr(score, text) {
+    const normalized = String(text || '');
+    if (score >= OCR_FAST_ACCEPT_SCORE) return true;
+    if (normalized.length >= OCR_FAST_ACCEPT_CHARS && /(hba1c|glucose|blood|patient|report|mg\s*\/?\s*d\s*l|bp)/i.test(normalized)) {
+        return true;
+    }
+    return false;
+}
+
+if (OCR_WARMUP_ON_START) {
+    setTimeout(() => {
+        getSharedOcrWorker().catch(() => {});
+    }, 200);
+}
 
 function decodeBase64Content(base64Content) {
     const value = String(base64Content || '').trim();
@@ -114,20 +194,13 @@ async function buildOcrImageVariants(buffer) {
             variants.push({ name: 'gray-contrast', buffer: enhancedBuffer });
         }
 
-        const upscaled = image.clone().normalize().greyscale().contrast(0.45);
-        upscaled.resize(Math.max(1, width * 2), Math.max(1, height * 2));
-        const upscaledBuffer = await toImageBuffer(upscaled, JIMP_MIME_PNG);
-        if (upscaledBuffer && upscaledBuffer.length) {
-            variants.push({ name: 'upscaled-2x', buffer: upscaledBuffer });
-        }
-
-        const binarized = image.clone().normalize().greyscale().contrast(0.6);
-        if (typeof binarized.posterize === 'function') {
-            binarized.posterize(3);
-        }
-        const binarizedBuffer = await toImageBuffer(binarized, JIMP_MIME_PNG);
-        if (binarizedBuffer && binarizedBuffer.length) {
-            variants.push({ name: 'binarized', buffer: binarizedBuffer });
+        if (OCR_MAX_VARIANTS >= 3 && (width * height) <= OCR_UPSCALE_LIMIT_PIXELS) {
+            const upscaled = image.clone().normalize().greyscale().contrast(0.45);
+            upscaled.resize(Math.max(1, Math.round(width * 1.6)), Math.max(1, Math.round(height * 1.6)));
+            const upscaledBuffer = await toImageBuffer(upscaled, JIMP_MIME_PNG);
+            if (upscaledBuffer && upscaledBuffer.length) {
+                variants.push({ name: 'upscaled-1.6x', buffer: upscaledBuffer });
+            }
         }
 
         if (width > height * 1.25) {
@@ -141,21 +214,29 @@ async function buildOcrImageVariants(buffer) {
         // Keep original buffer when preprocessing fails.
     }
 
-    return variants;
+    return variants.slice(0, OCR_MAX_VARIANTS);
 }
 
 async function extractImageText(buffer) {
-    const worker = await createWorker('eng');
-    try {
-        const variants = await buildOcrImageVariants(buffer);
-        const passes = [
-            {
-                name: 'psm6',
-                params: {
-                    tessedit_pageseg_mode: PSM.SINGLE_BLOCK,
-                    preserve_interword_spaces: '1',
-                },
+    return enqueueOcrTask(async () => {
+        const hash = computeBufferHash(buffer);
+        const cachedPayload = getCachedOcrResult(hash);
+        if (cachedPayload) {
+            return {
+                ...cachedPayload,
+                cacheHit: true,
+            };
+        }
+
+        const worker = await getSharedOcrWorker();
+        const quickPass = {
+            name: 'psm6',
+            params: {
+                tessedit_pageseg_mode: PSM.SINGLE_BLOCK,
+                preserve_interword_spaces: '1',
             },
+        };
+        const fallbackPasses = [
             {
                 name: 'psm11',
                 params: {
@@ -170,67 +251,131 @@ async function extractImageText(buffer) {
                     preserve_interword_spaces: '1',
                 },
             },
-            {
-                name: 'psm3',
-                params: {
-                    tessedit_pageseg_mode: PSM.AUTO,
-                    preserve_interword_spaces: '1',
-                },
-            },
         ];
 
         let bestText = '';
         let bestScore = -1;
         let bestPass = 'unknown';
         let bestVariant = 'original';
+        let variantCount = 1;
         const diagnostics = [];
+        let attemptsRun = 0;
+        const startedAt = Date.now();
+        let timedOut = false;
+        let quickAccepted = false;
 
-        for (const variant of variants) {
-            for (const pass of passes) {
-                try {
-                    await worker.setParameters(pass.params);
-                    const result = await worker.recognize(variant.buffer);
-                    const text = normalizeOcrArtifacts(result && result.data ? result.data.text : '');
-                    const score = scoreOcrText(text);
+        async function runPassOnBuffer(targetBuffer, variantName, pass) {
+            if (!targetBuffer || !pass) return false;
+            if (attemptsRun >= OCR_MAX_ATTEMPTS) return true;
+            if ((Date.now() - startedAt) >= OCR_MAX_MS) {
+                timedOut = true;
+                return true;
+            }
 
-                    diagnostics.push({
-                        variant: variant.name,
-                        pass: pass.name,
-                        score,
-                        chars: text.length,
-                    });
+            try {
+                attemptsRun += 1;
+                await worker.setParameters(pass.params);
+                const result = await worker.recognize(targetBuffer);
+                const text = normalizeOcrArtifacts(result && result.data ? result.data.text : '');
+                const score = scoreOcrText(text);
 
-                    if (score > bestScore) {
-                        bestScore = score;
-                        bestText = text;
-                        bestPass = pass.name;
-                        bestVariant = variant.name;
+                diagnostics.push({
+                    variant: variantName,
+                    pass: pass.name,
+                    score,
+                    chars: text.length,
+                });
+
+                if (score > bestScore) {
+                    bestScore = score;
+                    bestText = text;
+                    bestPass = pass.name;
+                    bestVariant = variantName;
+                }
+
+                if (score >= OCR_EARLY_EXIT_SCORE && text.length >= 80) {
+                    return true;
+                }
+                return false;
+            } catch (err) {
+                diagnostics.push({
+                    variant: variantName,
+                    pass: pass.name,
+                    score: -1,
+                    chars: 0,
+                    error: err && err.message ? err.message : 'ocr-failed',
+                });
+                return false;
+            }
+        }
+
+        // Fast path: run OCR on original image first and exit if good enough.
+        let shouldStop = await runPassOnBuffer(buffer, 'original', quickPass);
+        if (shouldStop) {
+            quickAccepted = true;
+        } else if (shouldAcceptQuickOcr(bestScore, bestText)) {
+            shouldStop = true;
+            quickAccepted = true;
+        }
+
+        if (!shouldStop) {
+            const variants = await buildOcrImageVariants(buffer);
+            variantCount = variants.length;
+
+            // Avoid repeating same quick pass on original variant.
+            const quickVariants = variants.filter((variant) => variant && variant.name !== 'original');
+            for (const variant of quickVariants) {
+                shouldStop = await runPassOnBuffer(variant.buffer, variant.name, quickPass);
+                if (shouldStop) break;
+            }
+
+            if (shouldStop) {
+                quickAccepted = true;
+            } else if (shouldAcceptQuickOcr(bestScore, bestText)) {
+                shouldStop = true;
+                quickAccepted = true;
+            }
+
+            if (!shouldStop) {
+                outerLoop:
+                for (const pass of fallbackPasses) {
+                    for (const variant of variants) {
+                        shouldStop = await runPassOnBuffer(variant.buffer, variant.name, pass);
+                        if (shouldStop) break outerLoop;
                     }
-                } catch (err) {
-                    diagnostics.push({
-                        variant: variant.name,
-                        pass: pass.name,
-                        score: -1,
-                        chars: 0,
-                        error: err && err.message ? err.message : 'ocr-failed',
-                    });
+
+                    if (attemptsRun >= OCR_MAX_ATTEMPTS) break;
+                    if ((Date.now() - startedAt) >= OCR_MAX_MS) {
+                        timedOut = true;
+                        break;
+                    }
                 }
             }
         }
 
         diagnostics.sort((a, b) => Number(b.score || -1) - Number(a.score || -1));
 
-        return {
+        const resultPayload = {
             text: bestText,
             bestPass,
             bestVariant,
             bestScore,
-            variantCount: variants.length,
+            variantCount,
+            attemptsRun,
+            maxAttempts: OCR_MAX_ATTEMPTS,
+            maxVariants: OCR_MAX_VARIANTS,
+            timedOut,
+            workerMode: 'shared',
+            quickAccepted,
             attempts: diagnostics.slice(0, 10),
         };
-    } finally {
-        await worker.terminate();
-    }
+
+        setCachedOcrResult(hash, resultPayload);
+        return {
+            ...resultPayload,
+            cacheHit: false,
+        };
+    });
 }
 
 async function parseDocumentToText({ fileName, fileType, text, base64Content }) {
@@ -258,11 +403,26 @@ async function parseDocumentToText({ fileName, fileType, text, base64Content }) 
 
     if (inferredType === 'pdf') {
         const parsed = await pdfParse(buffer);
+        const extractedText = String((parsed && parsed.text) || '').trim();
+        const nonEmptyLines = extractedText.split(/\r?\n/).map((line) => line.trim()).filter(Boolean).length;
+        const alphaNumericChars = (extractedText.match(/[a-z0-9]/gi) || []).length;
+        const likelyScannedPdf = extractedText.length < PDF_MIN_TEXT_CHARS
+            || nonEmptyLines < PDF_MIN_TEXT_LINES
+            || alphaNumericChars < Math.floor(PDF_MIN_TEXT_CHARS * 0.35);
+
         return {
-            text: String((parsed && parsed.text) || '').trim(),
+            text: extractedText,
             parser: 'pdf-parse',
             inferredType,
-            ocrDiagnostics: null,
+            ocrDiagnostics: {
+                source: 'pdf-parse',
+                pdfTextChars: extractedText.length,
+                pdfLineCount: nonEmptyLines,
+                likelyScannedPdf,
+                note: likelyScannedPdf
+                    ? 'Low embedded text in PDF. File may be scan/image-based; OCR fallback for PDF is limited in current pipeline.'
+                    : 'Extracted embedded text from PDF successfully.',
+            },
         };
     }
 
@@ -296,6 +456,13 @@ async function parseDocumentToText({ fileName, fileType, text, base64Content }) 
                 bestVariant: extracted.bestVariant,
                 bestScore: extracted.bestScore,
                 variantCount: extracted.variantCount,
+                attemptsRun: extracted.attemptsRun,
+                maxAttempts: extracted.maxAttempts,
+                maxVariants: extracted.maxVariants,
+                maxMs: OCR_MAX_MS,
+                timedOut: extracted.timedOut,
+                cacheHit: Boolean(extracted.cacheHit),
+                quickAccepted: Boolean(extracted.quickAccepted),
                 attempts: extracted.attempts,
             },
         };

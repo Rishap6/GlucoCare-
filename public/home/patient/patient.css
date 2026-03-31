@@ -1353,6 +1353,89 @@
             margin-top: 24px;
         }
 
+        .report-upload-progress {
+            margin-top: 10px;
+            padding: 12px 14px;
+            border: 1px solid var(--gray-200);
+            border-radius: 12px;
+            background: var(--gray-50);
+        }
+
+        .report-upload-progress.hidden {
+            display: none;
+        }
+
+        .report-upload-step-list {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 8px 12px;
+        }
+
+        .report-upload-step {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 12px;
+            color: var(--gray-500);
+            font-weight: 600;
+        }
+
+        .report-upload-step::before {
+            content: '';
+            width: 9px;
+            height: 9px;
+            border-radius: 50%;
+            border: 1px solid var(--gray-300);
+            background: var(--white);
+            flex-shrink: 0;
+        }
+
+        .report-upload-step.active {
+            color: var(--deep-blue);
+        }
+
+        .report-upload-step.active::before {
+            border-color: var(--primary-teal);
+            background: var(--primary-teal);
+            box-shadow: 0 0 0 3px rgba(13, 148, 136, 0.16);
+        }
+
+        .report-upload-step.done {
+            color: var(--success);
+        }
+
+        .report-upload-step.done::before {
+            border-color: var(--success);
+            background: var(--success);
+        }
+
+        .report-upload-step.skipped {
+            color: var(--gray-500);
+            text-decoration: line-through;
+            text-decoration-color: var(--gray-300);
+        }
+
+        .report-upload-step.skipped::before {
+            border-color: var(--gray-300);
+            background: var(--gray-200);
+        }
+
+        .report-upload-progress-text {
+            margin-top: 10px;
+            font-size: 12px;
+            color: var(--gray-700);
+        }
+
+        .report-upload-progress.completed {
+            border-color: rgba(16, 185, 129, 0.3);
+            background: rgba(16, 185, 129, 0.08);
+        }
+
+        .report-upload-progress.failed {
+            border-color: rgba(239, 68, 68, 0.28);
+            background: rgba(239, 68, 68, 0.08);
+        }
+
         /* Tabs */
         .tabs {
             display: flex;
@@ -1428,6 +1511,9 @@
 
         @media (max-width: 768px) {
             .quick-stats {
+                grid-template-columns: 1fr;
+            }
+            .report-upload-step-list {
                 grid-template-columns: 1fr;
             }
             .form-grid {

@@ -57,6 +57,53 @@ function setReportSubmitLoading(isLoading) {
     submitBtn.textContent = isLoading ? 'Uploading...' : 'Add Report';
 }
 
+var REPORT_UPLOAD_STEP_ORDER = ['prepare', 'extract', 'save', 'import'];
+
+function setReportUploadStage(stage, message, options) {
+    var container = document.getElementById('report-upload-progress');
+    var messageEl = document.getElementById('report-upload-progress-text');
+    if (!container || !messageEl) return;
+
+    var opts = options || {};
+    if (!stage) {
+        container.classList.add('hidden');
+        container.classList.remove('completed', 'failed');
+        messageEl.textContent = '';
+        container.querySelectorAll('[data-upload-step]').forEach(function(stepEl) {
+            stepEl.classList.remove('active', 'done', 'skipped');
+        });
+        return;
+    }
+
+    container.classList.remove('hidden');
+    container.classList.toggle('completed', Boolean(opts.completed));
+    container.classList.toggle('failed', Boolean(opts.failed));
+
+    var activeIndex = REPORT_UPLOAD_STEP_ORDER.indexOf(stage);
+    container.querySelectorAll('[data-upload-step]').forEach(function(stepEl, index) {
+        var stepKey = stepEl.getAttribute('data-upload-step');
+        stepEl.classList.remove('active', 'done', 'skipped');
+
+        if (Array.isArray(opts.skippedSteps) && opts.skippedSteps.indexOf(stepKey) !== -1) {
+            stepEl.classList.add('skipped');
+            return;
+        }
+
+        if (opts.completed) {
+            stepEl.classList.add('done');
+            return;
+        }
+
+        if (index < activeIndex) {
+            stepEl.classList.add('done');
+        } else if (index === activeIndex) {
+            stepEl.classList.add('active');
+        }
+    });
+
+    messageEl.textContent = message || '';
+}
+
 function setManualDataSubmitLoading(isLoading) {
     var form = document.getElementById('manual-data-form');
     var submitBtn = document.getElementById('manual-data-submit-btn');
@@ -299,6 +346,86 @@ function toNumberOrNull(value) {
 
 function inRange(value, min, max) {
     return Number.isFinite(value) && value >= min && value <= max;
+}
+
+var REPORT_INLINE_FILE_MAX_BYTES = 350 * 1024;
+var REPORT_IMAGE_MAX_EDGE = 1800;
+var REPORT_IMAGE_JPEG_QUALITY = 0.82;
+
+function getDataUrlApproxBytes(dataUrl) {
+    var value = String(dataUrl || '');
+    var parts = value.split(',');
+    var base64 = parts.length > 1 ? parts[1] : parts[0];
+    if (!base64) return 0;
+    return Math.floor((base64.length * 3) / 4);
+}
+
+function optimizeImageDataUrl(dataUrl, maxEdge, jpegQuality) {
+    return new Promise(function(resolve) {
+        var img = new Image();
+        img.onload = function() {
+            var width = Number(img.naturalWidth || img.width || 0);
+            var height = Number(img.naturalHeight || img.height || 0);
+            if (!width || !height) {
+                resolve(dataUrl);
+                return;
+            }
+
+            var largest = Math.max(width, height);
+            if (largest <= Number(maxEdge || REPORT_IMAGE_MAX_EDGE)) {
+                resolve(dataUrl);
+                return;
+            }
+
+            var scale = Number(maxEdge || REPORT_IMAGE_MAX_EDGE) / largest;
+            var targetW = Math.max(1, Math.round(width * scale));
+            var targetH = Math.max(1, Math.round(height * scale));
+            var canvas = document.createElement('canvas');
+            canvas.width = targetW;
+            canvas.height = targetH;
+
+            var ctx = canvas.getContext('2d');
+            if (!ctx) {
+                resolve(dataUrl);
+                return;
+            }
+
+            ctx.drawImage(img, 0, 0, targetW, targetH);
+            try {
+                var optimized = canvas.toDataURL('image/jpeg', Number(jpegQuality || REPORT_IMAGE_JPEG_QUALITY));
+                resolve(optimized || dataUrl);
+            } catch (_err) {
+                resolve(dataUrl);
+            }
+        };
+        img.onerror = function() {
+            resolve(dataUrl);
+        };
+        img.src = String(dataUrl || '');
+    });
+}
+
+async function prepareReportFilePayload(file) {
+    var originalDataUrl = await fileToBase64DataUrl(file);
+    var isImage = Boolean(
+        (file && typeof file.type === 'string' && file.type.indexOf('image/') === 0)
+        || /\.(png|jpe?g|webp|bmp|tiff?)$/i.test(String(file && file.name ? file.name : ''))
+    );
+
+    var extractionDataUrl = originalDataUrl;
+    if (isImage) {
+        extractionDataUrl = await optimizeImageDataUrl(originalDataUrl, REPORT_IMAGE_MAX_EDGE, REPORT_IMAGE_JPEG_QUALITY);
+    }
+
+    var storageDataUrl = getDataUrlApproxBytes(extractionDataUrl) <= REPORT_INLINE_FILE_MAX_BYTES
+        ? extractionDataUrl
+        : null;
+
+    return {
+        extractionDataUrl: extractionDataUrl,
+        storageDataUrl: storageDataUrl,
+        optimized: extractionDataUrl !== originalDataUrl,
+    };
 }
 
 function fileToBase64DataUrl(file) {
@@ -734,6 +861,10 @@ function openModal(modalId) {
     if (!modal) return;
     modal.classList.add('active');
     document.body.style.overflow = 'hidden';
+
+    if (modalId === 'report-modal') {
+        setReportUploadStage(null, '');
+    }
 }
 
 function closeModal(modalId) {
@@ -741,6 +872,10 @@ function closeModal(modalId) {
     if (!modal) return;
     modal.classList.remove('active');
     document.body.style.overflow = 'auto';
+
+    if (modalId === 'report-modal') {
+        setReportUploadStage(null, '');
+    }
 }
 
 function initModals() {
@@ -749,6 +884,9 @@ function initModals() {
             if (e.target === this) {
                 this.classList.remove('active');
                 document.body.style.overflow = 'auto';
+                if (this.id === 'report-modal') {
+                    setReportUploadStage(null, '');
+                }
             }
         });
     });
@@ -2161,6 +2299,8 @@ async function askAiAssistant() {
                         fileName: f.name,
                         fileType: f.type,
                         base64Content: base64,
+                    }, {
+                        timeoutMs: 45000,
                     });
                     if (extractResult.ok && extractResult.data && extractResult.data.result) {
                         var docText = extractResult.data.result.summary || extractResult.data.result.extractedText || JSON.stringify(extractResult.data.result);
@@ -2176,12 +2316,12 @@ async function askAiAssistant() {
             var contextQuestion = question || 'Please analyze the attached document(s) and provide relevant health insights.';
             var fullQuestion = contextQuestion + '\n\n[Attached Document Content]:\n' + extractedTexts.join('\n\n');
 
-            result = await API.post('/api/patient/ai/ask', { question: fullQuestion });
+            result = await API.post('/api/patient/ai/ask', { question: fullQuestion }, { timeoutMs: 30000 });
         } else {
-            result = await API.post('/api/patient/ai/ask', { question: question });
+            result = await API.post('/api/patient/ai/ask', { question: question }, { timeoutMs: 30000 });
         }
     } catch (e) {
-        result = { ok: false, data: { error: 'AI request failed. Please try again.' } };
+        result = { ok: false, data: { error: (e && e.message) || 'AI request failed. Please try again.' } };
     }
 
     clearTimeout(slowHintTimer);
@@ -2672,6 +2812,7 @@ async function addReport(e) {
     var date = document.getElementById('report-date').value || getIstTodayInputValue();
     var reportFileInput = document.getElementById('report-file');
     var reportFile = reportFileInput && reportFileInput.files && reportFileInput.files[0] ? reportFileInput.files[0] : null;
+    var hasReportFile = Boolean(reportFile);
 
     if (!reportName) {
         alert('Report name is required.');
@@ -2680,53 +2821,100 @@ async function addReport(e) {
 
     state.reportSubmitPending = true;
     setReportSubmitLoading(true);
+    setReportUploadStage('prepare', hasReportFile ? 'Preparing file for upload...' : 'Preparing report details...');
     try {
         var parsedResult = null;
         var reportFileDataUrl = null;
+        var extractionInputDataUrl = null;
         var nameVerification = null;
         var allowAutoImport = true;
+        var extractionSkipped = false;
+        var skippedProgressSteps = hasReportFile ? [] : ['extract', 'import'];
         if (reportFile) {
             try {
-                var base64Content = await fileToBase64DataUrl(reportFile);
-                reportFileDataUrl = base64Content;
+                var filePayload = await prepareReportFilePayload(reportFile);
+                extractionInputDataUrl = filePayload.extractionDataUrl;
+                reportFileDataUrl = filePayload.storageDataUrl;
+
+                setReportUploadStage(
+                    'extract',
+                    filePayload.optimized
+                        ? 'Extracting text from optimized image...'
+                        : 'Extracting text from report...'
+                );
                 var extracted = await API.post('/api/patient/ai/extract-document', {
                     fileName: reportFile.name,
                     fileType: reportFile.type || null,
-                    base64Content: base64Content,
+                    base64Content: extractionInputDataUrl,
+                }, {
+                    timeoutMs: 45000,
                 });
 
                 if (!extracted.ok) {
-                    alert((extracted.data && extracted.data.error) || 'Failed to extract report data from file.');
+                    var extractionError = (extracted.data && extracted.data.error) || 'Failed to analyze report file.';
+                    var proceedWithoutExtraction = confirm(
+                        extractionError + '\n\n'
+                        + 'Press OK to upload the report without AI extraction and auto-import.\n'
+                        + 'Press Cancel to try again.'
+                    );
+                    if (!proceedWithoutExtraction) {
+                        return;
+                    }
+                    parsedResult = null;
+                    nameVerification = null;
+                    allowAutoImport = false;
+                    extractionSkipped = true;
+                    if (skippedProgressSteps.indexOf('import') === -1) skippedProgressSteps.push('import');
+                    setReportUploadStage('save', 'Saving report without AI extraction...', { skippedSteps: ['import'] });
+                } else {
+                    parsedResult = extracted.data && extracted.data.result ? extracted.data.result : null;
+                    nameVerification = extracted.data && extracted.data.nameVerification
+                        ? extracted.data.nameVerification
+                        : (parsedResult && parsedResult.nameVerification ? parsedResult.nameVerification : null);
+
+                    if (parsedResult && nameVerification) {
+                        parsedResult.nameVerification = nameVerification;
+                    }
+
+                    if (nameVerification && nameVerification.isMatch === false) {
+                        var reportPatientName = nameVerification.reportPatientName || (parsedResult && parsedResult.extracted ? parsedResult.extracted.patientName : '--');
+                        var profileName = nameVerification.profileName || ((API.getUser() && API.getUser().fullName) || '--');
+                        var proceed = confirm(
+                            'Patient name mismatch detected.\n\n'
+                            + 'Report name: ' + reportPatientName + '\n'
+                            + 'Profile name: ' + profileName + '\n\n'
+                            + 'Press OK to upload the report WITHOUT auto-importing values to Overview.\n'
+                            + 'Press Cancel to stop and check the file.'
+                        );
+                        if (!proceed) {
+                            return;
+                        }
+                        allowAutoImport = false;
+                        if (skippedProgressSteps.indexOf('import') === -1) skippedProgressSteps.push('import');
+                    }
+                }
+            } catch (err) {
+                if (!extractionInputDataUrl) {
+                    setReportUploadStage('prepare', 'Could not read selected file.', { failed: true });
+                    alert('Failed to read uploaded file.');
                     return;
                 }
 
-                parsedResult = extracted.data && extracted.data.result ? extracted.data.result : null;
-                nameVerification = extracted.data && extracted.data.nameVerification
-                    ? extracted.data.nameVerification
-                    : (parsedResult && parsedResult.nameVerification ? parsedResult.nameVerification : null);
-
-                if (parsedResult && nameVerification) {
-                    parsedResult.nameVerification = nameVerification;
+                var unexpectedExtractionError = (err && err.message) || 'Failed to analyze report file.';
+                var continueWithoutExtraction = confirm(
+                    unexpectedExtractionError + '\n\n'
+                    + 'Press OK to upload the report without AI extraction and auto-import.\n'
+                    + 'Press Cancel to try again.'
+                );
+                if (!continueWithoutExtraction) {
+                    return;
                 }
-
-                if (nameVerification && nameVerification.isMatch === false) {
-                    var reportPatientName = nameVerification.reportPatientName || (parsedResult && parsedResult.extracted ? parsedResult.extracted.patientName : '--');
-                    var profileName = nameVerification.profileName || ((API.getUser() && API.getUser().fullName) || '--');
-                    var proceed = confirm(
-                        'Patient name mismatch detected.\n\n'
-                        + 'Report name: ' + reportPatientName + '\n'
-                        + 'Profile name: ' + profileName + '\n\n'
-                        + 'Press OK to upload the report WITHOUT auto-importing values to Overview.\n'
-                        + 'Press Cancel to stop and check the file.'
-                    );
-                    if (!proceed) {
-                        return;
-                    }
-                    allowAutoImport = false;
-                }
-            } catch (err) {
-                alert('Failed to read uploaded file.');
-                return;
+                parsedResult = null;
+                nameVerification = null;
+                allowAutoImport = false;
+                extractionSkipped = true;
+                if (skippedProgressSteps.indexOf('import') === -1) skippedProgressSteps.push('import');
+                setReportUploadStage('save', 'Saving report without AI extraction...', { skippedSteps: ['import'] });
             }
         }
 
@@ -2744,24 +2932,33 @@ async function addReport(e) {
             reportStatus = 'Name Mismatch - Review';
         }
 
+        setReportUploadStage('save', 'Saving report record...', { skippedSteps: skippedProgressSteps });
         var result = await API.post('/api/patient/reports/upload', {
             reportName: reportName,
             type: reportType,
             date: date,
             status: reportStatus,
-            fileUrl: reportFile ? reportFileDataUrl : null,
+            fileUrl: reportFileDataUrl,
             fileType: reportFile ? (reportFile.type || null) : null,
             parsed: parsedResult,
+        }, {
+            timeoutMs: 30000,
         });
 
         if (!result.ok) {
             if (result.data && result.data.code === 'duplicate_report') {
+                setReportUploadStage('save', 'Duplicate report found. Existing report is already saved.', {
+                    failed: true,
+                });
                 alert('This report was already added a moment ago.');
                 closeModal('report-modal');
                 document.getElementById('report-form').reset();
                 await Promise.all([loadReports(), loadOverview(), loadTrends()]);
                 return;
             }
+            setReportUploadStage('save', (result.data && result.data.error) || 'Failed to save report.', {
+                failed: true,
+            });
             alert((result.data && result.data.error) || 'Failed to add report.');
             return;
         }
@@ -2772,6 +2969,8 @@ async function addReport(e) {
         }
 
         if (allowAutoImport && parsedResult && parsedResult.extracted) {
+            skippedProgressSteps = skippedProgressSteps.filter(function(step) { return step !== 'import'; });
+            setReportUploadStage('import', 'Importing extracted values to Overview...');
             var extractedValues = parsedResult.extracted;
             var healthPayload = { recordedAt: date };
             var hba1c = toNumberOrNull(extractedValues.hba1c);
@@ -2801,7 +3000,7 @@ async function addReport(e) {
 
             var ingestionTasks = [];
             if (healthPayload.hba1c !== undefined || healthPayload.systolic !== undefined || healthPayload.diastolic !== undefined || healthPayload.weight !== undefined) {
-                ingestionTasks.push(API.post('/api/patient/health-metrics', healthPayload));
+                ingestionTasks.push(API.post('/api/patient/health-metrics', healthPayload, { timeoutMs: 15000 }));
             }
 
             var glucoseValues = Array.isArray(extractedValues.glucoseReadingsMgDl) ? extractedValues.glucoseReadingsMgDl : [];
@@ -2813,16 +3012,28 @@ async function addReport(e) {
                     type: index === 0 ? 'fasting' : 'random',
                     notes: 'Imported from AI report upload',
                     recordedAt: date,
-                }));
+                }, { timeoutMs: 15000 }));
             });
 
             if (ingestionTasks.length > 0) {
                 await Promise.allSettled(ingestionTasks);
+            } else {
+                if (skippedProgressSteps.indexOf('import') === -1) skippedProgressSteps.push('import');
+                setReportUploadStage('import', 'No importable metric values were found.', {
+                    skippedSteps: ['import'],
+                });
             }
         }
 
+        setReportUploadStage('import', 'Upload complete.', {
+            completed: true,
+            skippedSteps: skippedProgressSteps,
+        });
+
         if (parsedResult && !allowAutoImport) {
             alert('Report uploaded. Auto-import to Overview was skipped because patient name did not match your profile.');
+        } else if (extractionSkipped) {
+            alert('Report uploaded without AI extraction. You can still view it in Reports.');
         } else {
             alert(parsedResult ? 'Report uploaded, analyzed, review generated, and charts updated.' : 'Report added successfully.');
         }
@@ -2830,6 +3041,7 @@ async function addReport(e) {
         document.getElementById('report-form').reset();
         await Promise.all([loadReports(), loadOverview(), loadTrends()]);
     } catch (err) {
+        setReportUploadStage('save', 'Upload failed. Please try again.', { failed: true });
         alert('Network error while adding report.');
     } finally {
         state.reportSubmitPending = false;
@@ -2845,7 +3057,7 @@ async function deleteReport(id) {
             alert((result.data && result.data.error) || 'Failed to delete report.');
             return;
         }
-        await loadReports();
+        await Promise.all([loadReports(), loadOverview(), loadTrends()]);
     } catch (err) {
         alert('Network error while deleting report.');
     }

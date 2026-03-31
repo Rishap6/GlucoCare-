@@ -320,10 +320,6 @@
                             <i class="fas fa-plus"></i>
                             Add Report
                         </button>
-                        <a class="btn btn-outline sample-report-link" href="sample-report-simple.txt" download>
-                            <i class="fas fa-file-arrow-down"></i>
-                            Sample Report
-                        </a>
                     </div>
                 </div>
 
@@ -1389,6 +1385,15 @@
                 <div class="form-group">
                     <label class="form-label">Report Date</label>
                     <input type="date" class="form-input" id="report-date">
+                </div>
+                <div id="report-upload-progress" class="report-upload-progress hidden" aria-live="polite" aria-atomic="true">
+                    <div class="report-upload-step-list">
+                        <div class="report-upload-step" data-upload-step="prepare">Preparing file</div>
+                        <div class="report-upload-step" data-upload-step="extract">Extracting text</div>
+                        <div class="report-upload-step" data-upload-step="save">Saving report</div>
+                        <div class="report-upload-step" data-upload-step="import">Importing metrics</div>
+                    </div>
+                    <div id="report-upload-progress-text" class="report-upload-progress-text"></div>
                 </div>
                 <div class="modal-actions">
                     <button type="button" class="btn btn-outline" onclick="closeModal('report-modal')">Cancel</button>
