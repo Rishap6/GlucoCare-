@@ -41,6 +41,7 @@ var state = {
     unreadMessageNotifications: [],
     reportMetrics: null,
     activeReportDetails: null,
+    currentUser: null,
 };
 
 function setReportSubmitLoading(isLoading) {
@@ -1387,9 +1388,11 @@ function populateDoctorSelect() {
 function updateOverviewSummary(dashboard) {
     var statValues = document.querySelectorAll('.quick-stats .stat-value');
     var latestGlucoseValue = toNumberOrNull(dashboard.latestGlucose);
+    var latestGlucoseType = String(dashboard.latestGlucose && dashboard.latestGlucose.type || '').toLowerCase();
     var latestWeightValue = toNumberOrNull(dashboard.latestMetric && dashboard.latestMetric.weight);
     var systolicValue = toNumberOrNull(dashboard.latestMetric && dashboard.latestMetric.systolic);
     var diastolicValue = toNumberOrNull(dashboard.latestMetric && dashboard.latestMetric.diastolic);
+    var ageProfile = getAgeAwareGlucoseProfile(getCurrentPatientAgeYears());
 
     if (statValues[0]) {
         statValues[0].textContent = latestGlucoseValue === null ? '--' : latestGlucoseValue.toFixed(0);
@@ -1412,14 +1415,166 @@ function updateOverviewSummary(dashboard) {
     }
 
     var statTrends = document.querySelectorAll('.quick-stats .stat-card .stat-trend');
+
+    function setTrendState(index, trendState) {
+        if (!statTrends[index] || !trendState) return;
+        statTrends[index].classList.remove('up', 'down', 'warning');
+        statTrends[index].classList.add(trendState.trendClass);
+        statTrends[index].innerHTML = '<i class="fas ' + trendState.icon + '"></i> ' + escapeHtml(trendState.text);
+    }
+
     function toggleTrend(index, visible) {
         if (!statTrends[index]) return;
         statTrends[index].style.display = visible ? '' : 'none';
     }
 
+    if (latestGlucoseValue !== null) {
+        var glucoseLevel = (latestGlucoseType === 'postprandial' || latestGlucoseType === 'random')
+            ? classifyPostprandialGlucose(latestGlucoseValue, ageProfile)
+            : classifyFastingGlucose(latestGlucoseValue, ageProfile);
+        setTrendState(0, getTrendState(glucoseLevel.level, glucoseLevel.label));
+    }
+
+    if (systolicValue !== null && diastolicValue !== null) {
+        var bpLevel = classifyBloodPressure(systolicValue, diastolicValue);
+        setTrendState(2, getTrendState(bpLevel.level, bpLevel.label));
+    }
+
     toggleTrend(0, latestGlucoseValue !== null);
     toggleTrend(1, latestWeightValue !== null);
     toggleTrend(2, systolicValue !== null && diastolicValue !== null);
+}
+
+function getCurrentPatientAgeYears() {
+    var user = state.currentUser || (typeof API !== 'undefined' && API.getUser ? API.getUser() : null);
+    var dobValue = user && user.dateOfBirth ? user.dateOfBirth : null;
+    if (!dobValue) return null;
+
+    var dob = new Date(dobValue);
+    if (Number.isNaN(dob.getTime())) return null;
+
+    var now = new Date();
+    var age = now.getFullYear() - dob.getFullYear();
+    var monthDiff = now.getMonth() - dob.getMonth();
+    if (monthDiff < 0 || (monthDiff === 0 && now.getDate() < dob.getDate())) {
+        age -= 1;
+    }
+
+    if (!Number.isFinite(age) || age < 0 || age > 125) return null;
+    return age;
+}
+
+function getAgeAwareGlucoseProfile(ageYears) {
+    var age = Number(ageYears);
+    if (Number.isFinite(age) && age < 18) {
+        return {
+            key: 'children',
+            label: 'Children',
+            fastingHealthyMax: 100,
+            postMealHealthyMax: 140,
+            hba1cHealthyMax: 5.7,
+        };
+    }
+
+    if (Number.isFinite(age) && age >= 65) {
+        return {
+            key: 'seniors',
+            label: 'Seniors',
+            fastingHealthyMax: 110,
+            postMealHealthyMax: 160,
+            hba1cHealthyMax: 6.0,
+        };
+    }
+
+    if (Number.isFinite(age) && age >= 40) {
+        return {
+            key: 'middle-age',
+            label: 'Middle Age',
+            fastingHealthyMax: 100,
+            postMealHealthyMax: 160,
+            hba1cHealthyMax: 5.7,
+        };
+    }
+
+    return {
+        key: 'adults',
+        label: 'Adults',
+        fastingHealthyMax: 99,
+        postMealHealthyMax: 140,
+        hba1cHealthyMax: 5.6,
+    };
+}
+
+function getMetricVisual(level) {
+    if (level === 'healthy') {
+        return { badgeClass: 'normal', label: 'Healthy', progressClass: 'success', progress: 82 };
+    }
+    if (level === 'borderline') {
+        return { badgeClass: 'warning', label: 'Borderline', progressClass: 'warning', progress: 60 };
+    }
+    if (level === 'bad') {
+        return { badgeClass: 'critical', label: 'Bad', progressClass: 'danger', progress: 34 };
+    }
+    return { badgeClass: 'critical', label: 'Dangerous', progressClass: 'danger', progress: 16 };
+}
+
+function getTrendState(level, label) {
+    if (level === 'healthy') {
+        return { trendClass: 'up', icon: 'fa-check', text: label || 'Healthy' };
+    }
+    if (level === 'borderline') {
+        return { trendClass: 'warning', icon: 'fa-exclamation-triangle', text: label || 'Borderline' };
+    }
+    return { trendClass: 'down', icon: 'fa-exclamation-circle', text: label || (level === 'bad' ? 'Bad' : 'Dangerous') };
+}
+
+function classifyFastingGlucose(value, ageProfile) {
+    var numeric = toNumberOrNull(value);
+    if (numeric === null) return { level: 'unknown', label: '--' };
+
+    var profile = ageProfile || getAgeAwareGlucoseProfile(null);
+    if (numeric < 70) return { level: 'dangerous', label: 'Dangerous (Low)' };
+    if (numeric <= profile.fastingHealthyMax) return { level: 'healthy', label: 'Healthy' };
+    if (numeric <= 125) return { level: 'borderline', label: 'Borderline' };
+    if (numeric <= 199) return { level: 'bad', label: 'Bad' };
+    return { level: 'dangerous', label: 'Dangerous' };
+}
+
+function classifyPostprandialGlucose(value, ageProfile) {
+    var numeric = toNumberOrNull(value);
+    if (numeric === null) return { level: 'unknown', label: '--' };
+
+    var profile = ageProfile || getAgeAwareGlucoseProfile(null);
+    if (numeric < 70) return { level: 'dangerous', label: 'Dangerous (Low)' };
+    if (numeric < profile.postMealHealthyMax) return { level: 'healthy', label: 'Healthy' };
+    if (numeric <= 199) return { level: 'borderline', label: 'Borderline' };
+    if (numeric < 300) return { level: 'bad', label: 'Bad' };
+    return { level: 'dangerous', label: 'Dangerous' };
+}
+
+function classifyHba1c(value, ageProfile) {
+    var numeric = toNumberOrNull(value);
+    if (numeric === null) return { level: 'unknown', label: '--' };
+
+    var profile = ageProfile || getAgeAwareGlucoseProfile(null);
+    if (numeric < 4.0) return { level: 'dangerous', label: 'Dangerous (Low)' };
+    if (numeric < profile.hba1cHealthyMax) return { level: 'healthy', label: 'Healthy' };
+    if (numeric <= 6.4) return { level: 'borderline', label: 'Borderline' };
+    if (numeric < 8.0) return { level: 'bad', label: 'Bad' };
+    return { level: 'dangerous', label: 'Dangerous' };
+}
+
+function classifyBloodPressure(systolic, diastolic) {
+    var s = toNumberOrNull(systolic);
+    var d = toNumberOrNull(diastolic);
+    if (s === null || d === null) return { level: 'unknown', label: '--' };
+
+    if (s < 90 || d < 60) return { level: 'dangerous', label: 'Dangerous (Low)' };
+    if (s < 120 && d < 80) return { level: 'healthy', label: 'Healthy' };
+    if (s >= 120 && s <= 129 && d < 80) return { level: 'borderline', label: 'Borderline' };
+    if ((s >= 130 && s <= 139) || (d >= 80 && d <= 89)) return { level: 'bad', label: 'Bad' };
+    if (s >= 140 || d >= 90) return { level: 'dangerous', label: 'Dangerous' };
+    return { level: 'borderline', label: 'Borderline' };
 }
 
 function updateOverviewMetrics(glucoseReadings, healthMetrics, scoreData) {
@@ -1476,6 +1631,14 @@ function updateOverviewMetrics(glucoseReadings, healthMetrics, scoreData) {
     }
 
     var statusBadges = document.querySelectorAll('#overview .metrics-grid .metric-card .status-badge');
+
+    function setMetricBadge(index, classification) {
+        if (!statusBadges[index] || !classification || !classification.level || classification.level === 'unknown') return;
+        var visual = getMetricVisual(classification.level);
+        statusBadges[index].className = 'status-badge ' + visual.badgeClass;
+        statusBadges[index].textContent = visual.label;
+    }
+
     function toggleBadge(index, visible) {
         if (!statusBadges[index]) return;
         statusBadges[index].style.display = visible ? '' : 'none';
@@ -1487,23 +1650,34 @@ function updateOverviewMetrics(glucoseReadings, healthMetrics, scoreData) {
 
     var progressContainers = document.querySelectorAll('#overview .metrics-grid .metric-card .metric-progress');
     var progressBars = document.querySelectorAll('#overview .metrics-grid .metric-card .metric-progress-bar');
-    function updateProgress(index, percent) {
+
+    function updateProgress(index, classification) {
         if (!progressContainers[index] || !progressBars[index]) return;
-        if (percent === null) {
+        if (!classification || !classification.level || classification.level === 'unknown') {
             progressContainers[index].style.display = 'none';
             return;
         }
+
+        var visual = getMetricVisual(classification.level);
         progressContainers[index].style.display = '';
-        var clamped = Math.max(0, Math.min(100, percent));
+        var clamped = Math.max(0, Math.min(100, visual.progress));
+        progressBars[index].classList.remove('success', 'warning', 'danger');
+        progressBars[index].classList.add(visual.progressClass);
         progressBars[index].style.width = clamped + '%';
     }
 
-    var glucoseComponent = scoreData && scoreData.components ? toNumberOrNull(scoreData.components.glucose) : null;
-    var overallScore = scoreData && scoreData.score !== undefined ? toNumberOrNull(scoreData.score) : null;
+    var ageProfile = getAgeAwareGlucoseProfile(getCurrentPatientAgeYears());
+    var fastingClassification = classifyFastingGlucose(fastingAvg, ageProfile);
+    var ppClassification = classifyPostprandialGlucose(ppAvg, ageProfile);
+    var hba1cClassification = classifyHba1c(latestHba1cValue, ageProfile);
 
-    updateProgress(0, (fastingAvg !== null && glucoseComponent !== null) ? glucoseComponent : null);
-    updateProgress(1, (ppAvg !== null && glucoseComponent !== null) ? glucoseComponent : null);
-    updateProgress(2, (latestHba1cValue !== null && overallScore !== null) ? overallScore : null);
+    setMetricBadge(0, fastingClassification);
+    setMetricBadge(1, ppClassification);
+    setMetricBadge(2, hba1cClassification);
+
+    updateProgress(0, fastingAvg !== null ? fastingClassification : null);
+    updateProgress(1, ppAvg !== null ? ppClassification : null);
+    updateProgress(2, latestHba1cValue !== null ? hba1cClassification : null);
 }
 
 function initCharts() {
@@ -2756,6 +2930,7 @@ async function saveProfile(e) {
         }
 
         sessionStorage.setItem('user', JSON.stringify(result.data));
+        state.currentUser = result.data;
         populateProfileView(result.data);
         populateProfileModal(result.data);
         alert('Profile updated successfully.');
@@ -3188,6 +3363,7 @@ async function loadProfile() {
     var result = await API.get('/api/patient/profile');
     if (!result.ok) return;
     sessionStorage.setItem('user', JSON.stringify(result.data));
+    state.currentUser = result.data;
     populateProfileView(result.data);
     populateProfileModal(result.data);
 }
@@ -3553,6 +3729,7 @@ async function bootstrap() {
 
     var localUser = API.getUser();
     if (localUser) {
+        state.currentUser = localUser;
         populateProfileView(localUser);
         populateProfileModal(localUser);
     }

@@ -17,14 +17,35 @@ const patientRoutes = require('./routes/patient');
 const doctorRoutes = require('./routes/doctor');
 const predictRoutes = require('./routes/predict');
 
-const ALLOWED_ORIGINS = process.env.ALLOWED_ORIGINS
-    ? process.env.ALLOWED_ORIGINS.split(',').map(s => s.trim())
-    : ['http://localhost:5000', 'http://127.0.0.1:5000'];
+const DEFAULT_PORT = Number(process.env.PORT || 5000);
+let activePort = DEFAULT_PORT;
+
+const CONFIGURED_ORIGINS = process.env.ALLOWED_ORIGINS
+    ? process.env.ALLOWED_ORIGINS.split(',').map(function(s) { return s.trim(); }).filter(Boolean)
+    : [];
+
+function isLocalhostOrigin(origin, port) {
+    return origin === 'http://localhost:' + port || origin === 'http://127.0.0.1:' + port;
+}
+
+function isAllowedOrigin(origin) {
+    if (!origin) return true;
+    if (CONFIGURED_ORIGINS.indexOf(origin) !== -1) return true;
+    return isLocalhostOrigin(origin, activePort);
+}
+
+function corsOriginValidator(origin, callback) {
+    if (isAllowedOrigin(origin)) {
+        callback(null, true);
+        return;
+    }
+    callback(new Error('Not allowed by CORS'));
+}
 
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server, {
-    cors: { origin: ALLOWED_ORIGINS, credentials: true },
+    cors: { origin: corsOriginValidator, credentials: true },
     pingTimeout: 20000,
     pingInterval: 25000,
 });
@@ -60,7 +81,7 @@ const apiLimiter = rateLimit({
 
 // ── Middleware ───────────────────────────────────────────────────────
 app.use(cors({
-    origin: ALLOWED_ORIGINS,
+    origin: corsOriginValidator,
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],
@@ -86,7 +107,7 @@ app.get('/', (req, res) => {
 });
 
 // Start server
-const PORT = process.env.PORT || 5000;
+const PORT = DEFAULT_PORT;
 
 // Socket.io auth middleware
 io.use(function(socket, next) {
@@ -203,9 +224,36 @@ async function startServer() {
     try {
         await initDatabase();
         console.log('Connected to SQLite database');
-        server.listen(PORT, () => {
-            console.log(`Server running on http://localhost:${PORT}`);
-        });
+
+        function listenOnPort(port) {
+            activePort = port;
+
+            function onError(err) {
+                server.removeListener('listening', onListening);
+                if (err && err.code === 'EADDRINUSE') {
+                    const nextPort = Number(port) + 1;
+                    console.warn(`Port ${port} is in use. Trying ${nextPort}...`);
+                    setTimeout(function() {
+                        listenOnPort(nextPort);
+                    }, 100);
+                    return;
+                }
+                console.error('Server start failed:', err && err.message ? err.message : err);
+                process.exit(1);
+            }
+
+            function onListening() {
+                server.removeListener('error', onError);
+                console.log(`Server running on http://localhost:${activePort}`);
+            }
+
+            server.once('error', onError);
+            server.once('listening', onListening);
+
+            server.listen(port);
+        }
+
+        listenOnPort(PORT);
     } catch (err) {
         console.error('Failed to initialize database:', err.message);
         process.exit(1);

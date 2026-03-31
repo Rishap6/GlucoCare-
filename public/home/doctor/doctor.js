@@ -25,6 +25,8 @@ var doctorState = {
     alerts: [],
     doctorProfile: null,
     dashboard: null,
+    currentView: 'overview',
+    currentDoctorName: 'Doctor',
     patientView: {
         assignedOnly: true,
         sortBy: 'nameAsc',
@@ -136,14 +138,171 @@ function summarizeExtracted(result) {
     return summary.join(', ');
 }
 
+function getDoctorViewMeta(view) {
+    var doctorName = doctorState.currentDoctorName || 'Doctor';
+    var map = {
+        overview: {
+            title: 'Dashboard',
+            subtitle: 'Welcome back, ' + doctorName
+        },
+        patients: {
+            title: 'Patients',
+            subtitle: 'Browse and manage patient records in one place'
+        },
+        appointments: {
+            title: 'Appointments',
+            subtitle: 'Focus on today\'s and upcoming consultations'
+        },
+        reports: {
+            title: 'Reports',
+            subtitle: 'Create reports and records from a dedicated workspace'
+        },
+        alerts: {
+            title: 'Alerts',
+            subtitle: 'Prioritize critical and warning signals quickly'
+        },
+        messages: {
+            title: 'Messages',
+            subtitle: 'Track unread conversations before opening chat'
+        }
+    };
+    return map[view] || map.overview;
+}
+
+function updateDoctorPageTitle(view) {
+    var title = document.querySelector('.page-title h1');
+    var subtitle = document.querySelector('.page-title p');
+    var meta = getDoctorViewMeta(view);
+
+    if (title) title.textContent = meta.title;
+    if (subtitle) subtitle.textContent = meta.subtitle;
+}
+
+function getAppointmentTimestamp(appt) {
+    if (!appt) return NaN;
+    var datePart = String(appt.date || '').trim();
+    var timePart = String(appt.time || '').trim();
+    if (!datePart) return NaN;
+
+    var withTime = new Date(datePart + (timePart ? (' ' + timePart) : ''));
+    if (!Number.isNaN(withTime.getTime())) return withTime.getTime();
+
+    var dateOnly = new Date(datePart);
+    return Number.isNaN(dateOnly.getTime()) ? NaN : dateOnly.getTime();
+}
+
+function updateOverviewHighlights() {
+    var criticalEl = document.getElementById('doctor-highlight-critical');
+    var nextApptEl = document.getElementById('doctor-highlight-next-appt');
+    var msgEl = document.getElementById('doctor-highlight-msg');
+    var messagesUnreadEl = document.getElementById('doctor-messages-view-unread');
+
+    var criticalCount = Array.isArray(doctorState.alerts)
+        ? doctorState.alerts.filter(function (a) { return String(a.severity || '').toLowerCase() === 'critical'; }).length
+        : 0;
+
+    var criticalText = criticalCount > 0
+        ? (criticalCount + ' critical alert' + (criticalCount > 1 ? 's' : ''))
+        : 'No critical alerts';
+    if (criticalEl) criticalEl.textContent = criticalText;
+
+    var appointments = (doctorState.dashboard && Array.isArray(doctorState.dashboard.upcomingAppointments))
+        ? doctorState.dashboard.upcomingAppointments.slice()
+        : [];
+
+    var now = Date.now();
+    var nextFuture = null;
+    var earliest = null;
+
+    appointments.forEach(function (appt) {
+        var ts = getAppointmentTimestamp(appt);
+        if (Number.isNaN(ts)) return;
+
+        if (!earliest || ts < earliest.ts) {
+            earliest = { appt: appt, ts: ts };
+        }
+        if (ts >= now && (!nextFuture || ts < nextFuture.ts)) {
+            nextFuture = { appt: appt, ts: ts };
+        }
+    });
+
+    var selected = nextFuture || earliest;
+    if (nextApptEl) {
+        if (!selected) {
+            nextApptEl.textContent = 'No upcoming appointments';
+        } else {
+            var patientName = selected.appt.patient && selected.appt.patient.fullName
+                ? selected.appt.patient.fullName
+                : 'Patient';
+            var dateLabel = formatDate(selected.appt.date);
+            var timeLabel = String(selected.appt.time || '').trim();
+            nextApptEl.textContent = patientName + ' on ' + dateLabel + (timeLabel ? (' at ' + timeLabel) : '');
+        }
+    }
+
+    var unreadCount = 0;
+    if (Array.isArray(doctorState.chatThreads)) {
+        doctorState.chatThreads.forEach(function (thread) {
+            unreadCount += Number(thread.unreadCount || 0);
+        });
+    }
+
+    var unreadText = unreadCount > 0
+        ? (unreadCount + ' unread message' + (unreadCount > 1 ? 's' : ''))
+        : 'No unread messages';
+    if (msgEl) msgEl.textContent = unreadText;
+    if (messagesUnreadEl) messagesUnreadEl.textContent = unreadText;
+}
+
+function setDoctorView(view) {
+    var allowedViews = {
+        overview: true,
+        patients: true,
+        appointments: true,
+        reports: true,
+        alerts: true,
+        messages: true
+    };
+    var resolvedView = allowedViews[view] ? view : 'overview';
+
+    doctorState.currentView = resolvedView;
+
+    var body = document.getElementById('doctor-dashboard-body');
+    if (body) body.setAttribute('data-view', resolvedView);
+
+    var navItems = document.querySelectorAll('.sidebar .nav-item[data-view]');
+    navItems.forEach(function (item) {
+        item.classList.toggle('active', item.getAttribute('data-view') === resolvedView);
+    });
+
+    var topSearch = document.getElementById('doctor-top-search');
+    if (topSearch) {
+        topSearch.style.display = (resolvedView === 'overview' || resolvedView === 'patients') ? '' : 'none';
+    }
+
+    updateDoctorPageTitle(resolvedView);
+    updateOverviewHighlights();
+
+    if (resolvedView === 'alerts') {
+        loadAlerts().catch(function () {});
+    }
+    if (resolvedView === 'messages') {
+        loadDoctorChatThreads().catch(function () {});
+    }
+
+    if (window.innerWidth <= 1024) {
+        closeSidebar();
+    }
+}
+
 function setDoctorHeader(user) {
     var profileName = document.querySelector('.profile-name');
-    var titleMsg = document.querySelector('.page-title p');
     var profileRole = document.querySelector('.profile-role');
+    doctorState.currentDoctorName = user.fullName || 'Doctor';
 
-    if (profileName) profileName.textContent = user.fullName || 'Doctor';
-    if (titleMsg) titleMsg.textContent = 'Welcome back, ' + (user.fullName || 'Doctor');
+    if (profileName) profileName.textContent = doctorState.currentDoctorName;
     if (profileRole) profileRole.textContent = user.specialization || 'Doctor';
+    updateDoctorPageTitle(doctorState.currentView);
 }
 
 function renderPatients(patients) {
@@ -448,6 +607,7 @@ async function loadDashboard() {
 
     setPatientsInRange(Number(d.patientCount || 0), Array.isArray(d.criticalReadings) ? d.criticalReadings.length : 0);
     renderUpcomingAppointments(d.upcomingAppointments || []);
+    updateOverviewHighlights();
 }
 
 async function loadAlerts() {
@@ -455,6 +615,7 @@ async function loadAlerts() {
     doctorState.alerts = result.ok && Array.isArray(result.data) ? result.data : [];
     renderCriticalAlerts(doctorState.alerts.slice(0, 8));
     setAlertBadge(doctorState.alerts);
+    updateOverviewHighlights();
 }
 
 async function loadPatients() {
@@ -853,17 +1014,16 @@ async function refreshDoctorDashboard() {
 
 function bindActions() {
     var settingsBtn = document.getElementById('doctor-settings-btn');
-    var navPatientsBtn = document.getElementById('doctor-nav-patients');
-    var navAppointmentsBtn = document.getElementById('doctor-nav-appointments');
-    var navReportsBtn = document.getElementById('doctor-nav-reports');
-    var navAlertsBtn = document.getElementById('doctor-nav-alerts');
-    var navMessagesBtn = document.getElementById('doctor-nav-messages');
+    var navViewItems = document.querySelectorAll('.sidebar .nav-item[data-view]');
     var editProfileBtn = document.getElementById('doctor-open-profile-btn');
     var viewAppointmentsBtn = document.getElementById('doctor-view-appointments-btn');
     var quickAddPatientBtn = document.getElementById('doctor-quick-add-patient-btn');
     var quickPrescribeBtn = document.getElementById('doctor-quick-prescribe-btn');
     var quickReportsBtn = document.getElementById('doctor-quick-reports-btn');
     var quickScheduleBtn = document.getElementById('doctor-quick-schedule-btn');
+    var reportCreateBtn = document.getElementById('doctor-report-create-btn');
+    var recordCreateBtn = document.getElementById('doctor-record-create-btn');
+    var openMessagesPanelBtn = document.getElementById('doctor-open-messages-panel-btn');
     var filterBtn = document.getElementById('doctor-patient-filter-btn');
     var assignedToggle = document.getElementById('doctor-assigned-toggle');
     var patientSort = document.getElementById('doctor-patient-sort');
@@ -875,29 +1035,20 @@ function bindActions() {
     var overlay = document.getElementById('doctorModalOverlay');
 
     if (settingsBtn) settingsBtn.addEventListener('click', openDoctorProfileModal);
-    if (navPatientsBtn) navPatientsBtn.addEventListener('click', function (e) {
-        e.preventDefault();
-        window.scrollTo({ top: 300, behavior: 'smooth' });
-    });
-    if (navAppointmentsBtn) navAppointmentsBtn.addEventListener('click', function (e) {
-        e.preventDefault();
-        openAppointmentsManager();
-    });
-    if (navReportsBtn) navReportsBtn.addEventListener('click', function (e) {
-        e.preventDefault();
-        openCreateReportModal();
-    });
-    if (navAlertsBtn) navAlertsBtn.addEventListener('click', function (e) {
-        e.preventDefault();
-        openAlertsModal();
-    });
-    if (navMessagesBtn) navMessagesBtn.addEventListener('click', function (e) {
-        e.preventDefault();
-        openDoctorChatPanel();
+    navViewItems.forEach(function (navItem) {
+        navItem.addEventListener('click', function (e) {
+            e.preventDefault();
+            setDoctorView(navItem.getAttribute('data-view'));
+        });
     });
 
     if (editProfileBtn) editProfileBtn.addEventListener('click', openDoctorProfileModal);
-    if (viewAppointmentsBtn) viewAppointmentsBtn.addEventListener('click', openAppointmentsManager);
+    if (viewAppointmentsBtn) viewAppointmentsBtn.addEventListener('click', function () {
+        setDoctorView('appointments');
+    });
+    if (reportCreateBtn) reportCreateBtn.addEventListener('click', openCreateReportModal);
+    if (recordCreateBtn) recordCreateBtn.addEventListener('click', openCreateRecordModal);
+    if (openMessagesPanelBtn) openMessagesPanelBtn.addEventListener('click', openDoctorChatPanel);
     if (quickAddPatientBtn) quickAddPatientBtn.addEventListener('click', openAssignPatientModal);
     if (quickPrescribeBtn) quickPrescribeBtn.addEventListener('click', openCreateRecordModal);
     if (quickReportsBtn) quickReportsBtn.addEventListener('click', openCreateReportModal);
@@ -940,8 +1091,12 @@ function bindActions() {
         });
     }
 
-    if (viewAlertsBtn) viewAlertsBtn.addEventListener('click', openAlertsModal);
-    if (notificationBtn) notificationBtn.addEventListener('click', openAlertsModal);
+    if (viewAlertsBtn) viewAlertsBtn.addEventListener('click', function () {
+        setDoctorView('alerts');
+    });
+    if (notificationBtn) notificationBtn.addEventListener('click', function () {
+        setDoctorView('alerts');
+    });
     if (logoutLink) {
         logoutLink.addEventListener('click', function (e) {
             e.preventDefault();
@@ -1209,6 +1364,7 @@ function updateDoctorMsgBadge() {
     if (notifDot) {
         notifDot.style.display = total > 0 ? 'block' : 'none';
     }
+    updateOverviewHighlights();
 }
 
 function initDoctorChatSocket() {
@@ -1296,6 +1452,7 @@ function initDoctorChatSocket() {
     setDoctorHeader(user);
     bindSearch();
     bindActions();
+    setDoctorView(doctorState.currentView);
     initDoctorChatSocket();
 
     refreshDoctorDashboard().catch(function () {

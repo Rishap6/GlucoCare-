@@ -690,6 +690,11 @@
             color: var(--danger);
         }
 
+        .stat-trend.warning {
+            background: rgba(245, 158, 11, 0.12);
+            color: var(--warning);
+        }
+
         /* Dashboard Sections */
         .dashboard-section {
             display: none;
