@@ -69,8 +69,8 @@ function togglePassword(inputId, button) {
                 }
 
                 // Store token and user info
-                localStorage.setItem('token', result.data.token);
-                localStorage.setItem('user', JSON.stringify(result.data.user));
+                sessionStorage.setItem('token', result.data.token);
+                sessionStorage.setItem('user', JSON.stringify(result.data.user));
 
                 // Redirect based on role
                 if (result.data.user.role === 'doctor') {

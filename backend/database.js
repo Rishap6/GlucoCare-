@@ -201,6 +201,20 @@ async function initDatabase() {
         )
     `);
 
+    _wrapper.exec(`
+        CREATE TABLE IF NOT EXISTS report_corrections (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            report_id INTEGER NOT NULL REFERENCES reports(id) ON DELETE CASCADE,
+            patient_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            field_key TEXT NOT NULL,
+            original_value_json TEXT,
+            corrected_value_json TEXT,
+            note TEXT,
+            createdAt TEXT DEFAULT (datetime('now')),
+            updatedAt TEXT DEFAULT (datetime('now'))
+        )
+    `);
+
     try {
         const reportColumns = _wrapper.prepare('PRAGMA table_info(reports)').all().map((col) => String(col.name || ''));
         const needsReportMigration = reportColumns.includes('notes')
@@ -650,6 +664,8 @@ async function initDatabase() {
     _wrapper.exec(`CREATE INDEX IF NOT EXISTS idx_glucose_patient ON glucose_readings(patient)`);
     _wrapper.exec(`CREATE INDEX IF NOT EXISTS idx_health_patient ON health_metrics(patient)`);
     _wrapper.exec(`CREATE INDEX IF NOT EXISTS idx_reports_patient ON reports(patient)`);
+    _wrapper.exec(`CREATE INDEX IF NOT EXISTS idx_report_corrections_report ON report_corrections(report_id)`);
+    _wrapper.exec(`CREATE INDEX IF NOT EXISTS idx_report_corrections_patient ON report_corrections(patient_id)`);
     _wrapper.exec(`CREATE INDEX IF NOT EXISTS idx_records_patient ON medical_records(patient)`);
     _wrapper.exec(`CREATE INDEX IF NOT EXISTS idx_appointments_patient ON appointments(patient)`);
     _wrapper.exec(`CREATE INDEX IF NOT EXISTS idx_appointments_doctor ON appointments(doctor)`);

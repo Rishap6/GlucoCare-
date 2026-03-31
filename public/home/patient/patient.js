@@ -2,7 +2,9 @@
 function logoutPatient() {
     // Remove any session tokens (example: localStorage/sessionStorage)
     localStorage.removeItem('token');
+    localStorage.removeItem('user');
     sessionStorage.removeItem('token');
+    sessionStorage.removeItem('user');
     // Redirect to login page
     window.location.href = '/auth/login/login.html';
 }
@@ -33,9 +35,69 @@ var state = {
     shares: [],
     aiConversation: [],
     aiRequestPending: false,
+    reportSubmitPending: false,
     aiAttachedFiles: [],
     charts: {},
+    unreadMessageNotifications: [],
+    reportMetrics: null,
+    activeReportDetails: null,
 };
+
+function setReportSubmitLoading(isLoading) {
+    var form = document.getElementById('report-form');
+    var submitBtn = document.getElementById('report-submit-btn');
+    if (!form || !submitBtn) return;
+
+    var controls = form.querySelectorAll('input, select, textarea, button');
+    controls.forEach(function(ctrl) {
+        ctrl.disabled = !!isLoading;
+    });
+
+    submitBtn.disabled = !!isLoading;
+    submitBtn.textContent = isLoading ? 'Uploading...' : 'Add Report';
+}
+
+function setManualDataSubmitLoading(isLoading) {
+    var form = document.getElementById('manual-data-form');
+    var submitBtn = document.getElementById('manual-data-submit-btn');
+    if (!form || !submitBtn) return;
+
+    var controls = form.querySelectorAll('input, select, textarea, button');
+    controls.forEach(function(ctrl) {
+        ctrl.disabled = !!isLoading;
+    });
+
+    submitBtn.disabled = !!isLoading;
+    submitBtn.textContent = isLoading ? 'Saving...' : 'Save Data';
+}
+
+function setManualDataResult(message, tone) {
+    var resultEl = document.getElementById('manual-data-result');
+    if (!resultEl) return;
+    resultEl.textContent = message;
+
+    if (tone === 'error') {
+        resultEl.style.color = 'var(--danger)';
+        return;
+    }
+    if (tone === 'success') {
+        resultEl.style.color = 'var(--success)';
+        return;
+    }
+    resultEl.style.color = 'var(--gray-500)';
+}
+
+function clearManualDataForm() {
+    var form = document.getElementById('manual-data-form');
+    if (form) form.reset();
+
+    var recordedAtInput = document.getElementById('manual-recorded-at');
+    if (recordedAtInput) {
+        recordedAtInput.value = getIstTodayInputValue();
+    }
+
+    setManualDataResult('Add at least one value and click Save Data.', 'neutral');
+}
 
 var aiTypingTimer = null;
 var chatSocket = null;
@@ -169,11 +231,36 @@ function escapeHtml(value) {
         .replace(/'/g, '&#39;');
 }
 
+var IST_TIME_ZONE = 'Asia/Kolkata';
+
+function getIstDateKey(date) {
+    return date.toLocaleDateString('sv-SE', {
+        timeZone: IST_TIME_ZONE,
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+    });
+}
+
+function formatIstDate(date, options) {
+    var opts = Object.assign({ timeZone: IST_TIME_ZONE }, options || {});
+    return date.toLocaleDateString('en-IN', opts);
+}
+
+function formatIstTime(date, options) {
+    var opts = Object.assign({ timeZone: IST_TIME_ZONE }, options || {});
+    return date.toLocaleTimeString('en-IN', opts);
+}
+
+function getIstTodayInputValue() {
+    return getIstDateKey(new Date());
+}
+
 function formatDate(value) {
     if (!value) return '--';
     var date = new Date(value);
     if (Number.isNaN(date.getTime())) return '--';
-    return date.toLocaleDateString();
+    return formatIstDate(date);
 }
 
 function formatDateInput(value) {
@@ -182,8 +269,32 @@ function formatDateInput(value) {
 }
 
 function toNumberOrNull(value) {
-    var num = Number(value);
-    return Number.isFinite(num) ? num : null;
+    if (value === null || value === undefined || value === '') return null;
+    if (typeof value === 'number') {
+        return Number.isFinite(value) ? value : null;
+    }
+    if (typeof value === 'string') {
+        var cleaned = value.trim();
+        if (!cleaned) return null;
+
+        // Accept strings like "7.2%", "126 mg/dL", "  85 "
+        var direct = Number(cleaned.replace(/,/g, ''));
+        if (Number.isFinite(direct)) return direct;
+
+        var match = cleaned.match(/-?\d+(?:\.\d+)?/);
+        if (match) {
+            var extracted = Number(match[0]);
+            return Number.isFinite(extracted) ? extracted : null;
+        }
+    }
+    if (typeof value === 'object') {
+        var candidates = [value.value, value.numericValue, value.mgDl, value.amount, value.reading];
+        for (var i = 0; i < candidates.length; i++) {
+            var parsedCandidate = toNumberOrNull(candidates[i]);
+            if (parsedCandidate !== null) return parsedCandidate;
+        }
+    }
+    return null;
 }
 
 function inRange(value, min, max) {
@@ -235,6 +346,304 @@ function summarizeExtracted(result) {
         summary.push('Weight ' + Number(extracted.weightKg).toFixed(1) + ' kg');
     }
     return summary.join(', ');
+}
+
+function formatConfidencePercent(score) {
+    var numeric = toNumberOrNull(score);
+    if (numeric === null) return '--';
+    var clamped = Math.max(0, Math.min(0.99, numeric));
+    return Math.round(clamped * 100) + '%';
+}
+
+function normalizeReportReviewClass(level) {
+    if (level === 'bad') return 'critical';
+    if (level === 'caution') return 'warning';
+    return 'normal';
+}
+
+function renderReportExtractionMetrics() {
+    var badge = document.getElementById('extraction-quality-level');
+    var totalEl = document.getElementById('metric-reports-total');
+    var parsedEl = document.getElementById('metric-reports-extracted');
+    var confidenceEl = document.getElementById('metric-reports-confidence');
+    var correctedEl = document.getElementById('metric-reports-corrected');
+    var fieldsEl = document.getElementById('metric-reports-top-fields');
+    if (!badge || !totalEl || !parsedEl || !confidenceEl || !correctedEl || !fieldsEl) return;
+
+    var metrics = state.reportMetrics;
+    if (!metrics || !metrics.summary) {
+        badge.className = 'status-badge';
+        badge.textContent = 'Waiting';
+        totalEl.textContent = '--';
+        parsedEl.textContent = '--';
+        confidenceEl.textContent = '--';
+        correctedEl.textContent = '--';
+        fieldsEl.textContent = 'No extraction metrics available yet.';
+        return;
+    }
+
+    var summary = metrics.summary || {};
+    var corrections = metrics.corrections || {};
+    var avgConfidence = toNumberOrNull(summary.avgConfidence);
+    var level = avgConfidence === null
+        ? 'normal'
+        : avgConfidence >= 0.86
+            ? 'normal'
+            : avgConfidence >= 0.64
+                ? 'warning'
+                : 'critical';
+    var levelLabel = avgConfidence === null
+        ? 'No Data'
+        : avgConfidence >= 0.86
+            ? 'High Confidence'
+            : avgConfidence >= 0.64
+                ? 'Medium Confidence'
+                : 'Needs Review';
+
+    badge.className = 'status-badge ' + level;
+    badge.textContent = levelLabel;
+    totalEl.textContent = String(summary.totalReports || 0);
+    parsedEl.textContent = String(summary.extractedReports || 0);
+    confidenceEl.textContent = avgConfidence === null ? '--' : formatConfidencePercent(avgConfidence);
+    correctedEl.textContent = String(corrections.correctedReports || 0);
+
+    var topFields = Array.isArray(corrections.topCorrectedFields) ? corrections.topCorrectedFields : [];
+    var topFieldsText = topFields.length === 0
+        ? 'No corrections yet.'
+        : 'Most corrected fields: ' + topFields
+            .slice(0, 4)
+            .map(function(entry) {
+                return String(entry.fieldKey || '--') + ' (' + String(entry.count || 0) + ')';
+            })
+            .join(', ');
+
+    var hints = [];
+    if (Number(summary.templateMatchedReports || 0) > 0) {
+        hints.push('Template matched: ' + String(summary.templateMatchedReports));
+    }
+    if (Number(summary.missingCriticalSignals || 0) > 0) {
+        hints.push('Missing key markers: ' + String(summary.missingCriticalSignals));
+    }
+    if (Number(summary.nameMismatchReports || 0) > 0) {
+        hints.push('Name mismatches: ' + String(summary.nameMismatchReports));
+    }
+
+    fieldsEl.textContent = hints.length > 0
+        ? topFieldsText + ' | ' + hints.join(' | ')
+        : topFieldsText;
+}
+
+function formatCorrectionDisplayValue(value) {
+    if (value === null || value === undefined) return '--';
+    if (Array.isArray(value)) {
+        return value.length ? value.map(function(item) { return String(item); }).join(', ') : '--';
+    }
+
+    if (typeof value === 'object') {
+        var systolic = toNumberOrNull(value.systolic);
+        var diastolic = toNumberOrNull(value.diastolic);
+        if (systolic !== null && diastolic !== null) {
+            return Number(systolic).toFixed(0) + '/' + Number(diastolic).toFixed(0);
+        }
+
+        try {
+            var objectText = JSON.stringify(value);
+            return objectText && objectText !== '{}' ? objectText : '--';
+        } catch (_) {
+            return '--';
+        }
+    }
+
+    var text = String(value).trim();
+    return text || '--';
+}
+
+function renderReportCorrectionHistoryRows(rows) {
+    if (!Array.isArray(rows) || rows.length === 0) {
+        return '<div class="muted-note">No correction history yet.</div>';
+    }
+
+    return '<div class="report-correction-history-list">' + rows.slice(0, 20).map(function(row) {
+        return [
+            '<div class="report-correction-history-item">',
+            '<div class="report-correction-history-header">',
+            '<strong>' + escapeHtml(String(row.fieldKey || '--')) + '</strong>',
+            '<span>' + escapeHtml(formatDate(row.createdAt)) + '</span>',
+            '</div>',
+            '<div class="report-correction-history-values">',
+            '<span class="from">From: ' + escapeHtml(formatCorrectionDisplayValue(row.originalValue)) + '</span>',
+            '<span class="to">To: ' + escapeHtml(formatCorrectionDisplayValue(row.correctedValue)) + '</span>',
+            '</div>',
+            (row.note ? '<div class="report-correction-history-note">Note: ' + escapeHtml(String(row.note)) + '</div>' : ''),
+            '</div>',
+        ].join('');
+    }).join('') + '</div>';
+}
+
+async function loadReportCorrectionHistory(reportId) {
+    var container = document.getElementById('report-correction-history');
+    if (!container) return;
+
+    if (!reportId) {
+        container.innerHTML = '<div class="muted-note">Correction history is unavailable for this report.</div>';
+        return;
+    }
+
+    container.innerHTML = '<div class="muted-note">Loading correction history...</div>';
+    try {
+        var result = await API.get('/api/patient/reports/' + Number(reportId) + '/corrections');
+        if (!result.ok) {
+            container.innerHTML = '<div class="muted-note">Failed to load correction history.</div>';
+            return;
+        }
+
+        container.innerHTML = renderReportCorrectionHistoryRows(Array.isArray(result.data) ? result.data : []);
+    } catch (err) {
+        container.innerHTML = '<div class="muted-note">Network error while loading correction history.</div>';
+    }
+}
+
+function mapReviewBadgeClass(level) {
+    if (level === 'bad') return 'status-badge critical';
+    if (level === 'caution') return 'status-badge warning';
+    return 'status-badge normal';
+}
+
+function pickLatestReportWithInsights(reports) {
+    if (!Array.isArray(reports) || reports.length === 0) return null;
+
+    var enriched = reports.map(function(report) {
+        var parsed = parseReportInsights(report);
+        return parsed ? { report: report, parsed: parsed } : null;
+    }).filter(Boolean);
+
+    if (enriched.length === 0) return null;
+
+    enriched.sort(function(a, b) {
+        var dateA = new Date(a.report.date || a.report.createdAt || 0);
+        var dateB = new Date(b.report.date || b.report.createdAt || 0);
+        var timeA = Number.isNaN(dateA.getTime()) ? 0 : dateA.getTime();
+        var timeB = Number.isNaN(dateB.getTime()) ? 0 : dateB.getTime();
+        if (timeA !== timeB) return timeA - timeB;
+        return (a.report._id || a.report.id || 0) - (b.report._id || b.report.id || 0);
+    });
+
+    return enriched[enriched.length - 1];
+}
+
+function renderLatestReportInsight(entry) {
+    var container = document.getElementById('latest-report-insight');
+    var badge = document.getElementById('report-ai-status');
+    if (!container || !badge) return;
+
+    if (!entry || !entry.parsed) {
+        container.innerHTML = '<p class="report-ai-empty">Upload a PDF or image report to see extracted values here.</p>';
+        badge.className = 'status-badge';
+        badge.textContent = 'Waiting for upload';
+        return;
+    }
+
+    var parsed = entry.parsed;
+    var report = entry.report || {};
+    var extracted = parsed.extracted || {};
+    var summary = summarizeExtracted(parsed);
+    var metrics = [];
+
+    var hba1c = toNumberOrNull(extracted.hba1c);
+    if (inRange(hba1c, 2, 20)) {
+        metrics.push({ label: 'HbA1c', value: Number(hba1c).toFixed(1) + '%' });
+    }
+
+    var glucoseList = Array.isArray(extracted.glucoseReadingsMgDl) ? extracted.glucoseReadingsMgDl : [];
+    if (glucoseList.length > 0) {
+        var glucoseVal = toNumberOrNull(glucoseList[0]);
+        if (inRange(glucoseVal, 1, 900)) {
+            metrics.push({ label: 'Glucose', value: Number(glucoseVal).toFixed(0) + ' mg/dL' });
+        }
+    }
+
+    var bpList = Array.isArray(extracted.bloodPressure) ? extracted.bloodPressure : [];
+    if (bpList.length > 0) {
+        var bpEntry = bpList[0];
+        var bpValue = null;
+        if (typeof bpEntry === 'string') {
+            bpValue = bpEntry;
+        } else {
+            var systolic = toNumberOrNull(bpEntry.systolic);
+            var diastolic = toNumberOrNull(bpEntry.diastolic);
+            if (inRange(systolic, 40, 300) && inRange(diastolic, 20, 200)) {
+                bpValue = Number(systolic).toFixed(0) + '/' + Number(diastolic).toFixed(0) + ' mmHg';
+            }
+        }
+        if (bpValue) {
+            metrics.push({ label: 'Blood Pressure', value: bpValue });
+        }
+    }
+
+    var weight = toNumberOrNull(extracted.weightKg);
+    if (inRange(weight, 1, 700)) {
+        metrics.push({ label: 'Weight', value: Number(weight).toFixed(1) + ' kg' });
+    }
+
+    var confidencePct = (typeof parsed.confidence === 'number')
+        ? Math.round(Math.max(0, Math.min(parsed.confidence, 0.99)) * 100)
+        : null;
+    var confidenceLevel = parsed.confidenceDetails && parsed.confidenceDetails.level
+        ? parsed.confidenceDetails.level
+        : null;
+    var templateName = parsed.confidenceDetails && parsed.confidenceDetails.template && parsed.confidenceDetails.template.name
+        ? parsed.confidenceDetails.template.name
+        : null;
+
+    var nameVerification = parsed.nameVerification || null;
+    var reviewLevel = parsed.review && parsed.review.level ? parsed.review.level : 'normal';
+    var reviewLabel = parsed.review && parsed.review.label ? parsed.review.label : 'Analyzed';
+    if (nameVerification && nameVerification.isMatch === false) {
+        reviewLevel = 'caution';
+        reviewLabel = 'Name Mismatch';
+    }
+    badge.className = mapReviewBadgeClass(reviewLevel);
+    badge.textContent = reviewLabel;
+
+    var metaParts = [];
+    if (report.date) metaParts.push(formatDate(report.date));
+    if (extracted.reportDate && metaParts.indexOf(extracted.reportDate) === -1) metaParts.push(extracted.reportDate);
+    if (extracted.patientId) metaParts.push('ID ' + extracted.patientId);
+    if (extracted.patientName) metaParts.push(extracted.patientName);
+
+    var metricsHtml = metrics.length
+        ? '<div class="report-ai-metrics">' + metrics.map(function(metric) {
+            return '<div class="report-ai-metric"><div class="report-ai-metric-label">' + escapeHtml(metric.label) + '</div><div class="report-ai-metric-value">' + escapeHtml(metric.value) + '</div></div>';
+        }).join('') + '</div>'
+        : '';
+
+    var footParts = [];
+    if (parsed.source) footParts.push('Source: ' + escapeHtml(parsed.source));
+    if (confidencePct !== null) footParts.push('Confidence ' + confidencePct + '%');
+    if (confidenceLevel) footParts.push('Quality ' + escapeHtml(confidenceLevel));
+    if (templateName) footParts.push('Template: ' + escapeHtml(templateName));
+    if (nameVerification && nameVerification.isMatch === true) footParts.push('Name check: matched');
+    if (nameVerification && nameVerification.isMatch === false) footParts.push('Name check: mismatch');
+
+    var reportId = Number(report._id || report.id || 0);
+    var footHtml = '<div class="report-ai-foot">'
+        + '<span>' + (footParts.length ? footParts.join(' | ') : 'AI extraction ready') + '</span>'
+        + (reportId ? '<button type="button" class="btn btn-outline btn-sm" onclick="viewReport(' + reportId + ')"><i class="fas fa-eye"></i> View report</button>' : '')
+        + '</div>';
+
+    container.innerHTML = [
+        '<div class="report-ai-meta">',
+        '  <div class="report-ai-meta-title">' + escapeHtml(report.reportName || 'Uploaded Report') + '</div>',
+        metaParts.length ? '  <div class="report-ai-meta-sub">' + escapeHtml(metaParts.join(' | ')) + '</div>' : '',
+        '</div>',
+        summary ? '<p class="report-ai-summary">' + escapeHtml(summary) + '</p>' : '',
+        metricsHtml,
+        footHtml,
+    ].join('');
+}
+
+function updateLatestReportInsightFromState() {
+    renderLatestReportInsight(pickLatestReportWithInsights(state.reports));
 }
 
 function formatNameInitials(fullName) {
@@ -290,6 +699,7 @@ function updateNav(section) {
     var titles = {
         overview: 'Dashboard Overview',
         'ai-assistant': 'Chat',
+        'manual-entry': 'Manual Data Entry',
         reports: 'Medical Reports',
         profile: 'Personal Data',
         doctors: 'My Doctors',
@@ -446,10 +856,282 @@ function renderReports() {
             '<td>' + formatDate(report.date) + '</td>',
             '<td>' + escapeHtml(extractDoctorName(report.doctor)) + '</td>',
             '<td><span class="status-badge ' + statusClass + '">' + escapeHtml(report.status || 'Pending') + '</span></td>',
-            '<td><button class="btn btn-outline btn-sm" onclick="deleteReport(' + Number(report._id) + ')">Delete</button></td>',
+            '<td style="display:flex; gap:8px; flex-wrap:wrap;">'
+                + '<button class="btn btn-primary btn-sm" onclick="viewReport(' + Number(report._id) + ')">View</button>'
+                + '<button class="btn btn-outline btn-sm" onclick="deleteReport(' + Number(report._id) + ')">Delete</button>'
+                + '</td>',
             '</tr>',
         ].join('');
     }).join('');
+}
+
+function renderReportDetails(report) {
+    var content = document.getElementById('report-view-content');
+    if (!content) return;
+
+    if (!report || typeof report !== 'object') {
+        content.innerHTML = '<div class="empty-state">Unable to load report details.</div>';
+        return;
+    }
+
+    state.activeReportDetails = report;
+
+    var insights = parseReportInsights(report);
+    var summary = summarizeExtracted(insights);
+    var extracted = insights && insights.extracted ? insights.extracted : {};
+    var confidenceDetails = insights && insights.confidenceDetails ? insights.confidenceDetails : null;
+    var doctorName = extractDoctorName(report.doctor);
+    var reportId = Number(report._id || report.id || 0);
+    var fileUrl = report.fileUrl || report.file_url || '';
+    var fileType = report.fileType || report.file_type || '';
+    var isDataUrl = typeof fileUrl === 'string' && fileUrl.indexOf('data:') === 0;
+    var isPdf = String(fileType).toLowerCase() === 'application/pdf' || fileUrl.indexOf('data:application/pdf') === 0;
+    var isImage = String(fileType).toLowerCase().indexOf('image/') === 0 || fileUrl.indexOf('data:image/') === 0;
+    var fileLabel = '--';
+    var viewerHtml = '';
+    var primaryGlucose = Array.isArray(extracted.glucoseReadingsMgDl) && extracted.glucoseReadingsMgDl.length > 0
+        ? toNumberOrNull(extracted.glucoseReadingsMgDl[0])
+        : null;
+    var bpEntry = Array.isArray(extracted.bloodPressure) && extracted.bloodPressure.length > 0
+        ? extracted.bloodPressure[0]
+        : null;
+    var systolic = null;
+    var diastolic = null;
+    if (typeof bpEntry === 'string') {
+        var bpMatch = bpEntry.match(/(\d{2,3})\s*[\/\-]\s*(\d{2,3})/);
+        if (bpMatch) {
+            systolic = toNumberOrNull(bpMatch[1]);
+            diastolic = toNumberOrNull(bpMatch[2]);
+        }
+    } else {
+        systolic = toNumberOrNull(bpEntry && bpEntry.systolic);
+        diastolic = toNumberOrNull(bpEntry && bpEntry.diastolic);
+    }
+
+    var confidenceClass = 'status-badge';
+    var confidenceLevelLabel = '--';
+    if (confidenceDetails && confidenceDetails.level) {
+        confidenceLevelLabel = String(confidenceDetails.level).toUpperCase();
+        confidenceClass = 'status-badge ' + (confidenceDetails.level === 'high' ? 'normal' : confidenceDetails.level === 'medium' ? 'warning' : 'critical');
+    }
+
+    var fieldConfidenceHtml = '';
+    if (confidenceDetails && confidenceDetails.fields) {
+        var fieldEntries = Object.keys(confidenceDetails.fields)
+            .filter(function(key) { return key !== 'template'; })
+            .slice(0, 12)
+            .map(function(key) {
+                var info = confidenceDetails.fields[key] || {};
+                var pct = formatConfidencePercent(info.confidence);
+                return '<div class="report-confidence-item"><div class="report-confidence-item-label">' + escapeHtml(key) + '</div><div class="report-confidence-item-value">' + escapeHtml(pct) + '</div></div>';
+            });
+        if (fieldEntries.length > 0) {
+            fieldConfidenceHtml = '<div class="report-confidence-grid">' + fieldEntries.join('') + '</div>';
+        }
+    }
+
+    var confidencePanelHtml = '<div class="report-detail-section">'
+        + '<h4>Extraction Confidence</h4>'
+        + '<div class="report-confidence-grid">'
+        + '<div class="report-confidence-item"><div class="report-confidence-item-label">Overall</div><div class="report-confidence-item-value">' + escapeHtml(formatConfidencePercent(insights && insights.confidence)) + '</div></div>'
+        + '<div class="report-confidence-item"><div class="report-confidence-item-label">Level</div><div class="report-confidence-item-value"><span class="' + confidenceClass + '">' + escapeHtml(confidenceLevelLabel) + '</span></div></div>'
+        + '<div class="report-confidence-item"><div class="report-confidence-item-label">Template</div><div class="report-confidence-item-value">' + escapeHtml(confidenceDetails && confidenceDetails.template && confidenceDetails.template.name ? confidenceDetails.template.name : 'Generic') + '</div></div>'
+        + '<div class="report-confidence-item"><div class="report-confidence-item-label">Signals</div><div class="report-confidence-item-value">' + escapeHtml(String(confidenceDetails && confidenceDetails.signalCount ? confidenceDetails.signalCount : '--')) + '</div></div>'
+        + '</div>'
+        + fieldConfidenceHtml
+        + '</div>';
+
+    var correctionFormHtml = '<div class="report-detail-section">'
+        + '<h4>Correct Extracted Values</h4>'
+        + '<form id="report-correction-form" onsubmit="submitReportCorrections(event, ' + reportId + ')">'
+        + '<div class="report-correction-grid">'
+        + '<div class="form-group"><label class="form-label">Patient Name</label><input class="form-input" id="corr-patient-name" type="text" value="' + escapeHtml(extracted.patientName || '') + '"></div>'
+        + '<div class="form-group"><label class="form-label">Patient ID</label><input class="form-input" id="corr-patient-id" type="text" value="' + escapeHtml(extracted.patientId || '') + '"></div>'
+        + '<div class="form-group"><label class="form-label">Report Date</label><input class="form-input" id="corr-report-date" type="text" value="' + escapeHtml(extracted.reportDate || '') + '" placeholder="e.g. 24 Apr 2024"></div>'
+        + '<div class="form-group"><label class="form-label">HbA1c (%)</label><input class="form-input" id="corr-hba1c" type="number" step="0.1" min="2" max="20" value="' + escapeHtml(extracted.hba1c != null ? String(extracted.hba1c) : '') + '"></div>'
+        + '<div class="form-group"><label class="form-label">Primary Glucose (mg/dL)</label><input class="form-input" id="corr-glucose" type="number" step="1" min="20" max="700" value="' + escapeHtml(primaryGlucose != null ? String(primaryGlucose) : '') + '"></div>'
+        + '<div class="form-group"><label class="form-label">Average Glucose / ABG</label><input class="form-input" id="corr-abg" type="number" step="1" min="20" max="700" value="' + escapeHtml(extracted.averageGlucoseMgDl != null ? String(extracted.averageGlucoseMgDl) : '') + '"></div>'
+        + '<div class="form-group"><label class="form-label">Systolic BP</label><input class="form-input" id="corr-systolic" type="number" step="1" min="40" max="300" value="' + escapeHtml(systolic != null ? String(systolic) : '') + '"></div>'
+        + '<div class="form-group"><label class="form-label">Diastolic BP</label><input class="form-input" id="corr-diastolic" type="number" step="1" min="20" max="200" value="' + escapeHtml(diastolic != null ? String(diastolic) : '') + '"></div>'
+        + '<div class="form-group"><label class="form-label">Weight (kg)</label><input class="form-input" id="corr-weight" type="number" step="0.1" min="1" max="700" value="' + escapeHtml(extracted.weightKg != null ? String(extracted.weightKg) : '') + '"></div>'
+        + '<div class="form-group full-width"><label class="form-label">Medications (comma separated)</label><input class="form-input" id="corr-medications" type="text" value="' + escapeHtml(Array.isArray(extracted.medications) ? extracted.medications.join(', ') : '') + '"></div>'
+        + '<div class="form-group full-width"><label class="form-label">Diagnoses (comma separated)</label><input class="form-input" id="corr-diagnoses" type="text" value="' + escapeHtml(Array.isArray(extracted.diagnoses) ? extracted.diagnoses.join(', ') : '') + '"></div>'
+        + '<div class="form-group full-width"><label class="form-label">Allergies (comma separated)</label><input class="form-input" id="corr-allergies" type="text" value="' + escapeHtml(Array.isArray(extracted.allergies) ? extracted.allergies.join(', ') : '') + '"></div>'
+        + '<div class="form-group full-width"><label class="form-label">Correction Note</label><textarea class="form-textarea" id="corr-note" rows="2" placeholder="Optional note for this correction"></textarea></div>'
+        + '</div>'
+        + '<div class="modal-actions" style="margin-top:0;"><button class="btn btn-primary" id="report-correction-submit-btn" type="submit">Apply Corrections</button></div>'
+        + '<div class="muted-note" id="report-correction-result">Submit only fields that should change.</div>'
+        + '</form>'
+        + '</div>';
+
+    var correctionHistoryHtml = '<div class="report-detail-section">'
+        + '<h4>Correction History</h4>'
+        + '<div id="report-correction-history"><div class="muted-note">Loading correction history...</div></div>'
+        + '</div>';
+
+    if (fileUrl) {
+        if (isDataUrl) {
+            fileLabel = 'Uploaded file' + (fileType ? ' (' + fileType + ')' : '');
+        } else {
+            fileLabel = fileUrl;
+        }
+
+        if (isPdf) {
+            viewerHtml = '<div class="form-group" style="margin-top: 12px;"><label class="form-label">Document Preview</label><iframe src="' + escapeHtml(fileUrl) + '" title="Report PDF" style="width:100%; height:520px; border:1px solid var(--gray-200); border-radius:10px; background:#fff;"></iframe></div>';
+        } else if (isImage) {
+            viewerHtml = '<div class="form-group" style="margin-top: 12px;"><label class="form-label">Image Preview</label><div style="border:1px solid var(--gray-200); border-radius:10px; background:#f8fafc; padding:10px;"><img src="' + escapeHtml(fileUrl) + '" alt="Report image" style="display:block; width:100%; max-height:520px; object-fit:contain;"></div></div>';
+        } else if (/^https?:\/\//i.test(fileUrl)) {
+            viewerHtml = '<div class="form-group" style="margin-top: 12px;"><label class="form-label">Document</label><a class="btn btn-outline btn-sm" href="' + escapeHtml(fileUrl) + '" target="_blank" rel="noopener noreferrer">Open File</a></div>';
+        }
+    }
+
+    content.innerHTML = [
+        '<div class="form-grid">',
+        '  <div class="form-group">',
+        '    <label class="form-label">Report Name</label>',
+        '    <div style="padding: 12px; background: var(--gray-50); border-radius: 10px; font-weight: 600;">' + escapeHtml(report.reportName || '--') + '</div>',
+        '  </div>',
+        '  <div class="form-group">',
+        '    <label class="form-label">Type</label>',
+        '    <div style="padding: 12px; background: var(--gray-50); border-radius: 10px; font-weight: 600;">' + escapeHtml(report.type || '--') + '</div>',
+        '  </div>',
+        '  <div class="form-group">',
+        '    <label class="form-label">Date</label>',
+        '    <div style="padding: 12px; background: var(--gray-50); border-radius: 10px; font-weight: 600;">' + escapeHtml(formatDate(report.date)) + '</div>',
+        '  </div>',
+        '  <div class="form-group">',
+        '    <label class="form-label">Doctor</label>',
+        '    <div style="padding: 12px; background: var(--gray-50); border-radius: 10px; font-weight: 600;">' + escapeHtml(doctorName) + '</div>',
+        '  </div>',
+        '  <div class="form-group">',
+        '    <label class="form-label">Status</label>',
+        '    <div style="padding: 12px; background: var(--gray-50); border-radius: 10px; font-weight: 600;">' + escapeHtml(report.status || 'Pending') + '</div>',
+        '  </div>',
+        '  <div class="form-group">',
+        '    <label class="form-label">File</label>',
+        '    <div style="padding: 12px; background: var(--gray-50); border-radius: 10px; font-weight: 600;">' + escapeHtml(fileLabel) + '</div>',
+        '  </div>',
+        '</div>',
+        (viewerHtml || (fileUrl ? '<div class="form-group" style="margin-top: 12px;"><div class="empty-state" style="text-align:left;">Preview is not available for this file format.</div></div>' : '<div class="form-group" style="margin-top: 12px;"><div class="empty-state" style="text-align:left;">No uploaded file is available for preview for this report.</div></div>')),
+        (summary ? '<div class="form-group" style="margin-top: 12px;"><label class="form-label">AI Summary</label><div style="padding: 12px; background: var(--gray-50); border-radius: 10px;">' + escapeHtml(summary) + '</div></div>' : ''),
+        confidencePanelHtml,
+        correctionFormHtml,
+        correctionHistoryHtml,
+    ].join('');
+
+    loadReportCorrectionHistory(reportId);
+}
+
+async function viewReport(id) {
+    var content = document.getElementById('report-view-content');
+    if (content) {
+        content.innerHTML = '<div class="empty-state">Loading report details...</div>';
+    }
+    openModal('report-view-modal');
+
+    try {
+        var result = await API.get('/api/patient/reports/' + Number(id));
+        if (!result.ok) {
+            if (content) {
+                content.innerHTML = '<div class="empty-state">' + escapeHtml((result.data && result.data.error) || 'Failed to load report details.') + '</div>';
+            }
+            return;
+        }
+
+        renderReportDetails(result.data || {});
+    } catch (err) {
+        if (content) {
+            content.innerHTML = '<div class="empty-state">Network error while loading report details.</div>';
+        }
+    }
+}
+
+async function submitReportCorrections(event, reportId) {
+    if (event) event.preventDefault();
+
+    var submitBtn = document.getElementById('report-correction-submit-btn');
+    var resultEl = document.getElementById('report-correction-result');
+    function setResult(message, tone) {
+        if (!resultEl) return;
+        resultEl.textContent = message;
+        if (tone === 'error') resultEl.style.color = 'var(--danger)';
+        else if (tone === 'success') resultEl.style.color = 'var(--success)';
+        else resultEl.style.color = 'var(--gray-500)';
+    }
+
+    var fields = [
+        { fieldKey: 'patientName', value: (document.getElementById('corr-patient-name') || {}).value },
+        { fieldKey: 'patientId', value: (document.getElementById('corr-patient-id') || {}).value },
+        { fieldKey: 'reportDate', value: (document.getElementById('corr-report-date') || {}).value },
+        { fieldKey: 'hba1c', value: (document.getElementById('corr-hba1c') || {}).value },
+        { fieldKey: 'glucose', value: (document.getElementById('corr-glucose') || {}).value },
+        { fieldKey: 'abg', value: (document.getElementById('corr-abg') || {}).value },
+        { fieldKey: 'systolic', value: (document.getElementById('corr-systolic') || {}).value },
+        { fieldKey: 'diastolic', value: (document.getElementById('corr-diastolic') || {}).value },
+        { fieldKey: 'weight', value: (document.getElementById('corr-weight') || {}).value },
+        { fieldKey: 'medications', value: (document.getElementById('corr-medications') || {}).value },
+        { fieldKey: 'diagnoses', value: (document.getElementById('corr-diagnoses') || {}).value },
+        { fieldKey: 'allergies', value: (document.getElementById('corr-allergies') || {}).value },
+    ];
+
+    var note = ((document.getElementById('corr-note') || {}).value || '').trim();
+    var corrections = fields
+        .map(function(item) {
+            var value = (item.value == null ? '' : String(item.value)).trim();
+            if (!value) return null;
+            return {
+                fieldKey: item.fieldKey,
+                value: value,
+                note: note || null,
+            };
+        })
+        .filter(Boolean);
+
+    if (corrections.length === 0) {
+        setResult('Enter at least one field value to apply correction.', 'error');
+        return;
+    }
+
+    if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'Applying...';
+    }
+    setResult('Applying corrections...', 'neutral');
+
+    try {
+        var response = await API.post('/api/patient/reports/' + Number(reportId) + '/corrections', {
+            corrections: corrections,
+        });
+
+        if (!response.ok) {
+            setResult((response.data && response.data.error) || 'Failed to apply corrections.', 'error');
+            return;
+        }
+
+        var updatedReport = response.data && response.data.report ? response.data.report : null;
+        if (updatedReport) {
+            state.reports = state.reports.map(function(item) {
+                return Number(item._id || item.id) === Number(updatedReport._id || updatedReport.id)
+                    ? updatedReport
+                    : item;
+            });
+            renderReports();
+            filterReports();
+            updateLatestReportInsightFromState();
+            renderReportDetails(updatedReport);
+            resultEl = document.getElementById('report-correction-result');
+        }
+
+        await loadReportExtractionMetrics();
+        setResult('Corrections applied and report insights updated.', 'success');
+    } catch (err) {
+        setResult('Network error while applying corrections.', 'error');
+    } finally {
+        if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.textContent = 'Apply Corrections';
+        }
+    }
 }
 
 function renderRecords() {
@@ -566,13 +1248,22 @@ function populateDoctorSelect() {
 
 function updateOverviewSummary(dashboard) {
     var statValues = document.querySelectorAll('.quick-stats .stat-value');
-    if (statValues[0]) statValues[0].textContent = dashboard.latestGlucose ? Number(dashboard.latestGlucose.value).toFixed(0) : '--';
-    if (statValues[1]) statValues[1].textContent = dashboard.latestMetric && dashboard.latestMetric.weight ? Number(dashboard.latestMetric.weight).toFixed(1) : '--';
+    var latestGlucoseValue = toNumberOrNull(dashboard.latestGlucose);
+    var latestWeightValue = toNumberOrNull(dashboard.latestMetric && dashboard.latestMetric.weight);
+    var systolicValue = toNumberOrNull(dashboard.latestMetric && dashboard.latestMetric.systolic);
+    var diastolicValue = toNumberOrNull(dashboard.latestMetric && dashboard.latestMetric.diastolic);
+
+    if (statValues[0]) {
+        statValues[0].textContent = latestGlucoseValue === null ? '--' : latestGlucoseValue.toFixed(0);
+    }
+    if (statValues[1]) {
+        statValues[1].textContent = latestWeightValue === null ? '--' : latestWeightValue.toFixed(1);
+    }
 
     if (statValues[2]) {
         var bpText = '--';
-        if (dashboard.latestMetric && dashboard.latestMetric.systolic && dashboard.latestMetric.diastolic) {
-            bpText = Number(dashboard.latestMetric.systolic).toFixed(0) + '/' + Number(dashboard.latestMetric.diastolic).toFixed(0);
+        if (systolicValue !== null && diastolicValue !== null) {
+            bpText = systolicValue.toFixed(0) + '/' + diastolicValue.toFixed(0);
         }
         statValues[2].textContent = bpText;
     }
@@ -581,33 +1272,100 @@ function updateOverviewSummary(dashboard) {
         var upcomingCount = Array.isArray(dashboard.upcomingAppointments) ? dashboard.upcomingAppointments.length : 0;
         statValues[3].textContent = String(upcomingCount);
     }
+
+    var statTrends = document.querySelectorAll('.quick-stats .stat-card .stat-trend');
+    function toggleTrend(index, visible) {
+        if (!statTrends[index]) return;
+        statTrends[index].style.display = visible ? '' : 'none';
+    }
+
+    toggleTrend(0, latestGlucoseValue !== null);
+    toggleTrend(1, latestWeightValue !== null);
+    toggleTrend(2, systolicValue !== null && diastolicValue !== null);
 }
 
 function updateOverviewMetrics(glucoseReadings, healthMetrics, scoreData) {
-    var metricValues = document.querySelectorAll('.metrics-grid .metric-card .metric-value');
+    glucoseReadings = Array.isArray(glucoseReadings) ? glucoseReadings : [];
+    healthMetrics = Array.isArray(healthMetrics) ? healthMetrics : [];
+
+    var metricValues = document.querySelectorAll('#overview .metrics-grid .metric-card .metric-value');
     if (metricValues.length < 3) return;
 
-    var fasting = glucoseReadings.filter(function(r) { return r.type === 'fasting'; });
-    var postprandial = glucoseReadings.filter(function(r) { return r.type === 'postprandial'; });
-
-    var fastingAvg = fasting.length === 0 ? null : fasting.reduce(function(sum, r) { return sum + Number(r.value); }, 0) / fasting.length;
-    var ppAvg = postprandial.length === 0 ? null : postprandial.reduce(function(sum, r) { return sum + Number(r.value); }, 0) / postprandial.length;
-
-    var latestHba1c = healthMetrics.find(function(m) { return m.hba1c !== null && m.hba1c !== undefined && m.hba1c !== ''; });
-
-    metricValues[0].textContent = fastingAvg === null ? '--' : Number(fastingAvg).toFixed(1);
-    metricValues[1].textContent = ppAvg === null ? '--' : Number(ppAvg).toFixed(1);
-    metricValues[2].textContent = latestHba1c ? Number(latestHba1c.hba1c).toFixed(1) + '%' : '--';
-
-    var metricUnits = document.querySelectorAll('.metrics-grid .metric-card .metric-unit');
-    if (metricUnits[2] && latestHba1c) {
-        metricUnits[2].textContent = 'Last test: ' + formatDate(latestHba1c.recordedAt);
+    var fastingValues = [];
+    var postprandialValues = [];
+    for (var i = 0; i < glucoseReadings.length; i += 1) {
+        var reading = glucoseReadings[i];
+        if (!reading) continue;
+        var numeric = toNumberOrNull(reading.value);
+        if (numeric === null) continue;
+        if (reading.type === 'fasting') fastingValues.push(numeric);
+        if (reading.type === 'postprandial') postprandialValues.push(numeric);
     }
 
-    var progressBars = document.querySelectorAll('.metric-progress-bar');
-    if (progressBars[0] && scoreData && scoreData.components) progressBars[0].style.width = Math.max(0, Math.min(100, scoreData.components.glucose)) + '%';
-    if (progressBars[1] && scoreData && scoreData.components) progressBars[1].style.width = Math.max(0, Math.min(100, scoreData.components.glucose)) + '%';
-    if (progressBars[2] && scoreData) progressBars[2].style.width = Math.max(0, Math.min(100, scoreData.score)) + '%';
+    function average(values) {
+        if (!values.length) return null;
+        var sum = 0;
+        for (var idx = 0; idx < values.length; idx += 1) {
+            sum += values[idx];
+        }
+        return sum / values.length;
+    }
+
+    var fastingAvg = average(fastingValues);
+    var ppAvg = average(postprandialValues);
+
+    var latestHba1cRecord = null;
+    var latestHba1cValue = null;
+    for (var j = 0; j < healthMetrics.length; j += 1) {
+        var candidate = healthMetrics[j];
+        var numericValue = toNumberOrNull(candidate && candidate.hba1c);
+        if (numericValue !== null) {
+            latestHba1cRecord = candidate;
+            latestHba1cValue = numericValue;
+            break;
+        }
+    }
+
+    metricValues[0].textContent = fastingAvg === null ? '--' : fastingAvg.toFixed(1);
+    metricValues[1].textContent = ppAvg === null ? '--' : ppAvg.toFixed(1);
+    metricValues[2].textContent = latestHba1cValue === null ? '--' : latestHba1cValue.toFixed(1) + '%';
+
+    var metricUnits = document.querySelectorAll('#overview .metrics-grid .metric-card .metric-unit');
+    if (metricUnits[2]) {
+        metricUnits[2].textContent = latestHba1cRecord
+            ? 'Last test: ' + formatDate(latestHba1cRecord.recordedAt)
+            : 'Last test: --';
+    }
+
+    var statusBadges = document.querySelectorAll('#overview .metrics-grid .metric-card .status-badge');
+    function toggleBadge(index, visible) {
+        if (!statusBadges[index]) return;
+        statusBadges[index].style.display = visible ? '' : 'none';
+    }
+
+    toggleBadge(0, fastingAvg !== null);
+    toggleBadge(1, ppAvg !== null);
+    toggleBadge(2, latestHba1cValue !== null);
+
+    var progressContainers = document.querySelectorAll('#overview .metrics-grid .metric-card .metric-progress');
+    var progressBars = document.querySelectorAll('#overview .metrics-grid .metric-card .metric-progress-bar');
+    function updateProgress(index, percent) {
+        if (!progressContainers[index] || !progressBars[index]) return;
+        if (percent === null) {
+            progressContainers[index].style.display = 'none';
+            return;
+        }
+        progressContainers[index].style.display = '';
+        var clamped = Math.max(0, Math.min(100, percent));
+        progressBars[index].style.width = clamped + '%';
+    }
+
+    var glucoseComponent = scoreData && scoreData.components ? toNumberOrNull(scoreData.components.glucose) : null;
+    var overallScore = scoreData && scoreData.score !== undefined ? toNumberOrNull(scoreData.score) : null;
+
+    updateProgress(0, (fastingAvg !== null && glucoseComponent !== null) ? glucoseComponent : null);
+    updateProgress(1, (ppAvg !== null && glucoseComponent !== null) ? glucoseComponent : null);
+    updateProgress(2, (latestHba1cValue !== null && overallScore !== null) ? overallScore : null);
 }
 
 function initCharts() {
@@ -854,10 +1612,12 @@ function shortTime(value) {
     var d = new Date(value);
     if (Number.isNaN(d.getTime())) return '';
     var now = new Date();
-    if (d.toDateString() === now.toDateString()) return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    var yesterday = new Date(now); yesterday.setDate(now.getDate() - 1);
-    if (d.toDateString() === yesterday.toDateString()) return 'Yesterday';
-    return d.toLocaleDateString([], { month: 'short', day: 'numeric' });
+    var dateKey = getIstDateKey(d);
+    if (dateKey === getIstDateKey(now)) return formatIstTime(d, { hour: '2-digit', minute: '2-digit' });
+    var yesterday = new Date(now);
+    yesterday.setDate(now.getDate() - 1);
+    if (dateKey === getIstDateKey(yesterday)) return 'Yesterday';
+    return formatIstDate(d, { month: 'short', day: 'numeric' });
 }
 
 function renderMessageThreads() {
@@ -908,11 +1668,110 @@ function renderMessageThreads() {
     }).join('');
 }
 
+function buildUnreadMessageNotifications() {
+    var notifications = [];
+
+    if (!Array.isArray(state.threads) || state.threads.length === 0) {
+        state.unreadMessageNotifications = notifications;
+        return notifications;
+    }
+
+    state.threads.forEach(function(thread) {
+        var unread = Number(thread.unreadCount || 0);
+        if (unread <= 0) return;
+
+        var doctor = state.chatDoctors.find(function(doc) {
+            return Number(doc._id || doc.id) === Number(thread.doctor_id);
+        });
+
+        notifications.push({
+            type: 'doctor-message',
+            threadId: Number(thread.id || thread._id),
+            doctorId: Number(thread.doctor_id),
+            doctorName: doctor && doctor.fullName ? doctor.fullName : 'Doctor',
+            snippet: thread.lastMessageBody || 'You have a new message from your doctor.',
+            unreadCount: unread,
+            lastMessageAt: thread.last_message_at || null,
+        });
+    });
+
+    notifications.sort(function(a, b) {
+        return new Date(b.lastMessageAt || 0).getTime() - new Date(a.lastMessageAt || 0).getTime();
+    });
+
+    state.unreadMessageNotifications = notifications;
+    return notifications;
+}
+
+function updateNotificationsUI() {
+    var bell = document.getElementById('notification-btn');
+    var badge = document.getElementById('notification-badge');
+    var panel = document.getElementById('notification-panel');
+    var list = document.getElementById('notification-list');
+    var notifications = buildUnreadMessageNotifications();
+
+    var unreadTotal = notifications.reduce(function(sum, item) {
+        return sum + Number(item.unreadCount || 0);
+    }, 0);
+
+    if (badge) {
+        if (unreadTotal > 0) {
+            badge.style.display = 'flex';
+            badge.textContent = unreadTotal > 99 ? '99+' : String(unreadTotal);
+        } else {
+            badge.style.display = 'none';
+            badge.textContent = '0';
+        }
+    }
+
+    if (bell) {
+        bell.classList.toggle('has-unread', unreadTotal > 0);
+    }
+
+    if (!list) return;
+    if (notifications.length === 0) {
+        list.innerHTML = '<div class="notification-empty">No new notifications.</div>';
+        return;
+    }
+
+    list.innerHTML = notifications.map(function(item) {
+        var msgLabel = item.unreadCount === 1 ? '1 unread message' : (item.unreadCount + ' unread messages');
+        return [
+            '<button type="button" class="notification-item" onclick="openNotificationThread(' + item.doctorId + ')">',
+            '<div class="notification-item-title">' + escapeHtml(item.doctorName) + '</div>',
+            '<div class="notification-item-body">' + escapeHtml(item.snippet) + '</div>',
+            '<div class="notification-item-meta">' + escapeHtml(msgLabel + ' - ' + shortTime(item.lastMessageAt)) + '</div>',
+            '</button>',
+        ].join('');
+    }).join('');
+
+    if (panel) {
+        panel.setAttribute('aria-hidden', panel.classList.contains('open') ? 'false' : 'true');
+    }
+}
+
+function toggleNotificationPanel(forceOpen) {
+    var panel = document.getElementById('notification-panel');
+    var btn = document.getElementById('notification-btn');
+    if (!panel || !btn) return;
+
+    var shouldOpen = typeof forceOpen === 'boolean' ? forceOpen : !panel.classList.contains('open');
+    panel.classList.toggle('open', shouldOpen);
+    panel.setAttribute('aria-hidden', shouldOpen ? 'false' : 'true');
+    btn.setAttribute('aria-expanded', shouldOpen ? 'true' : 'false');
+}
+
+async function openNotificationThread(doctorId) {
+    toggleNotificationPanel(false);
+    updateNav('doctor-chat');
+    await openDoctorChat(doctorId);
+}
+
 function msgTime(value) {
     if (!value) return '';
     var d = new Date(value);
     if (Number.isNaN(d.getTime())) return '';
-    return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    return formatIstTime(d, { hour: '2-digit', minute: '2-digit' });
 }
 
 function msgStatusIcon(msg) {
@@ -932,11 +1791,12 @@ function msgDateLabel(value) {
     var d = new Date(value);
     if (Number.isNaN(d.getTime())) return '';
     var now = new Date();
-    if (d.toDateString() === now.toDateString()) return 'Today';
+    var dateKey = getIstDateKey(d);
+    if (dateKey === getIstDateKey(now)) return 'Today';
     var yesterday = new Date(now);
     yesterday.setDate(now.getDate() - 1);
-    if (d.toDateString() === yesterday.toDateString()) return 'Yesterday';
-    return d.toLocaleDateString([], { weekday: 'long', month: 'short', day: 'numeric' });
+    if (dateKey === getIstDateKey(yesterday)) return 'Yesterday';
+    return formatIstDate(d, { weekday: 'long', month: 'short', day: 'numeric' });
 }
 
 function renderThreadMessages(messages) {
@@ -1466,6 +2326,7 @@ async function openDoctorChat(doctorId) {
         var result = await API.get('/api/patient/messages/threads/' + state.selectedThreadId);
         if (result.ok) {
             renderThreadMessages(result.data.messages || []);
+            await loadMessages();
         } else {
             renderThreadMessages([]);
         }
@@ -1754,7 +2615,7 @@ async function saveProfile(e) {
             return;
         }
 
-        localStorage.setItem('user', JSON.stringify(result.data));
+        sessionStorage.setItem('user', JSON.stringify(result.data));
         populateProfileView(result.data);
         populateProfileModal(result.data);
         alert('Profile updated successfully.');
@@ -1801,10 +2662,14 @@ async function bookAppointment(e) {
 async function addReport(e) {
     e.preventDefault();
 
+    if (state.reportSubmitPending) {
+        return;
+    }
+
     var reportName = (document.getElementById('report-name').value || '').trim();
     var reportTypeKey = document.getElementById('report-type').value || 'lab';
     var reportType = reportTypeMap[reportTypeKey] || 'Lab Report';
-    var date = document.getElementById('report-date').value || new Date().toISOString().slice(0, 10);
+    var date = document.getElementById('report-date').value || getIstTodayInputValue();
     var reportFileInput = document.getElementById('report-file');
     var reportFile = reportFileInput && reportFileInput.files && reportFileInput.files[0] ? reportFileInput.files[0] : null;
 
@@ -1813,29 +2678,58 @@ async function addReport(e) {
         return;
     }
 
-    var parsedResult = null;
-    if (reportFile) {
-        try {
-            var base64Content = await fileToBase64DataUrl(reportFile);
-            var extracted = await API.post('/api/patient/ai/extract-document', {
-                fileName: reportFile.name,
-                fileType: reportFile.type || null,
-                base64Content: base64Content,
-            });
+    state.reportSubmitPending = true;
+    setReportSubmitLoading(true);
+    try {
+        var parsedResult = null;
+        var reportFileDataUrl = null;
+        var nameVerification = null;
+        var allowAutoImport = true;
+        if (reportFile) {
+            try {
+                var base64Content = await fileToBase64DataUrl(reportFile);
+                reportFileDataUrl = base64Content;
+                var extracted = await API.post('/api/patient/ai/extract-document', {
+                    fileName: reportFile.name,
+                    fileType: reportFile.type || null,
+                    base64Content: base64Content,
+                });
 
-            if (!extracted.ok) {
-                alert((extracted.data && extracted.data.error) || 'Failed to extract report data from file.');
+                if (!extracted.ok) {
+                    alert((extracted.data && extracted.data.error) || 'Failed to extract report data from file.');
+                    return;
+                }
+
+                parsedResult = extracted.data && extracted.data.result ? extracted.data.result : null;
+                nameVerification = extracted.data && extracted.data.nameVerification
+                    ? extracted.data.nameVerification
+                    : (parsedResult && parsedResult.nameVerification ? parsedResult.nameVerification : null);
+
+                if (parsedResult && nameVerification) {
+                    parsedResult.nameVerification = nameVerification;
+                }
+
+                if (nameVerification && nameVerification.isMatch === false) {
+                    var reportPatientName = nameVerification.reportPatientName || (parsedResult && parsedResult.extracted ? parsedResult.extracted.patientName : '--');
+                    var profileName = nameVerification.profileName || ((API.getUser() && API.getUser().fullName) || '--');
+                    var proceed = confirm(
+                        'Patient name mismatch detected.\n\n'
+                        + 'Report name: ' + reportPatientName + '\n'
+                        + 'Profile name: ' + profileName + '\n\n'
+                        + 'Press OK to upload the report WITHOUT auto-importing values to Overview.\n'
+                        + 'Press Cancel to stop and check the file.'
+                    );
+                    if (!proceed) {
+                        return;
+                    }
+                    allowAutoImport = false;
+                }
+            } catch (err) {
+                alert('Failed to read uploaded file.');
                 return;
             }
-
-            parsedResult = extracted.data && extracted.data.result ? extracted.data.result : null;
-        } catch (err) {
-            alert('Failed to read uploaded file.');
-            return;
         }
-    }
 
-    try {
         var reportStatus = 'Pending';
         if (parsedResult && parsedResult.review && parsedResult.review.label) {
             if (parsedResult.review.level === 'bad' || parsedResult.review.level === 'caution') {
@@ -1846,23 +2740,38 @@ async function addReport(e) {
         } else if (parsedResult) {
             reportStatus = 'Analyzed';
         }
+        if (nameVerification && nameVerification.isMatch === false) {
+            reportStatus = 'Name Mismatch - Review';
+        }
 
         var result = await API.post('/api/patient/reports/upload', {
             reportName: reportName,
             type: reportType,
             date: date,
             status: reportStatus,
-            fileUrl: reportFile ? reportFile.name : null,
+            fileUrl: reportFile ? reportFileDataUrl : null,
             fileType: reportFile ? (reportFile.type || null) : null,
             parsed: parsedResult,
         });
 
         if (!result.ok) {
+            if (result.data && result.data.code === 'duplicate_report') {
+                alert('This report was already added a moment ago.');
+                closeModal('report-modal');
+                document.getElementById('report-form').reset();
+                await Promise.all([loadReports(), loadOverview(), loadTrends()]);
+                return;
+            }
             alert((result.data && result.data.error) || 'Failed to add report.');
             return;
         }
 
-        if (parsedResult && parsedResult.extracted) {
+        var createdReport = result.data || null;
+        if (parsedResult && createdReport) {
+            renderLatestReportInsight({ report: createdReport, parsed: parsedResult });
+        }
+
+        if (allowAutoImport && parsedResult && parsedResult.extracted) {
             var extractedValues = parsedResult.extracted;
             var healthPayload = { recordedAt: date };
             var hba1c = toNumberOrNull(extractedValues.hba1c);
@@ -1872,8 +2781,20 @@ async function addReport(e) {
 
             if (Array.isArray(extractedValues.bloodPressure) && extractedValues.bloodPressure.length > 0) {
                 var bp = extractedValues.bloodPressure[0] || {};
-                var systolic = toNumberOrNull(bp.systolic);
-                var diastolic = toNumberOrNull(bp.diastolic);
+                var systolic = null;
+                var diastolic = null;
+
+                if (typeof bp === 'string') {
+                    var bpMatch = bp.match(/(\d{2,3})\s*[\/-]\s*(\d{2,3})/);
+                    if (bpMatch) {
+                        systolic = toNumberOrNull(bpMatch[1]);
+                        diastolic = toNumberOrNull(bpMatch[2]);
+                    }
+                } else {
+                    systolic = toNumberOrNull(bp.systolic);
+                    diastolic = toNumberOrNull(bp.diastolic);
+                }
+
                 if (inRange(systolic, 40, 300)) healthPayload.systolic = systolic;
                 if (inRange(diastolic, 20, 200)) healthPayload.diastolic = diastolic;
             }
@@ -1900,12 +2821,19 @@ async function addReport(e) {
             }
         }
 
-        alert(parsedResult ? 'Report uploaded, analyzed, review generated, and charts updated.' : 'Report added successfully.');
+        if (parsedResult && !allowAutoImport) {
+            alert('Report uploaded. Auto-import to Overview was skipped because patient name did not match your profile.');
+        } else {
+            alert(parsedResult ? 'Report uploaded, analyzed, review generated, and charts updated.' : 'Report added successfully.');
+        }
         closeModal('report-modal');
         document.getElementById('report-form').reset();
         await Promise.all([loadReports(), loadOverview(), loadTrends()]);
     } catch (err) {
         alert('Network error while adding report.');
+    } finally {
+        state.reportSubmitPending = false;
+        setReportSubmitLoading(false);
     }
 }
 
@@ -1928,7 +2856,7 @@ async function addRecord(e) {
 
     var typeKey = document.getElementById('record-type').value || 'diagnosis';
     var type = recordTypeMap[typeKey] || 'Other';
-    var date = document.getElementById('record-date').value || new Date().toISOString().slice(0, 10);
+    var date = document.getElementById('record-date').value || getIstTodayInputValue();
     var title = (document.getElementById('record-title').value || '').trim();
     var description = (document.getElementById('record-description').value || '').trim();
 
@@ -1959,10 +2887,95 @@ async function addRecord(e) {
     }
 }
 
+async function submitManualData(e) {
+    e.preventDefault();
+
+    var recordedAtInput = document.getElementById('manual-recorded-at');
+    var recordedAt = recordedAtInput && recordedAtInput.value ? recordedAtInput.value : getIstTodayInputValue();
+    var notes = (document.getElementById('manual-notes').value || '').trim();
+
+    var fasting = toNumberOrNull(document.getElementById('manual-fasting').value);
+    var postprandial = toNumberOrNull(document.getElementById('manual-postprandial').value);
+    var random = toNumberOrNull(document.getElementById('manual-random').value);
+    var weight = toNumberOrNull(document.getElementById('manual-weight').value);
+    var systolic = toNumberOrNull(document.getElementById('manual-systolic').value);
+    var diastolic = toNumberOrNull(document.getElementById('manual-diastolic').value);
+    var hba1c = toNumberOrNull(document.getElementById('manual-hba1c').value);
+
+    var errors = [];
+    if (fasting !== null && !inRange(fasting, 1, 900)) errors.push('Fasting glucose must be between 1 and 900 mg/dL.');
+    if (postprandial !== null && !inRange(postprandial, 1, 900)) errors.push('Postprandial glucose must be between 1 and 900 mg/dL.');
+    if (random !== null && !inRange(random, 1, 900)) errors.push('Random glucose must be between 1 and 900 mg/dL.');
+    if (weight !== null && !inRange(weight, 1, 700)) errors.push('Weight must be between 1 and 700 kg.');
+    if (systolic !== null && !inRange(systolic, 40, 300)) errors.push('Systolic BP must be between 40 and 300.');
+    if (diastolic !== null && !inRange(diastolic, 20, 200)) errors.push('Diastolic BP must be between 20 and 200.');
+    if (hba1c !== null && !inRange(hba1c, 2, 20)) errors.push('HbA1c must be between 2 and 20%.');
+
+    if (errors.length > 0) {
+        setManualDataResult(errors[0], 'error');
+        return;
+    }
+
+    var hasGlucose = fasting !== null || postprandial !== null || random !== null;
+    var hasMetric = weight !== null || systolic !== null || diastolic !== null || hba1c !== null;
+
+    if (!hasGlucose && !hasMetric) {
+        setManualDataResult('Enter at least one value to save.', 'error');
+        return;
+    }
+
+    var tasks = [];
+    function queueGlucose(value, type) {
+        if (value === null) return;
+        tasks.push(API.post('/api/patient/glucose', {
+            value: value,
+            type: type,
+            notes: notes || null,
+            recordedAt: recordedAt,
+        }));
+    }
+
+    queueGlucose(fasting, 'fasting');
+    queueGlucose(postprandial, 'postprandial');
+    queueGlucose(random, 'random');
+
+    if (hasMetric) {
+        var metricPayload = { recordedAt: recordedAt };
+        if (weight !== null) metricPayload.weight = weight;
+        if (systolic !== null) metricPayload.systolic = systolic;
+        if (diastolic !== null) metricPayload.diastolic = diastolic;
+        if (hba1c !== null) metricPayload.hba1c = hba1c;
+        tasks.push(API.post('/api/patient/health-metrics', metricPayload));
+    }
+
+    setManualDataSubmitLoading(true);
+    setManualDataResult('Saving data...', 'neutral');
+
+    try {
+        var responses = await Promise.all(tasks);
+        var failed = responses.filter(function(item) { return !item || !item.ok; });
+
+        if (failed.length > 0) {
+            var firstError = failed[0] && failed[0].data && failed[0].data.error
+                ? failed[0].data.error
+                : 'Failed to save one or more values.';
+            setManualDataResult(firstError, 'error');
+            return;
+        }
+
+        setManualDataResult('Saved successfully. Overview cards and trends are updated.', 'success');
+        await Promise.all([loadOverview(), loadTrends()]);
+    } catch (err) {
+        setManualDataResult('Network error while saving manual data.', 'error');
+    } finally {
+        setManualDataSubmitLoading(false);
+    }
+}
+
 async function loadProfile() {
     var result = await API.get('/api/patient/profile');
     if (!result.ok) return;
-    localStorage.setItem('user', JSON.stringify(result.data));
+    sessionStorage.setItem('user', JSON.stringify(result.data));
     populateProfileView(result.data);
     populateProfileModal(result.data);
 }
@@ -1984,6 +2997,14 @@ async function loadReports() {
     state.reports = result.ok && Array.isArray(result.data) ? result.data : [];
     renderReports();
     filterReports();
+    updateLatestReportInsightFromState();
+    await loadReportExtractionMetrics();
+}
+
+async function loadReportExtractionMetrics() {
+    var result = await API.get('/api/patient/reports/extraction-metrics?range=30d');
+    state.reportMetrics = result.ok && result.data ? result.data : null;
+    renderReportExtractionMetrics();
 }
 
 async function loadRecords() {
@@ -2016,9 +3037,15 @@ async function loadNutrition() {
     var meals = mealsRes.ok && Array.isArray(mealsRes.data) ? mealsRes.data : [];
     var activities = activityRes.ok && Array.isArray(activityRes.data) ? activityRes.data : [];
 
-    var today = new Date().toISOString().slice(0, 10);
-    var todaysMeals = meals.filter(function(item) { return String(item.logged_at || '').slice(0, 10) === today; });
-    var todaysActivities = activities.filter(function(item) { return String(item.logged_at || '').slice(0, 10) === today; });
+    var todayIst = getIstTodayInputValue();
+    var todaysMeals = meals.filter(function(item) {
+        var loggedAt = new Date(item.logged_at || '');
+        return !Number.isNaN(loggedAt.getTime()) && getIstDateKey(loggedAt) === todayIst;
+    });
+    var todaysActivities = activities.filter(function(item) {
+        var loggedAt = new Date(item.logged_at || '');
+        return !Number.isNaN(loggedAt.getTime()) && getIstDateKey(loggedAt) === todayIst;
+    });
 
     var totalCalories = todaysMeals.reduce(function(sum, item) { return sum + Number(item.calories || 0); }, 0);
     var totalCarbs = todaysMeals.reduce(function(sum, item) { return sum + Number(item.carbs_g || 0); }, 0);
@@ -2062,6 +3089,7 @@ async function loadMessages() {
     state.threads = threadsResult.ok && Array.isArray(threadsResult.data) ? threadsResult.data : [];
 
     renderMessageThreads();
+    updateNotificationsUI();
 }
 
 async function loadSafety() {
@@ -2155,7 +3183,12 @@ function initInteractions() {
 
     var appointmentDate = document.getElementById('appointment-date');
     if (appointmentDate) {
-        appointmentDate.min = new Date().toISOString().slice(0, 10);
+        appointmentDate.min = getIstTodayInputValue();
+    }
+
+    var manualDate = document.getElementById('manual-recorded-at');
+    if (manualDate && !manualDate.value) {
+        manualDate.value = getIstTodayInputValue();
     }
 
     var aiQuestion = document.getElementById('ai-question');
@@ -2198,11 +3231,27 @@ function initInteractions() {
             }
         });
     }
+
+    var notificationBtn = document.getElementById('notification-btn');
+    if (notificationBtn) {
+        notificationBtn.addEventListener('click', function(event) {
+            event.stopPropagation();
+            toggleNotificationPanel();
+        });
+    }
+
+    document.addEventListener('click', function(event) {
+        var panel = document.getElementById('notification-panel');
+        var btn = document.getElementById('notification-btn');
+        if (!panel || !btn) return;
+        if (panel.contains(event.target) || btn.contains(event.target)) return;
+        toggleNotificationPanel(false);
+    });
 }
 
 function initChatSocket() {
     if (typeof io === 'undefined') return;
-    var token = localStorage.getItem('token');
+    var token = (typeof API !== 'undefined' && API.getToken) ? API.getToken() : null;
     if (!token) return;
 
     chatSocket = io({ auth: { token: token } });
@@ -2326,9 +3375,13 @@ window.bookAppointment = bookAppointment;
 window.saveDiet = saveDiet;
 window.addReport = addReport;
 window.addRecord = addRecord;
+window.submitManualData = submitManualData;
+window.clearManualDataForm = clearManualDataForm;
 window.filterReports = filterReports;
 window.filterRecords = filterRecords;
 window.deleteReport = deleteReport;
+window.viewReport = viewReport;
+window.submitReportCorrections = submitReportCorrections;
 window.scheduleWithDoctor = scheduleWithDoctor;
 window.openDoctorChat = openDoctorChat;
 window.sendThreadReply = sendThreadReply;
@@ -2349,6 +3402,7 @@ window.closeAiAssistantPanel = closeAiAssistantPanel;
 window.handleAiFileSelect = handleAiFileSelect;
 window.removeAiFile = removeAiFile;
 window.autoResizeAiInput = autoResizeAiInput;
+window.openNotificationThread = openNotificationThread;
 
 bootstrap();
 

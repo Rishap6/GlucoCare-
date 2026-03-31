@@ -2,7 +2,9 @@
 function logoutDoctor() {
     // Remove any session tokens (example: localStorage/sessionStorage)
     localStorage.removeItem('token');
+    localStorage.removeItem('user');
     sessionStorage.removeItem('token');
+    sessionStorage.removeItem('user');
     // Redirect to login page
     window.location.href = '/auth/login/login.html';
 }
@@ -44,18 +46,48 @@ function escapeHtml(value) {
         .replace(/'/g, '&#39;');
 }
 
+var IST_TIME_ZONE = 'Asia/Kolkata';
+
+function getIstDateKey(date) {
+    return date.toLocaleDateString('sv-SE', {
+        timeZone: IST_TIME_ZONE,
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+    });
+}
+
+function formatIstDate(date, options) {
+    var opts = Object.assign({ timeZone: IST_TIME_ZONE }, options || {});
+    return date.toLocaleDateString('en-IN', opts);
+}
+
+function formatIstTime(date, options) {
+    var opts = Object.assign({ timeZone: IST_TIME_ZONE }, options || {});
+    return date.toLocaleTimeString('en-IN', opts);
+}
+
+function formatIstDateTime(date, options) {
+    var opts = Object.assign({ timeZone: IST_TIME_ZONE }, options || {});
+    return date.toLocaleString('en-IN', opts);
+}
+
+function getIstTodayInputValue() {
+    return getIstDateKey(new Date());
+}
+
 function formatDate(value) {
     if (!value) return '--';
     var d = new Date(value);
     if (Number.isNaN(d.getTime())) return '--';
-    return d.toLocaleDateString();
+    return formatIstDate(d);
 }
 
 function formatDateTime(value) {
     if (!value) return '--';
     var d = new Date(value);
     if (Number.isNaN(d.getTime())) return '--';
-    return d.toLocaleString();
+    return formatIstDateTime(d);
 }
 
 function initials(name) {
@@ -701,7 +733,7 @@ function openCreateAppointmentModal() {
     populatePatientSelects();
     var dateInput = document.getElementById('doctor-create-appt-date');
     if (dateInput && !dateInput.value) {
-        dateInput.value = new Date().toISOString().slice(0, 10);
+        dateInput.value = getIstTodayInputValue();
     }
     openModal('doctor-create-appointment-modal');
 }
@@ -719,7 +751,7 @@ async function submitDoctorCreateAppointment() {
 
     var payload = {
         patient: patient,
-        date: new Date(date + 'T00:00:00').toISOString(),
+        date: date,
         time: time,
         reason: reason
     };
@@ -739,7 +771,7 @@ function openCreateReportModal() {
     populatePatientSelects();
     var dateInput = document.getElementById('doctor-report-date');
     if (dateInput && !dateInput.value) {
-        dateInput.value = new Date().toISOString().slice(0, 10);
+        dateInput.value = getIstTodayInputValue();
     }
     openModal('doctor-create-report-modal');
 }
@@ -773,7 +805,7 @@ function openCreateRecordModal() {
     populatePatientSelects();
     var dateInput = document.getElementById('doctor-record-date');
     if (dateInput && !dateInput.value) {
-        dateInput.value = new Date().toISOString().slice(0, 10);
+        dateInput.value = getIstTodayInputValue();
     }
     openModal('doctor-create-record-modal');
 }
@@ -979,7 +1011,7 @@ function dcpMsgTime(value) {
     if (!value) return '';
     var d = new Date(value);
     if (Number.isNaN(d.getTime())) return '';
-    return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    return formatIstTime(d, { hour: '2-digit', minute: '2-digit' });
 }
 
 function dcpMsgStatusIcon(msg) {
@@ -999,10 +1031,12 @@ function dcpMsgDateLabel(value) {
     var d = new Date(value);
     if (Number.isNaN(d.getTime())) return '';
     var now = new Date();
-    if (d.toDateString() === now.toDateString()) return 'Today';
-    var yesterday = new Date(now); yesterday.setDate(now.getDate() - 1);
-    if (d.toDateString() === yesterday.toDateString()) return 'Yesterday';
-    return d.toLocaleDateString([], { weekday: 'long', month: 'short', day: 'numeric' });
+    var dateKey = getIstDateKey(d);
+    if (dateKey === getIstDateKey(now)) return 'Today';
+    var yesterday = new Date(now);
+    yesterday.setDate(now.getDate() - 1);
+    if (dateKey === getIstDateKey(yesterday)) return 'Yesterday';
+    return formatIstDate(d, { weekday: 'long', month: 'short', day: 'numeric' });
 }
 
 function dcpShortTime(value) {
@@ -1010,10 +1044,12 @@ function dcpShortTime(value) {
     var d = new Date(value);
     if (Number.isNaN(d.getTime())) return '';
     var now = new Date();
-    if (d.toDateString() === now.toDateString()) return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    var yesterday = new Date(now); yesterday.setDate(now.getDate() - 1);
-    if (d.toDateString() === yesterday.toDateString()) return 'Yesterday';
-    return d.toLocaleDateString([], { month: 'short', day: 'numeric' });
+    var dateKey = getIstDateKey(d);
+    if (dateKey === getIstDateKey(now)) return formatIstTime(d, { hour: '2-digit', minute: '2-digit' });
+    var yesterday = new Date(now);
+    yesterday.setDate(now.getDate() - 1);
+    if (dateKey === getIstDateKey(yesterday)) return 'Yesterday';
+    return formatIstDate(d, { month: 'short', day: 'numeric' });
 }
 
 async function loadDoctorChatThreads() {
@@ -1177,7 +1213,7 @@ function updateDoctorMsgBadge() {
 
 function initDoctorChatSocket() {
     if (typeof io === 'undefined') return;
-    var token = localStorage.getItem('token');
+    var token = (typeof API !== 'undefined' && API.getToken) ? API.getToken() : null;
     if (!token) return;
 
     doctorState.chatSocket = io({ auth: { token: token } });

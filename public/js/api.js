@@ -1,13 +1,15 @@
 // Shared API helper for authenticated requests
 var API = {
     getToken: function() {
-        return localStorage.getItem('token');
+        return sessionStorage.getItem('token');
     },
     getUser: function() {
-        var u = localStorage.getItem('user');
+        var u = sessionStorage.getItem('user');
         return u ? JSON.parse(u) : null;
     },
     logout: function() {
+        sessionStorage.removeItem('token');
+        sessionStorage.removeItem('user');
         localStorage.removeItem('token');
         localStorage.removeItem('user');
         window.location.href = '/auth/login/login.html';
@@ -97,8 +99,8 @@ async function verifyAuthRole(expectedRole) {
             return false;
         }
 
-        // Keep local cache aligned with backend identity.
-        localStorage.setItem('user', JSON.stringify(backendUser));
+        // Keep tab-local auth cache aligned with backend identity.
+        sessionStorage.setItem('user', JSON.stringify(backendUser));
         return true;
     } catch (err) {
         API.logout();
