@@ -74,7 +74,7 @@ GENERIC = {
         r"(?i)name\s*[:\|]\s*([A-Za-z\s\.]{3,40})",
         r"(?i)pt\.?\s*name\s*[:\|]\s*([A-Za-z\s\.]+)",
     ],
-    "patient_age": [
+    "patient_age": [    
         r"(?i)age\s*[:\|]?\s*(\d{1,3})\s*(?:yrs?|years?)?",
         r"(\d{1,3})\s*(?:Yrs?|Years?)\s*/",
     ],

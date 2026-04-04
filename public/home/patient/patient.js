@@ -42,6 +42,8 @@ var state = {
     reportMetrics: null,
     activeReportDetails: null,
     currentUser: null,
+    dietIntakes: [],
+    dietReport: null,
 };
 
 function setReportSubmitLoading(isLoading) {
@@ -147,8 +149,225 @@ function clearManualDataForm() {
     setManualDataResult('Add at least one value and click Save Data.', 'neutral');
 }
 
+function toLocalDateTimeInputValue(date) {
+    var value = date instanceof Date ? date : new Date();
+    var tzOffsetMs = value.getTimezoneOffset() * 60000;
+    return new Date(value.getTime() - tzOffsetMs).toISOString().slice(0, 16);
+}
+
+function setDietIntakeSubmitLoading(isLoading) {
+    var form = document.getElementById('diet-intake-form');
+    var submitBtn = document.getElementById('diet-intake-submit-btn');
+    if (!form || !submitBtn) return;
+
+    var controls = form.querySelectorAll('input, select, textarea, button');
+    controls.forEach(function(ctrl) {
+        ctrl.disabled = !!isLoading;
+    });
+
+    submitBtn.disabled = !!isLoading;
+    submitBtn.textContent = isLoading ? 'Saving...' : 'Save Intake';
+}
+
+function setDietIntakeResult(message, tone) {
+    var el = document.getElementById('diet-intake-result');
+    if (!el) return;
+    el.textContent = message;
+
+    if (tone === 'error') {
+        el.style.color = 'var(--danger)';
+        return;
+    }
+    if (tone === 'success') {
+        el.style.color = 'var(--success)';
+        return;
+    }
+    el.style.color = 'var(--gray-500)';
+}
+
+function clearDietIntakeForm() {
+    var form = document.getElementById('diet-intake-form');
+    if (form) form.reset();
+
+    var dateTimeInput = document.getElementById('diet-logged-at');
+    if (dateTimeInput) dateTimeInput.value = toLocalDateTimeInputValue(new Date());
+
+    var mealSlotInput = document.getElementById('diet-meal-slot');
+    if (mealSlotInput) mealSlotInput.value = 'breakfast';
+
+    var carbsInput = document.getElementById('diet-carbs');
+    var caloriesInput = document.getElementById('diet-calories');
+    var proteinInput = document.getElementById('diet-protein');
+    var fatInput = document.getElementById('diet-fat');
+    var fiberInput = document.getElementById('diet-fiber');
+    var giInput = document.getElementById('diet-gi');
+    var servingInput = document.getElementById('diet-serving');
+    if (carbsInput) delete carbsInput.dataset.autofilled;
+    if (caloriesInput) delete caloriesInput.dataset.autofilled;
+    if (proteinInput) delete proteinInput.dataset.autofilled;
+    if (fatInput) delete fatInput.dataset.autofilled;
+    if (fiberInput) delete fiberInput.dataset.autofilled;
+    if (giInput) delete giInput.dataset.autofilled;
+    if (servingInput) delete servingInput.dataset.autofilled;
+
+    setDietIntakeResult('Log at least breakfast, lunch, and dinner with sugar values for best AI insights.', 'neutral');
+}
+
 var aiTypingTimer = null;
 var chatSocket = null;
+var AI_TYPING_BASE_DELAY_MS = 16;
+var AI_TYPING_PUNCTUATION_DELAY_MS = 55;
+var AI_TYPING_SPACE_DELAY_MS = 7;
+var dietEstimateDebounceTimer = null;
+var dietEstimateRequestSeq = 0;
+
+function shouldAutoFillDietField(inputEl) {
+    if (!inputEl) return false;
+    var value = String(inputEl.value || '').trim();
+    return !value || inputEl.dataset.autofilled === '1';
+}
+
+function formatDietAutoFilledNumber(value, decimals) {
+    var num = toNumberOrNull(value);
+    if (num === null) return null;
+
+    var clamped = Math.max(0, num);
+    if (!decimals || decimals <= 0) {
+        return String(Math.round(clamped));
+    }
+    return String(Number(clamped.toFixed(decimals)));
+}
+
+function clearAutoFilledDietEstimate() {
+    var carbsInput = document.getElementById('diet-carbs');
+    var caloriesInput = document.getElementById('diet-calories');
+    var proteinInput = document.getElementById('diet-protein');
+    var fatInput = document.getElementById('diet-fat');
+    var fiberInput = document.getElementById('diet-fiber');
+    var giInput = document.getElementById('diet-gi');
+    var servingInput = document.getElementById('diet-serving');
+
+    if (carbsInput && carbsInput.dataset.autofilled === '1') {
+        carbsInput.value = '';
+        delete carbsInput.dataset.autofilled;
+    }
+    if (caloriesInput && caloriesInput.dataset.autofilled === '1') {
+        caloriesInput.value = '';
+        delete caloriesInput.dataset.autofilled;
+    }
+    if (proteinInput && proteinInput.dataset.autofilled === '1') {
+        proteinInput.value = '';
+        delete proteinInput.dataset.autofilled;
+    }
+    if (fatInput && fatInput.dataset.autofilled === '1') {
+        fatInput.value = '';
+        delete fatInput.dataset.autofilled;
+    }
+    if (fiberInput && fiberInput.dataset.autofilled === '1') {
+        fiberInput.value = '';
+        delete fiberInput.dataset.autofilled;
+    }
+    if (giInput && giInput.dataset.autofilled === '1') {
+        giInput.value = '';
+        delete giInput.dataset.autofilled;
+    }
+    if (servingInput && servingInput.dataset.autofilled === '1') {
+        servingInput.value = '';
+        delete servingInput.dataset.autofilled;
+    }
+}
+
+function applyDietEstimateToForm(estimate) {
+    var carbsInput = document.getElementById('diet-carbs');
+    var caloriesInput = document.getElementById('diet-calories');
+    var proteinInput = document.getElementById('diet-protein');
+    var fatInput = document.getElementById('diet-fat');
+    var fiberInput = document.getElementById('diet-fiber');
+    var giInput = document.getElementById('diet-gi');
+    var servingInput = document.getElementById('diet-serving');
+
+    var carbs = toNumberOrNull(estimate && estimate.carbs);
+    var calories = toNumberOrNull(estimate && estimate.calories);
+    var protein = toNumberOrNull(estimate && estimate.protein);
+    var fat = toNumberOrNull(estimate && estimate.fat);
+    var fiber = toNumberOrNull(estimate && estimate.fiber);
+    var gi = toNumberOrNull(estimate && estimate.gi);
+    var serving = toNumberOrNull(estimate && estimate.serving);
+    var servingText = String((estimate && estimate.servingText) || '').trim();
+
+    if (carbsInput && carbs !== null && shouldAutoFillDietField(carbsInput)) {
+        carbsInput.value = formatDietAutoFilledNumber(carbs, 0);
+        carbsInput.dataset.autofilled = '1';
+    }
+
+    if (caloriesInput && calories !== null && shouldAutoFillDietField(caloriesInput)) {
+        caloriesInput.value = formatDietAutoFilledNumber(calories, 0);
+        caloriesInput.dataset.autofilled = '1';
+    }
+
+    if (proteinInput && protein !== null && shouldAutoFillDietField(proteinInput)) {
+        proteinInput.value = formatDietAutoFilledNumber(protein, 1);
+        proteinInput.dataset.autofilled = '1';
+    }
+
+    if (fatInput && fat !== null && shouldAutoFillDietField(fatInput)) {
+        fatInput.value = formatDietAutoFilledNumber(fat, 1);
+        fatInput.dataset.autofilled = '1';
+    }
+
+    if (fiberInput && fiber !== null && shouldAutoFillDietField(fiberInput)) {
+        fiberInput.value = formatDietAutoFilledNumber(fiber, 1);
+        fiberInput.dataset.autofilled = '1';
+    }
+
+    if (giInput && gi !== null && shouldAutoFillDietField(giInput)) {
+        giInput.value = formatDietAutoFilledNumber(gi, 1);
+        giInput.dataset.autofilled = '1';
+    }
+
+    if (servingInput && shouldAutoFillDietField(servingInput)) {
+        var resolvedServing = servingText;
+        if (!resolvedServing && serving !== null) {
+            resolvedServing = String(Number(Math.max(0, serving).toFixed(1))) + ' serving(s)';
+        }
+
+        if (resolvedServing) {
+            servingInput.value = resolvedServing;
+            servingInput.dataset.autofilled = '1';
+        }
+    }
+}
+
+async function requestDietTextEstimate() {
+    var intakeInput = document.getElementById('diet-intake-text');
+    if (!intakeInput) return;
+
+    var text = String(intakeInput.value || '').trim();
+    if (!text) {
+        clearAutoFilledDietEstimate();
+        return;
+    }
+
+    var seq = ++dietEstimateRequestSeq;
+    var result = await API.get('/api/patient/diet/intake/estimate?text=' + encodeURIComponent(text), {
+        timeoutMs: 12000,
+    });
+
+    // Ignore stale responses when user types quickly.
+    if (seq !== dietEstimateRequestSeq) return;
+    if (!result.ok || !result.data) return;
+
+    applyDietEstimateToForm(result.data);
+}
+
+function queueDietTextEstimate() {
+    if (dietEstimateDebounceTimer) clearTimeout(dietEstimateDebounceTimer);
+    dietEstimateDebounceTimer = setTimeout(function() {
+        requestDietTextEstimate().catch(function() {
+            // Silent failure: user can still submit manually.
+        });
+    }, 320);
+}
 
 // ── AI File Upload Handling ──────────────────────────────────────────
 
@@ -831,7 +1050,7 @@ function updateNav(section) {
         reports: 'Medical Reports',
         profile: 'Personal Data',
         doctors: 'My Doctors',
-        nutritionist: 'Nutrition & Diet',
+        nutritionist: 'Diet & Intake Tracker',
         records: 'Past Medical Records',
         charts: 'Health Trends',
         'doctor-chat': 'Doctor Chat',
@@ -1908,6 +2127,137 @@ function updateNutritionSummary(summary) {
     if (labels[3]) labels[3].textContent = 'Meals Logged';
 }
 
+function formatMealSlotLabel(slot) {
+    var key = String(slot || '').toLowerCase();
+    if (key === 'breakfast') return 'Breakfast';
+    if (key === 'lunch') return 'Lunch';
+    if (key === 'dinner') return 'Dinner';
+    if (key === 'snack') return 'Snack';
+    return key || '--';
+}
+
+function renderTodayMealSnapshot(entries) {
+    var bySlot = {
+        breakfast: null,
+        lunch: null,
+        dinner: null,
+    };
+
+    entries.forEach(function(item) {
+        var slot = String(item.mealSlot || '').toLowerCase();
+        if (!Object.prototype.hasOwnProperty.call(bySlot, slot)) return;
+        if (!bySlot[slot]) bySlot[slot] = item;
+    });
+
+    ['breakfast', 'lunch', 'dinner'].forEach(function(slot) {
+        var itemEl = document.getElementById('diet-' + slot + '-items');
+        var metaEl = document.getElementById('diet-' + slot + '-meta');
+        var entry = bySlot[slot];
+
+        if (!entry) {
+            if (itemEl) itemEl.textContent = 'No intake logged yet.';
+            if (metaEl) metaEl.textContent = 'Sugar: --';
+            return;
+        }
+
+        if (itemEl) itemEl.textContent = entry.intakeText || 'Logged';
+
+        var sugar = Number(entry.bloodSugarMgDl);
+        var sugarText = Number.isFinite(sugar) ? sugar + ' mg/dL' : '--';
+        var timing = entry.sugarTiming ? ' (' + String(entry.sugarTiming).toLowerCase() + ')' : '';
+        if (metaEl) metaEl.textContent = 'Sugar: ' + sugarText + timing;
+    });
+}
+
+function renderDietIntakeTable(entries) {
+    var body = document.getElementById('diet-intake-table-body');
+    if (!body) return;
+
+    if (!Array.isArray(entries) || entries.length === 0) {
+        body.innerHTML = '<tr><td colspan="5" style="text-align:center; color: var(--gray-500);">No diet intake logs yet.</td></tr>';
+        return;
+    }
+
+    body.innerHTML = entries.slice(0, 20).map(function(item) {
+        var loggedAt = item.loggedAt ? formatDate(item.loggedAt) + ' ' + formatIstTime(new Date(item.loggedAt), { hour: '2-digit', minute: '2-digit' }) : '--';
+        var sugar = Number(item.bloodSugarMgDl);
+        var sugarText = Number.isFinite(sugar) ? (sugar + ' mg/dL') : '--';
+        var sugarClass = Number.isFinite(sugar) && sugar >= 180 ? 'warning' : 'normal';
+        var timing = item.sugarTiming
+            ? (String(item.sugarTiming).charAt(0).toUpperCase() + String(item.sugarTiming).slice(1))
+            : '--';
+
+        return [
+            '<tr>',
+            '<td>' + escapeHtml(loggedAt) + '</td>',
+            '<td>' + escapeHtml(formatMealSlotLabel(item.mealSlot)) + '</td>',
+            '<td>' + escapeHtml(item.intakeText || '--') + '</td>',
+            '<td><span class="status-badge ' + sugarClass + '">' + escapeHtml(sugarText) + '</span></td>',
+            '<td>' + escapeHtml(timing) + '</td>',
+            '</tr>',
+        ].join('');
+    }).join('');
+}
+
+function renderDietReport(report) {
+    var statusEl = document.getElementById('diet-report-status');
+    var bodyEl = document.getElementById('diet-ai-report');
+    var avoidEl = document.getElementById('diet-avoid-foods');
+    var metrics = document.querySelectorAll('#nutritionist .metrics-grid .metric-card .metric-value');
+    var progressBars = document.querySelectorAll('#nutritionist .metrics-grid .metric-card .metric-progress-bar');
+
+    if (!report || !bodyEl) {
+        if (statusEl) statusEl.textContent = 'No data';
+        if (bodyEl) bodyEl.innerHTML = '<p class="report-ai-empty">Log meals to generate your personalized diet report.</p>';
+        if (avoidEl) avoidEl.textContent = 'No flagged foods yet.';
+        if (metrics[2]) metrics[2].textContent = '--';
+        if (progressBars[2]) progressBars[2].style.width = '0%';
+        return;
+    }
+
+    var summary = report.summary || {};
+    var recommendations = Array.isArray(report.recommendations) ? report.recommendations : [];
+    var avoidFoods = Array.isArray(report.avoidFoods) ? report.avoidFoods : [];
+    var highEvents = Number(summary.highSugarEvents || 0);
+    var sugarCount = Number(summary.sugarEntryCount || 0);
+    var highPct = sugarCount > 0 ? Math.min(100, Math.round((highEvents / sugarCount) * 100)) : 0;
+
+    if (statusEl) {
+        if (summary.entryCount > 0 && highEvents === 0) {
+            statusEl.textContent = 'Stable';
+            statusEl.className = 'status-badge normal';
+        } else if (highEvents > 0) {
+            statusEl.textContent = highEvents >= 3 ? 'Needs Control' : 'Watch Meals';
+            statusEl.className = 'status-badge warning';
+        } else {
+            statusEl.textContent = 'Building Data';
+            statusEl.className = 'status-badge';
+        }
+    }
+
+    bodyEl.innerHTML = [
+        '<p class="report-ai-summary">' + escapeHtml(report.narrative || 'Diet report is ready.') + '</p>',
+        recommendations.length > 0
+            ? ('<ul class="diet-recommendation-list">' + recommendations.slice(0, 4).map(function(item) {
+                return '<li>' + escapeHtml(item) + '</li>';
+            }).join('') + '</ul>')
+            : '',
+    ].join('');
+
+    if (avoidEl) {
+        if (avoidFoods.length === 0) {
+            avoidEl.textContent = 'No strong trigger foods detected yet.';
+        } else {
+            avoidEl.textContent = 'Foods to limit: ' + avoidFoods.map(function(item) {
+                return item.label;
+            }).join(', ');
+        }
+    }
+
+    if (metrics[2]) metrics[2].textContent = String(highEvents);
+    if (progressBars[2]) progressBars[2].style.width = highPct + '%';
+}
+
 function boolFromSelectValue(value) {
     return String(value) === 'true';
 }
@@ -2388,18 +2738,83 @@ function stopAiTypingAnimation() {
     }
 }
 
+function getAiTypingDelay(character) {
+    if (!character) return AI_TYPING_BASE_DELAY_MS;
+    if (/[,.;:!?]/.test(character)) return AI_TYPING_PUNCTUATION_DELAY_MS;
+    if (/\s/.test(character)) return AI_TYPING_SPACE_DELAY_MS;
+    return AI_TYPING_BASE_DELAY_MS;
+}
+
 function animateAssistantMessage(messageItem, finalText, done) {
     stopAiTypingAnimation();
-    messageItem.typing = false;
-    messageItem.text = finalText;
-    renderAiConversation();
-    
-    var container = document.getElementById('ai-conversation');
-    if (container) {
-        container.scrollTop = container.scrollHeight;
+
+    var fullText = String(finalText || '');
+    if (!fullText) {
+        messageItem.typing = false;
+        messageItem.text = '';
+        renderAiConversation();
+        if (typeof done === 'function') done();
+        return;
     }
-    
-    if (typeof done === 'function') done();
+
+    var reduceMotion = typeof window !== 'undefined'
+        && typeof window.matchMedia === 'function'
+        && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    if (reduceMotion) {
+        messageItem.typing = false;
+        messageItem.text = fullText;
+        renderAiConversation();
+        if (typeof done === 'function') done();
+        return;
+    }
+
+    messageItem.typing = true;
+    messageItem.text = '';
+    renderAiConversation();
+
+    var idx = 0;
+
+    function flushTypingFrame() {
+        var conversationEl = document.getElementById('ai-conversation');
+        var bubbleTextEl = null;
+        if (conversationEl) {
+            var bubbleTextNodes = conversationEl.querySelectorAll('.message-bubble.doctor .bubble-txt');
+            if (bubbleTextNodes.length > 0) {
+                bubbleTextEl = bubbleTextNodes[bubbleTextNodes.length - 1];
+            }
+        }
+
+        if (bubbleTextEl) {
+            bubbleTextEl.textContent = messageItem.text;
+            conversationEl.scrollTop = conversationEl.scrollHeight;
+        } else {
+            renderAiConversation();
+        }
+    }
+
+    function finishTyping() {
+        messageItem.typing = false;
+        messageItem.text = fullText;
+        renderAiConversation();
+        if (typeof done === 'function') done();
+    }
+
+    function typeNextCharacter() {
+        if (idx >= fullText.length) {
+            finishTyping();
+            return;
+        }
+
+        idx += 1;
+        messageItem.text = fullText.slice(0, idx);
+        flushTypingFrame();
+
+        var nextCharacter = fullText.charAt(idx);
+        aiTypingTimer = setTimeout(typeNextCharacter, getAiTypingDelay(nextCharacter));
+    }
+
+    typeNextCharacter();
 }
 
 async function askAiAssistant() {
@@ -2881,6 +3296,109 @@ function filterRecords() {
         var matchesType = !type || rowType.indexOf(type) >= 0;
         record.style.display = matchesSearch && matchesType ? '' : 'none';
     });
+}
+
+async function submitDietIntake(e) {
+    e.preventDefault();
+
+    var mealSlot = String((document.getElementById('diet-meal-slot').value || 'breakfast')).toLowerCase();
+    var intakeText = String(document.getElementById('diet-intake-text').value || '').trim();
+    var loggedAtRaw = document.getElementById('diet-logged-at').value || '';
+    var bloodSugarMgDl = toNumberOrNull(document.getElementById('diet-blood-sugar').value);
+    var sugarTiming = String(document.getElementById('diet-sugar-timing').value || '').toLowerCase();
+    var carbsG = toNumberOrNull(document.getElementById('diet-carbs').value);
+    var calories = toNumberOrNull(document.getElementById('diet-calories').value);
+    var note = String(document.getElementById('diet-note').value || '').trim();
+
+    if (!intakeText) {
+        setDietIntakeResult('Please describe what you ate.', 'error');
+        return;
+    }
+
+    if (intakeText.length > 600) {
+        setDietIntakeResult('Intake details are too long (max 600 characters).', 'error');
+        return;
+    }
+
+    if (bloodSugarMgDl !== null && !inRange(bloodSugarMgDl, 40, 700)) {
+        setDietIntakeResult('Blood sugar should be between 40 and 700 mg/dL.', 'error');
+        return;
+    }
+
+    if (carbsG !== null && !inRange(carbsG, 0, 1200)) {
+        setDietIntakeResult('Carbs should be between 0 and 1200 grams.', 'error');
+        return;
+    }
+
+    if (calories !== null && !inRange(calories, 0, 10000)) {
+        setDietIntakeResult('Calories should be between 0 and 10000.', 'error');
+        return;
+    }
+
+    var payload = {
+        mealSlot: mealSlot,
+        intakeText: intakeText,
+        bloodSugarMgDl: bloodSugarMgDl,
+        sugarTiming: sugarTiming || null,
+        carbsG: carbsG,
+        calories: calories,
+        note: note || null,
+    };
+
+    if (loggedAtRaw) {
+        var loggedDate = new Date(loggedAtRaw);
+        if (!Number.isNaN(loggedDate.getTime())) {
+            payload.loggedAt = loggedDate.toISOString();
+        }
+    }
+
+    setDietIntakeSubmitLoading(true);
+    setDietIntakeResult('Saving intake...', 'neutral');
+
+    try {
+        var result = await API.post('/api/patient/diet/intake', payload);
+        if (!result.ok) {
+            setDietIntakeResult((result.data && result.data.error) || 'Failed to save intake.', 'error');
+            return;
+        }
+
+        setDietIntakeResult('Intake saved. AI diet report has been refreshed.', 'success');
+        await loadNutrition();
+    } catch (_err) {
+        setDietIntakeResult('Network error while saving intake.', 'error');
+    } finally {
+        setDietIntakeSubmitLoading(false);
+    }
+}
+
+async function askAiDietReport() {
+    var report = state.dietReport;
+    if (!report) {
+        var reportRes = await API.get('/api/patient/diet/report?range=30d');
+        if (reportRes.ok && reportRes.data) {
+            report = reportRes.data;
+            state.dietReport = report;
+            renderDietReport(report);
+        }
+    }
+
+    var prompt = 'Give me my personalized diet report based on my meal intake logs and blood sugar values. Tell me clearly what foods I should avoid and what safer alternatives I should use.';
+    if (report && report.summary && Number(report.summary.entryCount || 0) > 0) {
+        var high = Number(report.summary.highSugarEvents || 0);
+        var avgSugar = report.summary.averageSugar;
+        prompt += ' I have logged ' + Number(report.summary.entryCount || 0) + ' meals recently';
+        if (avgSugar !== null && avgSugar !== undefined) {
+            prompt += ', with average sugar around ' + avgSugar + ' mg/dL';
+        }
+        prompt += high > 0 ? ', and I had ' + high + ' high sugar events.' : ', and no major high sugar events.';
+    }
+
+    var input = document.getElementById('ai-question');
+    if (!input) return;
+    input.value = prompt;
+    updateNav('ai-assistant');
+    openAiAssistantPanel();
+    await askAiAssistant();
 }
 
 function saveDiet(e) {
@@ -3419,15 +3937,20 @@ async function loadOverview() {
 }
 
 async function loadNutrition() {
-    var mealsRes = await API.get('/api/patient/meals?range=7d');
+    var intakeRes = await API.get('/api/patient/diet/intake?range=7d');
+    var reportRes = await API.get('/api/patient/diet/report?range=7d');
     var activityRes = await API.get('/api/patient/activities?range=7d');
 
-    var meals = mealsRes.ok && Array.isArray(mealsRes.data) ? mealsRes.data : [];
+    var intakes = intakeRes.ok && Array.isArray(intakeRes.data) ? intakeRes.data : [];
     var activities = activityRes.ok && Array.isArray(activityRes.data) ? activityRes.data : [];
+    var dietReport = reportRes.ok && reportRes.data ? reportRes.data : null;
+
+    state.dietIntakes = intakes;
+    state.dietReport = dietReport;
 
     var todayIst = getIstTodayInputValue();
-    var todaysMeals = meals.filter(function(item) {
-        var loggedAt = new Date(item.logged_at || '');
+    var todaysIntakes = intakes.filter(function(item) {
+        var loggedAt = new Date(item.loggedAt || '');
         return !Number.isNaN(loggedAt.getTime()) && getIstDateKey(loggedAt) === todayIst;
     });
     var todaysActivities = activities.filter(function(item) {
@@ -3435,21 +3958,28 @@ async function loadNutrition() {
         return !Number.isNaN(loggedAt.getTime()) && getIstDateKey(loggedAt) === todayIst;
     });
 
-    var totalCalories = todaysMeals.reduce(function(sum, item) { return sum + Number(item.calories || 0); }, 0);
-    var totalCarbs = todaysMeals.reduce(function(sum, item) { return sum + Number(item.carbs_g || 0); }, 0);
+    var totalCalories = todaysIntakes.reduce(function(sum, item) { return sum + Number(item.calories || 0); }, 0);
+    var totalCarbs = todaysIntakes.reduce(function(sum, item) { return sum + Number(item.carbsG || 0); }, 0);
     var activeMinutes = todaysActivities.reduce(function(sum, item) { return sum + Number(item.duration_min || 0); }, 0);
 
     updateNutritionSummary({
         totalCalories: Number(totalCalories.toFixed(0)),
         totalCarbs: Number(totalCarbs.toFixed(0)),
         activeMinutes: Number(activeMinutes.toFixed(0)),
-        mealCount: todaysMeals.length,
+        mealCount: todaysIntakes.length,
     });
+
+    renderTodayMealSnapshot(todaysIntakes);
+    renderDietIntakeTable(intakes);
+    renderDietReport(dietReport);
 
     var goalMetrics = document.querySelectorAll('#nutritionist .metrics-grid .metric-card .metric-value');
     if (goalMetrics[0]) goalMetrics[0].textContent = Number(totalCalories.toFixed(0));
     if (goalMetrics[1]) goalMetrics[1].textContent = Number(totalCarbs.toFixed(0)) + 'g';
-    if (goalMetrics[2]) goalMetrics[2].textContent = '--';
+    if (goalMetrics[2]) {
+        var highEvents = dietReport && dietReport.summary ? Number(dietReport.summary.highSugarEvents || 0) : 0;
+        goalMetrics[2].textContent = String(highEvents);
+    }
 }
 
 async function loadTrends() {
@@ -3577,6 +4107,34 @@ function initInteractions() {
     var manualDate = document.getElementById('manual-recorded-at');
     if (manualDate && !manualDate.value) {
         manualDate.value = getIstTodayInputValue();
+    }
+
+    var dietDateTime = document.getElementById('diet-logged-at');
+    if (dietDateTime && !dietDateTime.value) {
+        dietDateTime.value = toLocalDateTimeInputValue(new Date());
+    }
+
+    var dietIntakeText = document.getElementById('diet-intake-text');
+    if (dietIntakeText) {
+        dietIntakeText.addEventListener('input', queueDietTextEstimate);
+    }
+
+    var dietCarbs = document.getElementById('diet-carbs');
+    if (dietCarbs) {
+        dietCarbs.addEventListener('input', function() {
+            if (document.activeElement === dietCarbs) {
+                dietCarbs.dataset.autofilled = '0';
+            }
+        });
+    }
+
+    var dietCalories = document.getElementById('diet-calories');
+    if (dietCalories) {
+        dietCalories.addEventListener('input', function() {
+            if (document.activeElement === dietCalories) {
+                dietCalories.dataset.autofilled = '0';
+            }
+        });
     }
 
     var aiQuestion = document.getElementById('ai-question');
@@ -3762,6 +4320,8 @@ window.closeModal = closeModal;
 window.saveProfile = saveProfile;
 window.bookAppointment = bookAppointment;
 window.saveDiet = saveDiet;
+window.submitDietIntake = submitDietIntake;
+window.clearDietIntakeForm = clearDietIntakeForm;
 window.addReport = addReport;
 window.addRecord = addRecord;
 window.submitManualData = submitManualData;
@@ -3786,6 +4346,7 @@ window.revokeSession = revokeSession;
 window.askAiAssistant = askAiAssistant;
 window.askAiPreset = askAiPreset;
 window.askAiSuggestion = askAiSuggestion;
+window.askAiDietReport = askAiDietReport;
 window.openAiAssistantPanel = openAiAssistantPanel;
 window.closeAiAssistantPanel = closeAiAssistantPanel;
 window.handleAiFileSelect = handleAiFileSelect;

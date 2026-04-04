@@ -375,15 +375,22 @@ function main() {
     const posCount = y.filter(v => v === 1).length;
     console.log(`   Class distribution: ${posCount} diabetic (${(posCount / y.length * 100).toFixed(1)}%) | ${y.length - posCount} healthy (${((y.length - posCount) / y.length * 100).toFixed(1)}%)\n`);
 
-    // 3. Normalize
-    console.log('📊 Normalizing features...');
-    const stats = computeStats(X);
-    const Xn = normalize(X, stats);
-
-    // 4. Train/Test split
+    // 3. Train/Test split
     console.log('✂️  Splitting 80/20 train/test...');
-    const { X_train, y_train, X_test, y_test } = trainTestSplit(Xn, y);
-    console.log(`   Train: ${X_train.length} | Test: ${X_test.length}\n`);
+    const {
+        X_train: X_train_raw,
+        y_train,
+        X_test: X_test_raw,
+        y_test,
+    } = trainTestSplit(X, y);
+    console.log(`   Train: ${X_train_raw.length} | Test: ${X_test_raw.length}`);
+
+    // 4. Normalize (fit stats only on training split to avoid test leakage)
+    console.log('📊 Normalizing features (train-fit)...');
+    const stats = computeStats(X_train_raw);
+    const X_train = normalize(X_train_raw, stats);
+    const X_test = normalize(X_test_raw, stats);
+    console.log('');
 
     // 5. Train model
     console.log('🚀 Training Gradient Boosted Trees...');

@@ -8,6 +8,7 @@
     "dev": "nodemon --ignore glucocare.db --ignore glucocare.db-wal --ignore glucocare.db-shm server.js",
     "train:ai": "node ../Ai/train.js",
     "train:csv": "node ../Ai/train-csv.js",
+    "train:food": "node ../Ai/train-food-nutrition.js",
     "reports:reprocess": "node scripts/reprocess-report-extractions.js",
     "ocr:test": "node scripts/test-ocr-folder.js",
     "smoke:test": "node scripts/smoke-test-api.js"

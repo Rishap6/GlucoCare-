@@ -409,6 +409,23 @@ async function initDatabase() {
     `);
 
     _wrapper.exec(`
+        CREATE TABLE IF NOT EXISTS diet_intakes (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            patient_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            meal_slot TEXT NOT NULL CHECK(meal_slot IN ('breakfast', 'lunch', 'dinner', 'snack')),
+            intake_text TEXT NOT NULL,
+            blood_sugar_mgdl REAL,
+            sugar_timing TEXT CHECK(sugar_timing IN ('before', 'after', 'random')),
+            carbs_g REAL,
+            calories REAL,
+            note TEXT,
+            logged_at TEXT DEFAULT (datetime('now')),
+            createdAt TEXT DEFAULT (datetime('now')),
+            updatedAt TEXT DEFAULT (datetime('now'))
+        )
+    `);
+
+    _wrapper.exec(`
         CREATE TABLE IF NOT EXISTS activity_logs (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             patient_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -675,6 +692,7 @@ async function initDatabase() {
     _wrapper.exec(`CREATE INDEX IF NOT EXISTS idx_medications_patient ON medications(patient_id)`);
     _wrapper.exec(`CREATE INDEX IF NOT EXISTS idx_med_logs_patient ON medication_logs(patient_id)`);
     _wrapper.exec(`CREATE INDEX IF NOT EXISTS idx_meals_patient ON meal_logs(patient_id)`);
+    _wrapper.exec(`CREATE INDEX IF NOT EXISTS idx_diet_intakes_patient_logged ON diet_intakes(patient_id, logged_at)`);
     _wrapper.exec(`CREATE INDEX IF NOT EXISTS idx_activity_patient ON activity_logs(patient_id)`);
     _wrapper.exec(`CREATE INDEX IF NOT EXISTS idx_threads_patient ON message_threads(patient_id)`);
     _wrapper.exec(`CREATE INDEX IF NOT EXISTS idx_messages_thread ON messages(thread_id)`);

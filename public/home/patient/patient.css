@@ -1221,6 +1221,20 @@
             font-size: 14px;
         }
 
+        .diet-recommendation-list {
+            margin: 12px 0 0;
+            padding-left: 18px;
+            color: var(--gray-700);
+            display: grid;
+            gap: 6px;
+        }
+
+        #diet-intake-table-body td:nth-child(3) {
+            max-width: 320px;
+            white-space: normal;
+            word-break: break-word;
+        }
+
         /* Charts */
         .charts-grid {
             display: grid;

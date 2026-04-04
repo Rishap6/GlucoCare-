@@ -81,7 +81,7 @@
                     </a>
                     <a class="nav-item" data-section="nutritionist">
                         <i class="fas fa-apple-alt"></i>
-                        Nutritionist
+                        Diet Tracker
                     </a>
                 </div>
 
@@ -633,11 +633,11 @@
                 <div class="section-header">
                     <h2 class="section-title">
                         <i class="fas fa-apple-alt"></i>
-                        Nutrition & Diet
+                        Diet & Intake Tracker
                     </h2>
-                    <button class="btn btn-primary" onclick="openModal('diet-modal')">
-                        <i class="fas fa-edit"></i>
-                        Update Preferences
+                    <button class="btn btn-primary" onclick="askAiDietReport()">
+                        <i class="fas fa-robot"></i>
+                        Ask AI Diet Report
                     </button>
                 </div>
 
@@ -646,59 +646,174 @@
                         <div class="nutrition-icon" style="background: rgba(245, 158, 11, 0.1); color: var(--warning);">
                             <i class="fas fa-fire"></i>
                         </div>
-                        <div class="nutrition-value">1,850</div>
+                        <div class="nutrition-value">--</div>
                         <div class="nutrition-label">Calories Today</div>
                     </div>
                     <div class="nutrition-card">
                         <div class="nutrition-icon" style="background: rgba(59, 130, 246, 0.1); color: var(--info);">
                             <i class="fas fa-bread-slice"></i>
                         </div>
-                        <div class="nutrition-value">185g</div>
+                        <div class="nutrition-value">--</div>
                         <div class="nutrition-label">Carbs</div>
                     </div>
                     <div class="nutrition-card">
                         <div class="nutrition-icon" style="background: rgba(239, 68, 68, 0.1); color: var(--danger);">
-                            <i class="fas fa-drumstick-bite"></i>
+                            <i class="fas fa-walking"></i>
                         </div>
-                        <div class="nutrition-value">75g</div>
-                        <div class="nutrition-label">Protein</div>
+                        <div class="nutrition-value">--</div>
+                        <div class="nutrition-label">Activity Minutes</div>
                     </div>
                     <div class="nutrition-card">
                         <div class="nutrition-icon" style="background: rgba(16, 185, 129, 0.1); color: var(--success);">
-                            <i class="fas fa-leaf"></i>
+                            <i class="fas fa-utensils"></i>
                         </div>
-                        <div class="nutrition-value">45g</div>
-                        <div class="nutrition-label">Fiber</div>
+                        <div class="nutrition-value">--</div>
+                        <div class="nutrition-label">Meals Logged</div>
                     </div>
                 </div>
 
                 <div class="card">
-                    <h3 class="card-title" style="margin-bottom: 20px;">Today's Meal Plan</h3>
+                    <h3 class="card-title" style="margin-bottom: 20px;">Today's Intake Snapshot</h3>
                     <div class="meal-plan">
                         <div class="meal-card">
                             <div class="meal-header">
                                 <span class="meal-type">Breakfast</span>
                                 <span class="meal-time">7:30 AM</span>
                             </div>
-                            <div class="meal-items">No meal plan data available.</div>
-                            <div class="meal-calories">450 calories</div>
+                            <div id="diet-breakfast-items" class="meal-items">No intake logged yet.</div>
+                            <div id="diet-breakfast-meta" class="meal-calories">Sugar: --</div>
                         </div>
                         <div class="meal-card">
                             <div class="meal-header">
                                 <span class="meal-type">Lunch</span>
                                 <span class="meal-time">12:30 PM</span>
                             </div>
-                            <div class="meal-items">No meal plan data available.</div>
-                            <div class="meal-calories">550 calories</div>
+                            <div id="diet-lunch-items" class="meal-items">No intake logged yet.</div>
+                            <div id="diet-lunch-meta" class="meal-calories">Sugar: --</div>
                         </div>
                         <div class="meal-card">
                             <div class="meal-header">
                                 <span class="meal-type">Dinner</span>
                                 <span class="meal-time">7:00 PM</span>
                             </div>
-                            <div class="meal-items">No meal plan data available.</div>
-                            <div class="meal-calories">500 calories</div>
+                            <div id="diet-dinner-items" class="meal-items">No intake logged yet.</div>
+                            <div id="diet-dinner-meta" class="meal-calories">Sugar: --</div>
                         </div>
+                    </div>
+                </div>
+
+                <div class="card" style="margin-top: 24px;">
+                    <h3 class="card-title" style="margin-bottom: 20px;">Log Meal Intake With Sugar</h3>
+                    <form id="diet-intake-form" onsubmit="submitDietIntake(event)">
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label class="form-label" for="diet-logged-at">Date & Time</label>
+                                <input id="diet-logged-at" class="form-input" type="datetime-local">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label" for="diet-meal-slot">Meal Slot</label>
+                                <select id="diet-meal-slot" class="form-select" required>
+                                    <option value="breakfast">Breakfast</option>
+                                    <option value="lunch">Lunch</option>
+                                    <option value="dinner">Dinner</option>
+                                    <option value="snack">Snack</option>
+                                </select>
+                            </div>
+                            <div class="form-group full-width">
+                                <label class="form-label" for="diet-intake-text">What did you eat?</label>
+                                <textarea id="diet-intake-text" class="form-textarea" rows="3" placeholder="Example: 2 idli, sambar, tea without sugar" required></textarea>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label" for="diet-blood-sugar">Blood Sugar (mg/dL)</label>
+                                <input id="diet-blood-sugar" class="form-input" type="number" min="40" max="700" step="1" placeholder="e.g. 168">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label" for="diet-sugar-timing">Sugar Timing</label>
+                                <select id="diet-sugar-timing" class="form-select">
+                                    <option value="">Select</option>
+                                    <option value="before">Before meal</option>
+                                    <option value="after">After meal</option>
+                                    <option value="random">Random</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label" for="diet-carbs">Approx Carbs (g)</label>
+                                <input id="diet-carbs" class="form-input" type="number" min="0" max="1200" step="1" placeholder="Optional">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label" for="diet-calories">Approx Calories</label>
+                                <input id="diet-calories" class="form-input" type="number" min="0" max="10000" step="1" placeholder="Optional">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label" for="diet-protein">Approx Protein (g)</label>
+                                <input id="diet-protein" class="form-input" type="number" min="0" max="800" step="0.1" placeholder="Optional">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label" for="diet-fat">Approx Fat (g)</label>
+                                <input id="diet-fat" class="form-input" type="number" min="0" max="800" step="0.1" placeholder="Optional">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label" for="diet-fiber">Approx Fiber (g)</label>
+                                <input id="diet-fiber" class="form-input" type="number" min="0" max="400" step="0.1" placeholder="Optional">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label" for="diet-gi">Approx GI</label>
+                                <input id="diet-gi" class="form-input" type="number" min="0" max="150" step="0.1" placeholder="Optional">
+                            </div>
+                            <div class="form-group full-width">
+                                <label class="form-label" for="diet-serving">Estimated Serving</label>
+                                <input id="diet-serving" class="form-input" type="text" maxlength="180" placeholder="Optional">
+                            </div>
+                            <div class="form-group full-width">
+                                <label class="form-label" for="diet-note">Notes (optional)</label>
+                                <textarea id="diet-note" class="form-textarea" rows="2" placeholder="Portion size, cravings, stress, or anything relevant"></textarea>
+                            </div>
+                        </div>
+
+                        <div class="modal-actions" style="margin-top: 0;">
+                            <button class="btn btn-primary" id="diet-intake-submit-btn" type="submit">Save Intake</button>
+                            <button class="btn btn-outline" type="button" onclick="clearDietIntakeForm()">Clear</button>
+                        </div>
+                        <div id="diet-intake-result" class="muted-note">Log at least breakfast, lunch, and dinner with sugar values for best AI insights.</div>
+                    </form>
+                </div>
+
+                <div class="card" style="margin-top: 24px;">
+                    <div class="card-header">
+                        <h3 class="card-title">AI Diet Report (Last 7 Days)</h3>
+                        <span class="status-badge" id="diet-report-status">Loading</span>
+                    </div>
+                    <div id="diet-ai-report" class="report-ai-body">
+                        <p class="report-ai-empty">Log meals to generate your personalized diet report.</p>
+                    </div>
+                    <div id="diet-avoid-foods" class="muted-note">No flagged foods yet.</div>
+                    <div class="modal-actions" style="margin-top: 12px;">
+                        <button class="btn btn-outline" type="button" onclick="askAiDietReport()">
+                            <i class="fas fa-robot"></i>
+                            Ask AI What To Avoid
+                        </button>
+                    </div>
+                </div>
+
+                <div class="card" style="margin-top: 24px;">
+                    <h3 class="card-title" style="margin-bottom: 20px;">Recent Intake Logs</h3>
+                    <div class="table-container">
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>Time</th>
+                                    <th>Meal</th>
+                                    <th>Intake</th>
+                                    <th>Sugar</th>
+                                    <th>Timing</th>
+                                </tr>
+                            </thead>
+                            <tbody id="diet-intake-table-body">
+                                <tr>
+                                    <td colspan="5" style="text-align:center; color: var(--gray-500);">No diet intake logs yet.</td>
+                                </tr>
+                            </tbody>
+                        </table>
                     </div>
                 </div>
 
@@ -727,12 +842,12 @@
                         </div>
                         <div class="metric-card">
                             <div class="metric-header">
-                                <span class="metric-title">Water Intake</span>
+                                <span class="metric-title">High Sugar Events</span>
                             </div>
                             <div class="metric-value">--</div>
-                            <div class="metric-unit">75% of goal</div>
+                            <div class="metric-unit">Events >= 180 mg/dL</div>
                             <div class="metric-progress">
-                                <div class="metric-progress-bar warning" style="width: 75%"></div>
+                                <div class="metric-progress-bar warning" style="width: 0%"></div>
                             </div>
                         </div>
                     </div>

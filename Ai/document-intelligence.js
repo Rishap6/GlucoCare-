@@ -1,5 +1,6 @@
+const { REPORT_TEMPLATE_RULES, BIOMARKER_PATTERNS, REFERENCE_RANGES } = require('./lab-templates');
 const MAX_RAW_TEXT_CHARS = 30000;
-const SOURCE_VERSION = 'document-intelligence-v3';
+const SOURCE_VERSION = 'document-intelligence-v4';
 const MONTH_MAP = {
     jan: { short: 'Jan' },
     feb: { short: 'Feb' },
@@ -14,101 +15,8 @@ const MONTH_MAP = {
     nov: { short: 'Nov' },
     dec: { short: 'Dec' },
 };
-const REPORT_TEMPLATE_RULES = [
-    {
-        id: 'thyrocare',
-        name: 'Thyrocare',
-        signals: [
-            /\bthyrocare\b/i,
-            /\baarogyam\b/i,
-            /\bthyrocare\s*technologies\b/i,
-            /\bid\s*[- ]?pc\b/i,
-            /\baverage\s*blood\s*glucose\b/i,
-        ],
-    },
-    {
-        id: 'dr-lal-pathlabs',
-        name: 'Dr Lal PathLabs',
-        signals: [
-            /\bdr\.?\s*lal\s*path\s*labs?\b/i,
-            /\bdrlal\b/i,
-            /\blal\s*path\s*labs?\b/i,
-        ],
-    },
-    {
-        id: 'metropolis',
-        name: 'Metropolis',
-        signals: [/\bmetropolis\b/i, /\bmetropolis\s*healthcare\b/i],
-    },
-    {
-        id: 'srl-diagnostics',
-        name: 'SRL Diagnostics',
-        signals: [
-            /\bsrl\s*diagnostics?\b/i,
-            /\bsrlworld\b/i,
-            /\bdr\s*avinash\s*phadke\b/i,
-        ],
-    },
-    {
-        id: 'apollo',
-        name: 'Apollo Diagnostics',
-        signals: [
-            /\bapollo\s*diagnostics?\b/i,
-            /\bapollo\s*hospitals?\b/i,
-            /\bapollo\s*health\b/i,
-        ],
-    },
-    {
-        id: 'redcliffe-labs',
-        name: 'Redcliffe Labs',
-        signals: [/\bredcliffe\s*labs?\b/i, /\bredcliffe\s*diagnostics?\b/i, /\bredcliffe\b/i],
-    },
-    {
-        id: 'healthians',
-        name: 'Healthians',
-        signals: [/\bhealthians?\b/i, /\bhealth1ans\b/i],
-    },
-    {
-        id: 'pathkind',
-        name: 'PathKind Diagnostics',
-        signals: [/\bpathkind\b/i, /\bpathkind\s*diagnostics?\b/i, /\bmankind\s*pharma\b/i],
-    },
-    {
-        id: 'vijaya-diagnostics',
-        name: 'Vijaya Diagnostics',
-        signals: [/\bvijaya\s*diagnostics?\b/i, /\bvijaya\s*health\b/i, /\bvijaya\s*labs\b/i],
-    },
-    {
-        id: 'suburban-diagnostics',
-        name: 'Suburban Diagnostics',
-        signals: [/\bsuburban\s*diagnostics?\b/i, /\bsuburbandiag\b/i],
-    },
-    {
-        id: 'neuberg-diagnostics',
-        name: 'Neuberg Diagnostics',
-        signals: [/\bneuberg\b/i, /\bsupratech\b/i, /\behrlich\b/i],
-    },
-    {
-        id: 'oncquest',
-        name: 'Oncquest Laboratories',
-        signals: [/\boncquest\b/i, /\boncquest\s*laboratories\b/i],
-    },
-    {
-        id: 'max-lab',
-        name: 'Max Lab',
-        signals: [/\bmax\s*healthcare\b/i, /\bmax\s*labs?\b/i, /\bmax\s*super\s*speciality\b/i],
-    },
-    {
-        id: 'manipal',
-        name: 'Manipal Hospitals',
-        signals: [/\bmanipal\s*hospitals?\b/i, /\bmanipal\s*diagnostics?\b/i, /\bmanipal\s*health\b/i],
-    },
-    {
-        id: 'tata-1mg',
-        name: 'Tata 1mg',
-        signals: [/\btata\s*1mg\b/i, /\b1mg\s*labs?\b/i, /\b1\s*mg\s*labs?\b/i],
-    },
-];
+
+
 
 function clamp(value, min, max) {
     return Math.max(min, Math.min(max, value));
@@ -798,40 +706,154 @@ function buildHealthReview(extracted) {
     };
 }
 
+// ── Generic biomarker extractor using lab-templates patterns ────────
+function extractBiomarkerValue(text, fieldKey) {
+    const patterns = BIOMARKER_PATTERNS[fieldKey];
+    if (!patterns || !patterns.length) return null;
+    for (const pat of patterns) {
+        const match = text.match(pat);
+        if (match && match[1]) {
+            const val = String(match[1]).trim();
+            // For numeric fields, validate
+            const num = Number(val);
+            if (Number.isFinite(num) && num > 0) return num;
+            if (val.length >= 1) return val; // string fields like patientSex
+        }
+    }
+    return null;
+}
+
+function extractAllBiomarkers(text) {
+    const result = {};
+    for (const key of Object.keys(BIOMARKER_PATTERNS)) {
+        result[key] = extractBiomarkerValue(text, key);
+    }
+    return result;
+}
+
+// ── Reference range abnormality flagging ────────────────────────────
+function flagAbnormalities(biomarkers, sex) {
+    const flags = {};
+    const normalizedSex = String(sex || '').toLowerCase().charAt(0); // 'm' or 'f'
+
+    for (const [key, value] of Object.entries(biomarkers)) {
+        if (value === null || value === undefined || typeof value === 'string') continue;
+        const refDef = REFERENCE_RANGES[key];
+        if (!refDef) continue;
+
+        const range = (normalizedSex === 'f' && refDef.female) ? refDef.female
+            : (normalizedSex === 'm' && refDef.male) ? refDef.male
+            : refDef.all || refDef.male || refDef.female;
+        if (!range) continue;
+
+        const numVal = Number(value);
+        if (!Number.isFinite(numVal)) continue;
+
+        let status = 'normal';
+        if (numVal < range[0]) status = numVal < range[0] * 0.7 ? 'critical-low' : 'low';
+        else if (numVal > range[1] && range[1] < 900) status = numVal > range[1] * 1.5 ? 'critical-high' : 'high';
+
+        flags[key] = { value: numVal, range, unit: refDef.unit || '', status };
+    }
+    return flags;
+}
+
+// ── Expanded health review ──────────────────────────────────────────
+function buildHealthReviewExpanded(extracted, biomarkers, abnormalityFlags) {
+    const hba1c = extracted.hba1c;
+    const glucoseValues = Array.isArray(extracted.glucoseReadingsMgDl) ? extracted.glucoseReadingsMgDl : [];
+    const bp = Array.isArray(extracted.bloodPressure) && extracted.bloodPressure.length ? extracted.bloodPressure[0] : null;
+    const systolic = bp ? Number(bp.systolic) : null;
+    const diastolic = bp ? Number(bp.diastolic) : null;
+
+    let riskScore = 0;
+    const reasons = [];
+
+    // HbA1c
+    if (hba1c !== null && hba1c !== undefined) {
+        if (hba1c >= 8.5) { riskScore += 4; reasons.push(`HbA1c is high (${hba1c}%).`); }
+        else if (hba1c >= 7.0) { riskScore += 2; reasons.push(`HbA1c is above target (${hba1c}%).`); }
+        else if (hba1c >= 5.7) { riskScore += 1; reasons.push(`HbA1c in prediabetic range (${hba1c}%).`); }
+        else { reasons.push(`HbA1c is normal (${hba1c}%).`); }
+    }
+
+    // Glucose
+    if (glucoseValues.length > 0) {
+        const critical = glucoseValues.some((v) => v < 70 || v > 250);
+        const elevated = glucoseValues.some((v) => v > 180 && v <= 250);
+        if (critical) { riskScore += 3; reasons.push('Glucose has critical values.'); }
+        else if (elevated) { riskScore += 2; reasons.push('Glucose has elevated values.'); }
+        else { reasons.push('Glucose values look relatively controlled.'); }
+    }
+
+    // Blood Pressure
+    if (Number.isFinite(systolic) && Number.isFinite(diastolic)) {
+        if (systolic >= 160 || diastolic >= 100) { riskScore += 3; reasons.push(`BP is high (${systolic}/${diastolic}).`); }
+        else if (systolic >= 140 || diastolic >= 90) { riskScore += 2; reasons.push(`BP is above target (${systolic}/${diastolic}).`); }
+        else { reasons.push(`BP is acceptable (${systolic}/${diastolic}).`); }
+    }
+
+    // Score all abnormality flags from biomarkers
+    for (const [key, flag] of Object.entries(abnormalityFlags)) {
+        if (flag.status === 'critical-high' || flag.status === 'critical-low') {
+            riskScore += 3;
+            reasons.push(`${key} is critically ${flag.status.replace('critical-', '')} (${flag.value} ${flag.unit}).`);
+        } else if (flag.status === 'high' || flag.status === 'low') {
+            riskScore += 1;
+            reasons.push(`${key} is ${flag.status} (${flag.value} ${flag.unit}).`);
+        }
+    }
+
+    let level = 'not-bad';
+    let label = 'Not Bad';
+    if (riskScore >= 6) { level = 'bad'; label = 'Bad'; }
+    else if (riskScore >= 2) { level = 'caution'; label = 'Needs Attention'; }
+
+    return {
+        level, label, isHealthBad: level === 'bad', riskScore,
+        summary: level === 'bad' ? 'Report review: health markers look concerning. Please consult your doctor.'
+            : level === 'caution' ? 'Report review: some values need attention.'
+            : 'Report review: health markers are generally okay.',
+        reasons,
+    };
+}
+
+// ── Table row parser ────────────────────────────────────────────────
+function extractTableRows(text) {
+    const lines = String(text || '').split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+    const rows = [];
+    for (const line of lines) {
+        // Match lines like: "Test Name   Value   Unit   Ref Range"
+        const match = line.match(/^([A-Za-z][A-Za-z0-9\s\-\/().,']{2,50}?)\s{2,}([\d.]+)\s*([\w\/µμ%]+)?\s*([\d.\-–]+\s*[-–]\s*[\d.]+)?/);
+        if (match) {
+            rows.push({ testName: match[1].trim(), value: match[2], unit: (match[3] || '').trim(), refRange: (match[4] || '').trim() });
+        }
+    }
+    return rows;
+}
+
 function extractProjectDataFromDocument(rawText, metadata) {
     const normalizedText = normalizeOcrNoise(normalizeWhitespace(rawText));
     const text = normalizedText.slice(0, MAX_RAW_TEXT_CHARS);
 
+    const emptyBiomarkers = {};
+    Object.keys(BIOMARKER_PATTERNS).forEach((k) => { emptyBiomarkers[k] = null; });
+
     if (!text) {
         const emptyExtracted = {
-            patientName: null,
-            patientId: null,
-            hba1c: null,
-            glucoseReadingsMgDl: [],
-            averageGlucoseMgDl: null,
-            bloodPressure: [],
-            weightKg: null,
-            diagnoses: [],
-            medications: [],
-            allergies: [],
-            dates: [],
-            reportDate: null,
+            patientName: null, patientId: null, hba1c: null,
+            glucoseReadingsMgDl: [], averageGlucoseMgDl: null, bloodPressure: [],
+            weightKg: null, diagnoses: [], medications: [], allergies: [],
+            dates: [], reportDate: null, biomarkers: emptyBiomarkers, abnormalityFlags: {}, tableRows: [],
         };
-        const evaluatedEmpty = evaluateExtractedData(emptyExtracted, {
-            text,
-            metadata,
-        });
-
+        const evaluatedEmpty = evaluateExtractedData(emptyExtracted, { text, metadata });
         return {
             fileName: metadata && metadata.fileName ? metadata.fileName : null,
             fileType: metadata && metadata.fileType ? metadata.fileType : null,
             summary: 'No extractable text found in document.',
-            review: evaluatedEmpty.review,
-            extracted: emptyExtracted,
-            confidence: evaluatedEmpty.confidence,
-            confidenceDetails: evaluatedEmpty.confidenceDetails,
-            qualityFlags: evaluatedEmpty.qualityFlags,
-            source: SOURCE_VERSION,
+            review: evaluatedEmpty.review, extracted: emptyExtracted,
+            confidence: evaluatedEmpty.confidence, confidenceDetails: evaluatedEmpty.confidenceDetails,
+            qualityFlags: evaluatedEmpty.qualityFlags, source: SOURCE_VERSION,
         };
     }
 
@@ -841,6 +863,11 @@ function extractProjectDataFromDocument(rawText, metadata) {
     if (averageGlucoseMgDl !== null) {
         glucoseReadings = [averageGlucoseMgDl].concat(glucoseReadings.filter((v) => v !== averageGlucoseMgDl));
     }
+
+    const biomarkers = extractAllBiomarkers(text);
+    const patientSex = biomarkers.patientSex || null;
+    const abnormalityFlags = flagAbnormalities(biomarkers, patientSex);
+    const tableRows = extractTableRows(text);
 
     const extracted = {
         patientName: extractPatientName(text),
@@ -855,18 +882,19 @@ function extractProjectDataFromDocument(rawText, metadata) {
         allergies: extractAllergies(text),
         dates: dateHits,
         reportDate: dateHits.length ? dateHits[0] : null,
+        biomarkers,
+        abnormalityFlags,
+        tableRows: tableRows.slice(0, 50),
     };
 
-    const evaluated = evaluateExtractedData(extracted, {
-        text,
-        metadata,
-    });
+    const evaluated = evaluateExtractedData(extracted, { text, metadata });
+    const expandedReview = buildHealthReviewExpanded(extracted, biomarkers, abnormalityFlags);
 
     return {
         fileName: metadata && metadata.fileName ? metadata.fileName : null,
         fileType: metadata && metadata.fileType ? metadata.fileType : null,
         summary: evaluated.summary,
-        review: evaluated.review,
+        review: expandedReview,
         extracted,
         confidence: evaluated.confidence,
         confidenceDetails: evaluated.confidenceDetails,
@@ -881,3 +909,4 @@ module.exports = {
     evaluateExtractedData,
     detectReportTemplate,
 };
+

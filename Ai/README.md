@@ -19,6 +19,18 @@ From `backend/`:
 npm run train:ai
 ```
 
+Train food nutrition values from CSV (indian_food_nutrition_550_dataset.csv):
+
+```bash
+npm run train:food
+```
+
+Global + India dish variety (including Indo-Chinese and India-popular Western dishes) is loaded from:
+
+- `Ai/global-food-nutrition.tsv`
+
+Update this TSV to add more dishes and serving-level nutrition values.
+
 ## API Usage
 The patient dashboard calls:
 
