@@ -1,3 +1,23 @@
+// Logout logic
+function logoutDoctor() {
+    // Remove any session tokens (example: localStorage/sessionStorage)
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    sessionStorage.removeItem('token');
+    sessionStorage.removeItem('user');
+    // Redirect to login page
+    window.location.href = '/auth/login/login.html';
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    var logoutBtn = document.getElementById('doctor-logout-link');
+    if (logoutBtn) {
+        logoutBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            logoutDoctor();
+        });
+    }
+});
 var doctorState = {
     patients: [],
     assignedPatients: [],
@@ -5,6 +25,8 @@ var doctorState = {
     alerts: [],
     doctorProfile: null,
     dashboard: null,
+    currentView: 'overview',
+    currentDoctorName: 'Doctor',
     patientView: {
         assignedOnly: true,
         sortBy: 'nameAsc',
@@ -26,18 +48,48 @@ function escapeHtml(value) {
         .replace(/'/g, '&#39;');
 }
 
+var IST_TIME_ZONE = 'Asia/Kolkata';
+
+function getIstDateKey(date) {
+    return date.toLocaleDateString('sv-SE', {
+        timeZone: IST_TIME_ZONE,
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+    });
+}
+
+function formatIstDate(date, options) {
+    var opts = Object.assign({ timeZone: IST_TIME_ZONE }, options || {});
+    return date.toLocaleDateString('en-IN', opts);
+}
+
+function formatIstTime(date, options) {
+    var opts = Object.assign({ timeZone: IST_TIME_ZONE }, options || {});
+    return date.toLocaleTimeString('en-IN', opts);
+}
+
+function formatIstDateTime(date, options) {
+    var opts = Object.assign({ timeZone: IST_TIME_ZONE }, options || {});
+    return date.toLocaleString('en-IN', opts);
+}
+
+function getIstTodayInputValue() {
+    return getIstDateKey(new Date());
+}
+
 function formatDate(value) {
     if (!value) return '--';
     var d = new Date(value);
     if (Number.isNaN(d.getTime())) return '--';
-    return d.toLocaleDateString();
+    return formatIstDate(d);
 }
 
 function formatDateTime(value) {
     if (!value) return '--';
     var d = new Date(value);
     if (Number.isNaN(d.getTime())) return '--';
-    return d.toLocaleString();
+    return formatIstDateTime(d);
 }
 
 function initials(name) {
@@ -46,14 +98,211 @@ function initials(name) {
     return parts.map(function (part) { return part[0] ? part[0].toUpperCase() : ''; }).join('') || 'PT';
 }
 
+function parseReportInsights(report) {
+    if (!report || typeof report !== 'object') return null;
+
+    var parsedRaw = report.parsedJson || report.parsed_json || null;
+    if (parsedRaw && typeof parsedRaw === 'string') {
+        try {
+            var parsedJson = JSON.parse(parsedRaw);
+            if (parsedJson && typeof parsedJson === 'object') return parsedJson;
+        } catch (_) {
+        }
+    }
+
+    if (parsedRaw && typeof parsedRaw === 'object') {
+        return parsedRaw;
+    }
+
+    return null;
+}
+
+function summarizeExtracted(result) {
+    if (!result || typeof result !== 'object') return '';
+    var extracted = result.extracted || {};
+    var summary = [];
+    if (result.review && result.review.label) summary.push('Review: ' + result.review.label);
+    if (result.summary) summary.push(String(result.summary));
+    if (extracted.hba1c !== null && extracted.hba1c !== undefined && extracted.hba1c !== '') {
+        summary.push('HbA1c ' + Number(extracted.hba1c).toFixed(1) + '%');
+    }
+    if (Array.isArray(extracted.glucoseReadingsMgDl) && extracted.glucoseReadingsMgDl.length) {
+        summary.push(extracted.glucoseReadingsMgDl.length + ' glucose value(s)');
+    }
+    if (Array.isArray(extracted.bloodPressure) && extracted.bloodPressure.length) {
+        summary.push(extracted.bloodPressure.length + ' BP value(s)');
+    }
+    if (extracted.weightKg !== null && extracted.weightKg !== undefined && extracted.weightKg !== '') {
+        summary.push('Weight ' + Number(extracted.weightKg).toFixed(1) + ' kg');
+    }
+    return summary.join(', ');
+}
+
+function getDoctorViewMeta(view) {
+    var doctorName = doctorState.currentDoctorName || 'Doctor';
+    var map = {
+        overview: {
+            title: 'Dashboard',
+            subtitle: 'Welcome back, ' + doctorName
+        },
+        patients: {
+            title: 'Patients',
+            subtitle: 'Browse and manage patient records in one place'
+        },
+        appointments: {
+            title: 'Appointments',
+            subtitle: 'Focus on today\'s and upcoming consultations'
+        },
+        reports: {
+            title: 'Reports',
+            subtitle: 'Create reports and records from a dedicated workspace'
+        },
+        alerts: {
+            title: 'Alerts',
+            subtitle: 'Prioritize critical and warning signals quickly'
+        },
+        messages: {
+            title: 'Messages',
+            subtitle: 'Track unread conversations before opening chat'
+        }
+    };
+    return map[view] || map.overview;
+}
+
+function updateDoctorPageTitle(view) {
+    var title = document.querySelector('.page-title h1');
+    var subtitle = document.querySelector('.page-title p');
+    var meta = getDoctorViewMeta(view);
+
+    if (title) title.textContent = meta.title;
+    if (subtitle) subtitle.textContent = meta.subtitle;
+}
+
+function getAppointmentTimestamp(appt) {
+    if (!appt) return NaN;
+    var datePart = String(appt.date || '').trim();
+    var timePart = String(appt.time || '').trim();
+    if (!datePart) return NaN;
+
+    var withTime = new Date(datePart + (timePart ? (' ' + timePart) : ''));
+    if (!Number.isNaN(withTime.getTime())) return withTime.getTime();
+
+    var dateOnly = new Date(datePart);
+    return Number.isNaN(dateOnly.getTime()) ? NaN : dateOnly.getTime();
+}
+
+function updateOverviewHighlights() {
+    var criticalEl = document.getElementById('doctor-highlight-critical');
+    var nextApptEl = document.getElementById('doctor-highlight-next-appt');
+    var msgEl = document.getElementById('doctor-highlight-msg');
+    var messagesUnreadEl = document.getElementById('doctor-messages-view-unread');
+
+    var criticalCount = Array.isArray(doctorState.alerts)
+        ? doctorState.alerts.filter(function (a) { return String(a.severity || '').toLowerCase() === 'critical'; }).length
+        : 0;
+
+    var criticalText = criticalCount > 0
+        ? (criticalCount + ' critical alert' + (criticalCount > 1 ? 's' : ''))
+        : 'No critical alerts';
+    if (criticalEl) criticalEl.textContent = criticalText;
+
+    var appointments = (doctorState.dashboard && Array.isArray(doctorState.dashboard.upcomingAppointments))
+        ? doctorState.dashboard.upcomingAppointments.slice()
+        : [];
+
+    var now = Date.now();
+    var nextFuture = null;
+    var earliest = null;
+
+    appointments.forEach(function (appt) {
+        var ts = getAppointmentTimestamp(appt);
+        if (Number.isNaN(ts)) return;
+
+        if (!earliest || ts < earliest.ts) {
+            earliest = { appt: appt, ts: ts };
+        }
+        if (ts >= now && (!nextFuture || ts < nextFuture.ts)) {
+            nextFuture = { appt: appt, ts: ts };
+        }
+    });
+
+    var selected = nextFuture || earliest;
+    if (nextApptEl) {
+        if (!selected) {
+            nextApptEl.textContent = 'No upcoming appointments';
+        } else {
+            var patientName = selected.appt.patient && selected.appt.patient.fullName
+                ? selected.appt.patient.fullName
+                : 'Patient';
+            var dateLabel = formatDate(selected.appt.date);
+            var timeLabel = String(selected.appt.time || '').trim();
+            nextApptEl.textContent = patientName + ' on ' + dateLabel + (timeLabel ? (' at ' + timeLabel) : '');
+        }
+    }
+
+    var unreadCount = 0;
+    if (Array.isArray(doctorState.chatThreads)) {
+        doctorState.chatThreads.forEach(function (thread) {
+            unreadCount += Number(thread.unreadCount || 0);
+        });
+    }
+
+    var unreadText = unreadCount > 0
+        ? (unreadCount + ' unread message' + (unreadCount > 1 ? 's' : ''))
+        : 'No unread messages';
+    if (msgEl) msgEl.textContent = unreadText;
+    if (messagesUnreadEl) messagesUnreadEl.textContent = unreadText;
+}
+
+function setDoctorView(view) {
+    var allowedViews = {
+        overview: true,
+        patients: true,
+        appointments: true,
+        reports: true,
+        alerts: true,
+        messages: true
+    };
+    var resolvedView = allowedViews[view] ? view : 'overview';
+
+    doctorState.currentView = resolvedView;
+
+    var body = document.getElementById('doctor-dashboard-body');
+    if (body) body.setAttribute('data-view', resolvedView);
+
+    var navItems = document.querySelectorAll('.sidebar .nav-item[data-view]');
+    navItems.forEach(function (item) {
+        item.classList.toggle('active', item.getAttribute('data-view') === resolvedView);
+    });
+
+    var topSearch = document.getElementById('doctor-top-search');
+    if (topSearch) {
+        topSearch.style.display = (resolvedView === 'overview' || resolvedView === 'patients') ? '' : 'none';
+    }
+
+    updateDoctorPageTitle(resolvedView);
+    updateOverviewHighlights();
+
+    if (resolvedView === 'alerts') {
+        loadAlerts().catch(function () {});
+    }
+    if (resolvedView === 'messages') {
+        loadDoctorChatThreads().catch(function () {});
+    }
+
+    if (window.innerWidth <= 1024) {
+        closeSidebar();
+    }
+}
+
 function setDoctorHeader(user) {
     var profileName = document.querySelector('.profile-name');
-    var titleMsg = document.querySelector('.page-title p');
     var profileRole = document.querySelector('.profile-role');
+    doctorState.currentDoctorName = user.fullName || 'Doctor';
 
-    if (profileName) profileName.textContent = user.fullName || 'Doctor';
-    if (titleMsg) titleMsg.textContent = 'Welcome back, ' + (user.fullName || 'Doctor');
+    if (profileName) profileName.textContent = doctorState.currentDoctorName;
     if (profileRole) profileRole.textContent = user.specialization || 'Doctor';
+    updateDoctorPageTitle(doctorState.currentView);
 }
 
 function renderPatients(patients) {
@@ -358,6 +607,7 @@ async function loadDashboard() {
 
     setPatientsInRange(Number(d.patientCount || 0), Array.isArray(d.criticalReadings) ? d.criticalReadings.length : 0);
     renderUpcomingAppointments(d.upcomingAppointments || []);
+    updateOverviewHighlights();
 }
 
 async function loadAlerts() {
@@ -365,6 +615,7 @@ async function loadAlerts() {
     doctorState.alerts = result.ok && Array.isArray(result.data) ? result.data : [];
     renderCriticalAlerts(doctorState.alerts.slice(0, 8));
     setAlertBadge(doctorState.alerts);
+    updateOverviewHighlights();
 }
 
 async function loadPatients() {
@@ -464,9 +715,12 @@ function renderPatientReports(reports) {
     }
 
     box.innerHTML = reports.slice(0, 12).map(function (r) {
+        var insights = parseReportInsights(r);
+        var summary = summarizeExtracted(insights);
         return '<div style="padding:6px 0; border-bottom:1px solid var(--gray-100);">' +
             '<strong>' + escapeHtml(r.reportName || 'Report') + '</strong> (' + escapeHtml(r.type || '--') + ') - ' + formatDate(r.date) +
             ' <span style="color:var(--gray-500);">[' + escapeHtml(r.status || 'Pending') + ']</span>' +
+            (summary ? '<div style="font-size:12px; color:var(--gray-500); margin-top:4px;">' + escapeHtml(summary) + '</div>' : '') +
             '</div>';
     }).join('');
 }
@@ -640,7 +894,7 @@ function openCreateAppointmentModal() {
     populatePatientSelects();
     var dateInput = document.getElementById('doctor-create-appt-date');
     if (dateInput && !dateInput.value) {
-        dateInput.value = new Date().toISOString().slice(0, 10);
+        dateInput.value = getIstTodayInputValue();
     }
     openModal('doctor-create-appointment-modal');
 }
@@ -658,7 +912,7 @@ async function submitDoctorCreateAppointment() {
 
     var payload = {
         patient: patient,
-        date: new Date(date + 'T00:00:00').toISOString(),
+        date: date,
         time: time,
         reason: reason
     };
@@ -678,7 +932,7 @@ function openCreateReportModal() {
     populatePatientSelects();
     var dateInput = document.getElementById('doctor-report-date');
     if (dateInput && !dateInput.value) {
-        dateInput.value = new Date().toISOString().slice(0, 10);
+        dateInput.value = getIstTodayInputValue();
     }
     openModal('doctor-create-report-modal');
 }
@@ -689,8 +943,7 @@ async function submitDoctorCreateReport() {
         reportName: (document.getElementById('doctor-report-name').value || '').trim(),
         type: (document.getElementById('doctor-report-type').value || '').trim(),
         date: (document.getElementById('doctor-report-date').value || '').trim(),
-        status: (document.getElementById('doctor-report-status').value || 'Pending').trim(),
-        notes: (document.getElementById('doctor-report-notes').value || '').trim()
+        status: (document.getElementById('doctor-report-status').value || 'Pending').trim()
     };
 
     if (!payload.patient || !payload.reportName || !payload.type || !payload.date) {
@@ -713,7 +966,7 @@ function openCreateRecordModal() {
     populatePatientSelects();
     var dateInput = document.getElementById('doctor-record-date');
     if (dateInput && !dateInput.value) {
-        dateInput.value = new Date().toISOString().slice(0, 10);
+        dateInput.value = getIstTodayInputValue();
     }
     openModal('doctor-create-record-modal');
 }
@@ -761,17 +1014,16 @@ async function refreshDoctorDashboard() {
 
 function bindActions() {
     var settingsBtn = document.getElementById('doctor-settings-btn');
-    var navPatientsBtn = document.getElementById('doctor-nav-patients');
-    var navAppointmentsBtn = document.getElementById('doctor-nav-appointments');
-    var navReportsBtn = document.getElementById('doctor-nav-reports');
-    var navAlertsBtn = document.getElementById('doctor-nav-alerts');
-    var navMessagesBtn = document.getElementById('doctor-nav-messages');
+    var navViewItems = document.querySelectorAll('.sidebar .nav-item[data-view]');
     var editProfileBtn = document.getElementById('doctor-open-profile-btn');
     var viewAppointmentsBtn = document.getElementById('doctor-view-appointments-btn');
     var quickAddPatientBtn = document.getElementById('doctor-quick-add-patient-btn');
     var quickPrescribeBtn = document.getElementById('doctor-quick-prescribe-btn');
     var quickReportsBtn = document.getElementById('doctor-quick-reports-btn');
     var quickScheduleBtn = document.getElementById('doctor-quick-schedule-btn');
+    var reportCreateBtn = document.getElementById('doctor-report-create-btn');
+    var recordCreateBtn = document.getElementById('doctor-record-create-btn');
+    var openMessagesPanelBtn = document.getElementById('doctor-open-messages-panel-btn');
     var filterBtn = document.getElementById('doctor-patient-filter-btn');
     var assignedToggle = document.getElementById('doctor-assigned-toggle');
     var patientSort = document.getElementById('doctor-patient-sort');
@@ -783,29 +1035,20 @@ function bindActions() {
     var overlay = document.getElementById('doctorModalOverlay');
 
     if (settingsBtn) settingsBtn.addEventListener('click', openDoctorProfileModal);
-    if (navPatientsBtn) navPatientsBtn.addEventListener('click', function (e) {
-        e.preventDefault();
-        window.scrollTo({ top: 300, behavior: 'smooth' });
-    });
-    if (navAppointmentsBtn) navAppointmentsBtn.addEventListener('click', function (e) {
-        e.preventDefault();
-        openAppointmentsManager();
-    });
-    if (navReportsBtn) navReportsBtn.addEventListener('click', function (e) {
-        e.preventDefault();
-        openCreateReportModal();
-    });
-    if (navAlertsBtn) navAlertsBtn.addEventListener('click', function (e) {
-        e.preventDefault();
-        openAlertsModal();
-    });
-    if (navMessagesBtn) navMessagesBtn.addEventListener('click', function (e) {
-        e.preventDefault();
-        openDoctorChatPanel();
+    navViewItems.forEach(function (navItem) {
+        navItem.addEventListener('click', function (e) {
+            e.preventDefault();
+            setDoctorView(navItem.getAttribute('data-view'));
+        });
     });
 
     if (editProfileBtn) editProfileBtn.addEventListener('click', openDoctorProfileModal);
-    if (viewAppointmentsBtn) viewAppointmentsBtn.addEventListener('click', openAppointmentsManager);
+    if (viewAppointmentsBtn) viewAppointmentsBtn.addEventListener('click', function () {
+        setDoctorView('appointments');
+    });
+    if (reportCreateBtn) reportCreateBtn.addEventListener('click', openCreateReportModal);
+    if (recordCreateBtn) recordCreateBtn.addEventListener('click', openCreateRecordModal);
+    if (openMessagesPanelBtn) openMessagesPanelBtn.addEventListener('click', openDoctorChatPanel);
     if (quickAddPatientBtn) quickAddPatientBtn.addEventListener('click', openAssignPatientModal);
     if (quickPrescribeBtn) quickPrescribeBtn.addEventListener('click', openCreateRecordModal);
     if (quickReportsBtn) quickReportsBtn.addEventListener('click', openCreateReportModal);
@@ -848,8 +1091,12 @@ function bindActions() {
         });
     }
 
-    if (viewAlertsBtn) viewAlertsBtn.addEventListener('click', openAlertsModal);
-    if (notificationBtn) notificationBtn.addEventListener('click', openAlertsModal);
+    if (viewAlertsBtn) viewAlertsBtn.addEventListener('click', function () {
+        setDoctorView('alerts');
+    });
+    if (notificationBtn) notificationBtn.addEventListener('click', function () {
+        setDoctorView('alerts');
+    });
     if (logoutLink) {
         logoutLink.addEventListener('click', function (e) {
             e.preventDefault();
@@ -919,7 +1166,7 @@ function dcpMsgTime(value) {
     if (!value) return '';
     var d = new Date(value);
     if (Number.isNaN(d.getTime())) return '';
-    return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    return formatIstTime(d, { hour: '2-digit', minute: '2-digit' });
 }
 
 function dcpMsgStatusIcon(msg) {
@@ -939,10 +1186,12 @@ function dcpMsgDateLabel(value) {
     var d = new Date(value);
     if (Number.isNaN(d.getTime())) return '';
     var now = new Date();
-    if (d.toDateString() === now.toDateString()) return 'Today';
-    var yesterday = new Date(now); yesterday.setDate(now.getDate() - 1);
-    if (d.toDateString() === yesterday.toDateString()) return 'Yesterday';
-    return d.toLocaleDateString([], { weekday: 'long', month: 'short', day: 'numeric' });
+    var dateKey = getIstDateKey(d);
+    if (dateKey === getIstDateKey(now)) return 'Today';
+    var yesterday = new Date(now);
+    yesterday.setDate(now.getDate() - 1);
+    if (dateKey === getIstDateKey(yesterday)) return 'Yesterday';
+    return formatIstDate(d, { weekday: 'long', month: 'short', day: 'numeric' });
 }
 
 function dcpShortTime(value) {
@@ -950,10 +1199,12 @@ function dcpShortTime(value) {
     var d = new Date(value);
     if (Number.isNaN(d.getTime())) return '';
     var now = new Date();
-    if (d.toDateString() === now.toDateString()) return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    var yesterday = new Date(now); yesterday.setDate(now.getDate() - 1);
-    if (d.toDateString() === yesterday.toDateString()) return 'Yesterday';
-    return d.toLocaleDateString([], { month: 'short', day: 'numeric' });
+    var dateKey = getIstDateKey(d);
+    if (dateKey === getIstDateKey(now)) return formatIstTime(d, { hour: '2-digit', minute: '2-digit' });
+    var yesterday = new Date(now);
+    yesterday.setDate(now.getDate() - 1);
+    if (dateKey === getIstDateKey(yesterday)) return 'Yesterday';
+    return formatIstDate(d, { month: 'short', day: 'numeric' });
 }
 
 async function loadDoctorChatThreads() {
@@ -975,7 +1226,8 @@ function renderDoctorChatThreads() {
     if (searchVal) {
         threads = threads.filter(function(t) {
             return (t.patientName || '').toLowerCase().indexOf(searchVal) >= 0 ||
-                   (t.subject || '').toLowerCase().indexOf(searchVal) >= 0;
+                   (t.subject || '').toLowerCase().indexOf(searchVal) >= 0 ||
+                   (t.lastMessageBody || '').toLowerCase().indexOf(searchVal) >= 0;
         });
     }
 
@@ -987,12 +1239,16 @@ function renderDoctorChatThreads() {
     container.innerHTML = threads.map(function(t) {
         var tid = Number(t.id || t._id);
         var isActive = tid === doctorState.chatSelectedThreadId;
+        var snippet = t.lastMessageBody || t.subject || 'Tap to start chatting';
+        if (t.lastMessageBody && t.lastMessageSenderRole === 'doctor') {
+            snippet = 'You: ' + snippet;
+        }
         return [
             '<div class="dcp-thread-item' + (isActive ? ' active' : '') + '" onclick="openDoctorThread(' + tid + ')" data-thread-id="' + tid + '">',
             '  <div class="dcp-thread-avatar">' + escapeHtml(initials(t.patientName)) + '</div>',
             '  <div class="dcp-thread-info">',
             '    <div class="dcp-thread-name">' + escapeHtml(t.patientName || 'Patient') + '</div>',
-            '    <div class="dcp-thread-snippet">' + escapeHtml(t.subject || '') + '</div>',
+            '    <div class="dcp-thread-snippet">' + escapeHtml(snippet) + '</div>',
             '  </div>',
             '  <div style="text-align:right; flex-shrink:0;">',
             '    <div class="dcp-thread-time">' + escapeHtml(dcpShortTime(t.last_message_at)) + '</div>',
@@ -1108,11 +1364,12 @@ function updateDoctorMsgBadge() {
     if (notifDot) {
         notifDot.style.display = total > 0 ? 'block' : 'none';
     }
+    updateOverviewHighlights();
 }
 
 function initDoctorChatSocket() {
     if (typeof io === 'undefined') return;
-    var token = localStorage.getItem('token');
+    var token = (typeof API !== 'undefined' && API.getToken) ? API.getToken() : null;
     if (!token) return;
 
     doctorState.chatSocket = io({ auth: { token: token } });
@@ -1195,6 +1452,7 @@ function initDoctorChatSocket() {
     setDoctorHeader(user);
     bindSearch();
     bindActions();
+    setDoctorView(doctorState.currentView);
     initDoctorChatSocket();
 
     refreshDoctorDashboard().catch(function () {

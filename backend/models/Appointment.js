@@ -4,6 +4,22 @@ const db = {
     prepare: (...args) => getDb().prepare(...args),
 };
 
+const IST_TIME_ZONE = 'Asia/Kolkata';
+
+function getIstDateKey(date = new Date()) {
+    return date.toLocaleDateString('sv-SE', {
+        timeZone: IST_TIME_ZONE,
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+    });
+}
+
+function normalizeDateKey(value) {
+    if (!value) return getIstDateKey();
+    return String(value).slice(0, 10);
+}
+
 const Appointment = {
     findByDoctor(doctorId) {
         const rows = db.prepare(`
@@ -63,13 +79,15 @@ const Appointment = {
     },
 
     findByDoctorAndDateRange(doctorId, startDate, endDate, { populatePatient = false } = {}) {
+        const startKey = normalizeDateKey(startDate);
+        const endKey = normalizeDateKey(endDate);
         if (populatePatient) {
             const rows = db.prepare(`
                 SELECT a.*, u.fullName as patientFullName
                 FROM appointments a
                 JOIN users u ON a.patient = u.id
-                WHERE a.doctor = ? AND a.date >= ? AND a.date <= ?
-            `).all(doctorId, startDate, endDate);
+                WHERE a.doctor = ? AND substr(a.date, 1, 10) >= ? AND substr(a.date, 1, 10) <= ?
+            `).all(doctorId, startKey, endKey);
             return rows.map(row => ({
                 ...row,
                 _id: row.id,
@@ -78,19 +96,22 @@ const Appointment = {
             }));
         }
         return db.prepare(`
-            SELECT * FROM appointments WHERE doctor = ? AND date >= ? AND date <= ?
-        `).all(doctorId, startDate, endDate).map(r => ({ ...r, _id: r.id }));
+            SELECT * FROM appointments
+            WHERE doctor = ? AND substr(date, 1, 10) >= ? AND substr(date, 1, 10) <= ?
+        `).all(doctorId, startKey, endKey).map(r => ({ ...r, _id: r.id }));
     },
 
     findUpcomingByDoctor(doctorId, endDate, limit = 10) {
+        const todayKey = getIstDateKey();
+        const endKey = normalizeDateKey(endDate);
         const rows = db.prepare(`
             SELECT a.*, u.fullName as patientFullName
             FROM appointments a
             JOIN users u ON a.patient = u.id
-            WHERE a.doctor = ? AND a.date >= ? AND a.date <= ? AND a.status = 'Scheduled'
+            WHERE a.doctor = ? AND substr(a.date, 1, 10) >= ? AND substr(a.date, 1, 10) <= ? AND a.status = 'Scheduled'
             ORDER BY a.date ASC
             LIMIT ?
-        `).all(doctorId, new Date().toISOString(), endDate, limit);
+        `).all(doctorId, todayKey, endKey, limit);
         return rows.map(row => ({
             ...row,
             _id: row.id,
@@ -100,14 +121,15 @@ const Appointment = {
     },
 
     findUpcomingByPatient(patientId, limit = 5) {
+        const todayKey = getIstDateKey();
         const rows = db.prepare(`
             SELECT a.*, u.fullName as doctorFullName, u.specialization as doctorSpecialization
             FROM appointments a
             JOIN users u ON a.doctor = u.id
-            WHERE a.patient = ? AND a.date >= ? AND a.status = 'Scheduled'
+            WHERE a.patient = ? AND substr(a.date, 1, 10) >= ? AND a.status = 'Scheduled'
             ORDER BY a.date ASC
             LIMIT ?
-        `).all(patientId, new Date().toISOString(), limit);
+        `).all(patientId, todayKey, limit);
         return rows.map(row => ({
             ...row,
             _id: row.id,

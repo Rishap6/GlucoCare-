@@ -177,8 +177,8 @@ function togglePassword(inputId, button) {
                 btn.disabled = false;
 
                 // Store token and redirect
-                localStorage.setItem('token', result.data.token);
-                localStorage.setItem('user', JSON.stringify(result.data.user));
+                sessionStorage.setItem('token', result.data.token);
+                sessionStorage.setItem('user', JSON.stringify(result.data.user));
 
                 setTimeout(function() {
                     if (result.data.user.role === 'doctor') {

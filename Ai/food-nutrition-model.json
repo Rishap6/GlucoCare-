@@ -1,0 +1,110 @@
+{
+  "version": 1,
+  "modelType": "food_nutrition_aggregated_means",
+  "sourceFile": "indian_food_nutrition_550_dataset.csv",
+  "trainedAt": "2026-04-02T15:43:18.366Z",
+  "totalRows": 550,
+  "foodCount": 10,
+  "foods": {
+    "idli": {
+      "cal": 39,
+      "carb": 8,
+      "protein": 1.6,
+      "fat": 0.3,
+      "fiber": 0.4,
+      "gi": 69,
+      "serving": 30,
+      "unit": "1 piece (~30g)"
+    },
+    "dosa": {
+      "cal": 119,
+      "carb": 18.1,
+      "protein": 3,
+      "fat": 3.9,
+      "fiber": 0.5,
+      "gi": 76,
+      "serving": 60,
+      "unit": "1 medium dosa"
+    },
+    "roti": {
+      "cal": 72,
+      "carb": 15.1,
+      "protein": 2.5,
+      "fat": 0.5,
+      "fiber": 1.2,
+      "gi": 62,
+      "serving": 30,
+      "unit": "1 roti (~30g)"
+    },
+    "rice": {
+      "cal": 130,
+      "carb": 27.7,
+      "protein": 2.5,
+      "fat": 0.5,
+      "fiber": 0.5,
+      "gi": 73,
+      "serving": 100,
+      "unit": "1 katori (100g cooked)"
+    },
+    "dal": {
+      "cal": 119,
+      "carb": 16,
+      "protein": 7,
+      "fat": 3.1,
+      "fiber": 3.1,
+      "gi": 42,
+      "serving": 150,
+      "unit": "1 katori (150ml)"
+    },
+    "paneer": {
+      "cal": 266,
+      "carb": 3.1,
+      "protein": 17.9,
+      "fat": 20,
+      "fiber": 0.3,
+      "gi": 10,
+      "serving": 100,
+      "unit": "100g"
+    },
+    "banana": {
+      "cal": 87,
+      "carb": 23.1,
+      "protein": 1,
+      "fat": 0.4,
+      "fiber": 2.6,
+      "gi": 51,
+      "serving": 100,
+      "unit": "1 medium banana"
+    },
+    "apple": {
+      "cal": 51,
+      "carb": 14.1,
+      "protein": 0.5,
+      "fat": 0.4,
+      "fiber": 2.4,
+      "gi": 39,
+      "serving": 130,
+      "unit": "1 medium apple"
+    },
+    "chicken_curry": {
+      "cal": 241,
+      "carb": 8,
+      "protein": 22,
+      "fat": 14,
+      "fiber": 0.9,
+      "gi": 20,
+      "serving": 200,
+      "unit": "1 bowl (200g)"
+    },
+    "egg": {
+      "cal": 79,
+      "carb": 0.9,
+      "protein": 6,
+      "fat": 5,
+      "fiber": 0.2,
+      "gi": 1,
+      "serving": 50,
+      "unit": "1 boiled egg"
+    }
+  }
+}

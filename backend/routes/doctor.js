@@ -192,7 +192,7 @@ router.post('/reports', async (req, res) => {
         const reportName = sanitize(req.body.reportName || '');
         const type = sanitize(req.body.type || '');
         const date = sanitize(req.body.date || '');
-        const { status, notes } = req.body;
+        const { status } = req.body;
 
         if (!Number.isInteger(patientId) || patientId <= 0) {
             return res.status(400).json({ error: 'A valid patient id is required.' });
@@ -219,7 +219,6 @@ router.post('/reports', async (req, res) => {
             date,
             doctor: req.user._id,
             status: status || 'Pending',
-            notes: sanitize(notes || ''),
         });
 
         res.status(201).json(report);
@@ -399,7 +398,23 @@ router.get('/messages/threads', async (req, res) => {
     try {
         const db = getDb();
         const threads = db.prepare(`
-            SELECT mt.*, u.fullName as patientName
+            SELECT
+                mt.*, 
+                u.fullName as patientName,
+                (
+                    SELECT m.body
+                    FROM messages m
+                    WHERE m.thread_id = mt.id
+                    ORDER BY m.id DESC
+                    LIMIT 1
+                ) AS lastMessageBody,
+                (
+                    SELECT m.sender_role
+                    FROM messages m
+                    WHERE m.thread_id = mt.id
+                    ORDER BY m.id DESC
+                    LIMIT 1
+                ) AS lastMessageSenderRole
             FROM message_threads mt
             LEFT JOIN users u ON u.id = mt.patient_id
             WHERE mt.doctor_id = ?

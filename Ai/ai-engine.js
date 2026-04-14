@@ -233,6 +233,15 @@ const DYNAMIC_CONTEXT = {
 /* ------------------------------------------------------------------ */
 
 function synthesizeDirectAnswer(normalizedQ, kbAnswer) {
+    const typoNormalizedQ = String(normalizedQ || '')
+        .replace(/\bsuger\b/g, 'sugar')
+        .replace(/\bdiabetis\b/g, 'diabetes')
+        .replace(/\bglocose\b|\bgluclose\b/g, 'glucose');
+
+    if (/^what\s+is\s+(blood\s+)?(sugar|glucose)\b/.test(typoNormalizedQ) || /^define\s+(blood\s+)?(sugar|glucose)\b/.test(typoNormalizedQ)) {
+        return 'Blood sugar (blood glucose) is the amount of glucose circulating in your blood at a given moment. Glucose comes from the food you eat and is your body\'s main energy source. Insulin helps move this glucose from blood into cells; when this system is not working well, blood sugar rises. As a quick reference: fasting under 100 mg/dL is usually normal, 100-125 is prediabetes range, and 126 or higher on repeat testing suggests diabetes.';
+    }
+
     const sweetFoods = normalizedQ.match(/\b(gulab jamun|jalebi|rasgulla|laddoo|barfi|halwa|cake|pastry|chocolate|ice cream|mithai)\b/);
     const friedFoods = normalizedQ.match(/\b(samosa|pakora|puri|bhatura|chips|french fries|fries)\b/);
     const beverages = normalizedQ.match(/\b(tea|coffee|chai|juice|coke|cola|soda|pepsi|sprite|lassi|milkshake|smoothie|beer|wine|alcohol|whiskey|rum)\b/);
@@ -1038,8 +1047,63 @@ function synthesizeDirectAnswer(normalizedQ, kbAnswer) {
     return null;
 }
 
+function damerauLevenshtein(a, b) {
+    if (a.length === 0) return b.length;
+    if (b.length === 0) return a.length;
+    const matrix = [];
+    for (let i = 0; i <= a.length; i++) {
+        matrix[i] = [i];
+    }
+    for (let j = 0; j <= b.length; j++) {
+        matrix[0][j] = j;
+    }
+    for (let i = 1; i <= a.length; i++) {
+        for (let j = 1; j <= b.length; j++) {
+            let cost = a[i - 1] === b[j - 1] ? 0 : 1;
+            matrix[i][j] = Math.min(
+                matrix[i - 1][j] + 1, // deletion
+                matrix[i][j - 1] + 1, // insertion
+                matrix[i - 1][j - 1] + cost // substitution
+            );
+            if (i > 1 && j > 1 && a[i - 1] === b[j - 2] && a[i - 2] === b[j - 1]) {
+                matrix[i][j] = Math.min(
+                    matrix[i][j],
+                    matrix[i - 2][j - 2] + 1 // transposition
+                );
+            }
+        }
+    }
+    return matrix[a.length][b.length];
+}
+
 function normalizeQuestionText(text) {
     let value = String(text || '').toLowerCase();
+
+    // Dynamically auto-correct misspellings / misplaced letters for key vocabulary
+    const keyTerms = [
+        'sugar', 'blood', 'glucose', 'diabetes', 'insulin', 'symptoms', 'medicine',
+        'exercise', 'diet', 'food', 'what', 'how', 'why', 'when', 'which', 'where'
+    ];
+    
+    value = value.split(/(\s+)/).map(word => {
+        if (!word.trim()) return word;
+        const cleanWord = word.replace(/[^a-z]/g, '');
+        if (cleanWord.length >= 3) {
+            for (const term of keyTerms) {
+                // Ignore if it's already an exact match of a different word that is correct
+                if (cleanWord === term) continue;
+                
+                if (Math.abs(cleanWord.length - term.length) <= 1) {
+                    const dist = damerauLevenshtein(cleanWord, term);
+                    const maxDist = term.length >= 7 ? 2 : 1;
+                    if (dist > 0 && dist <= maxDist) {
+                        return word.replace(cleanWord, term);
+                    }
+                }
+            }
+        }
+        return word;
+    }).join('');
 
     // Normalize casual shorthand and common misspellings.
     const phraseRules = [
@@ -1602,10 +1666,20 @@ function formatHumanResponse(parts) {
     if (parts.nextSteps) lines.push(`${nextIntro} ${parts.nextSteps}`);
     if (parts.contextLine) lines.push(parts.contextLine);
     if (parts.includeDoctorLine !== false) lines.push('If in doubt, your doctor is the best person to guide you.');
-    return lines.join(' ');
+    return lines.join('\n\n');
 }
 
 function isVagueQuestion(normalizedQuestion) {
+    const typoNormalizedQuestion = String(normalizedQuestion || '')
+        .replace(/\bsuger\b/g, 'sugar')
+        .replace(/\bdiabetis\b/g, 'diabetes')
+        .replace(/\bglocose\b|\bgluclose\b/g, 'glucose');
+
+    if (/^(what\s+is|define|explain)\s+/.test(typoNormalizedQuestion)
+        && /(blood\s+sugar|blood\s+glucose|glucose|sugar|diabetes|insulin|hba1c|prediabetes|type\s*1|type\s*2|hypoglycemia|hyperglycemia)/.test(typoNormalizedQuestion)) {
+        return false;
+    }
+
     const tokens = tokenize(normalizedQuestion);
     const hasSpecificIntent = /low|high|hypoglycemia|hyperglycemia|hba1c|type\s*1|type\s*2|metformin|insulin|allergy|diet|food|meal|exercise|kidney|eye|foot|pregnancy|stress|sleep|weight|smoking|alcohol|fasting|cgm|neuropathy|thyroid|infection|cure|reverse|prevent|symptom|normal|range|level|walk|yoga|obesity|obese|hereditary|genetic|age|complication|prediabetes|controlled|uncontrolled|heart|vision|affect|body|risk|cause|diagnos|early sign|warning sign|snack|numbness|tingling|pancreas|glucagon|resistance|mody|monogenic|gestational|ogtt|glucose tolerance|pump|injection|pharmacokinetic|dawn phenomenon|hypoglycemic|glycemic index|carbohydrate|complex carb|simple sugar|intermittent|ketogenic|keto|hydration|cortisol|burnout|distress|anxiety|coping|journal|adherence|caregiver|peer support|cgm|closed.loop|artificial pancreas|predictive|algorithm|machine learning|metric|tracking|barrier|dangerous|sugar.free|screen|vegetable|potato|carb.*per day|dental|teeth|gum|periodontal|liver|fatty liver|nafld|sexual|erect|libido|impotence|uti|urinary|bladder|season|weather|summer|winter|monsoon|driving|driv|workplace|office|job|child|kid|teen|school|pediatric|app|technology|wearable|smartwatch|postpartum|after pregnanc|menstrual|period|pcos|menopause|surgery|operat|anesthesia|floater|retinopath|constipat|gastroparesis|honeymoon|remission|reactive hypoglycemia|leg.*cramp|night.*sweat|c.peptide|acanthosis|dark.*patch|hair.*loss|brain|memory|dementia|fiber|fibre|isabgol|vitamin|b12|supplement|fructose|probiotic|microbiome|pain.*killer|painkiller|nsaid|altitude|trek|mountain|insurance|mediclaim|tattoo|pierc/.test(normalizedQuestion);
     const hasFoodItem = /juice|tea|coffee|rice|roti|bread|fruit|sweet|gulab|jalebi|samosa|egg|milk|curd|dal|paneer|chicken|fish|oats|idli|dosa|chapati|biryani|poha|upma|breakfast|lunch|dinner|snack|mango|banana|apple|watermelon|grapes|dates|chocolate|cake|ghee|butter|yogurt|coconut|millet|bajra|ragi|water|drink|beverage|coke|cola|soda|pepsi|sprite|beer|wine|alcohol|lassi|smoothie|ice cream|jaggery|lemon|vegetable|potato|fructose|fiber|fibre|isabgol|probiotic|ferment/.test(normalizedQuestion);

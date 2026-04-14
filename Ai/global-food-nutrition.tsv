@@ -1,0 +1,196 @@
+Food_Item	Category	Subcategory	Serving_Size	Serving_Unit	Calories_kcal	Carbohydrates_g	Protein_g	Total_Fat_g	Saturated_Fat_g	Unsaturated_Fat_g	Fiber_g	Sugar_g	Sodium_mg	Cholesterol_mg
+Apple	Fruit	Pome	182	g	95	25.1	0.5	0.3	0.1	0.2	4.4	18.9	2	0
+Banana	Fruit	Tropical	118	g	105	27	1.3	0.4	0.1	0.3	3.1	14.4	1	0
+Mango	Fruit	Tropical	165	g	99	24.7	1.4	0.6	0.1	0.5	2.6	22.5	2	0
+Orange	Fruit	Citrus	131	g	62	15.4	1.2	0.2	0	0.2	3.1	12.2	0	0
+Grapes (Red)	Fruit	Berry	151	g	104	27.3	1.1	0.2	0.1	0.1	1.4	23.4	3	0
+Strawberry	Fruit	Berry	152	g	49	11.7	1	0.5	0	0.5	3	7.4	2	0
+Watermelon	Fruit	Melon	154	g	46	11.5	0.9	0.2	0	0.2	0.6	9.4	2	0
+Pineapple	Fruit	Tropical	165	g	82	21.6	0.9	0.2	0	0.2	2.3	16.3	2	0
+Papaya	Fruit	Tropical	145	g	62	15.7	0.7	0.4	0.1	0.3	2.5	11.3	12	0
+Blueberry	Fruit	Berry	148	g	84	21.4	1.1	0.5	0	0.5	3.6	14.7	1	0
+Kiwi	Fruit	Tropical	177	g	108	25.9	2.1	0.9	0	0.9	5.4	15.9	5	0
+Peach	Fruit	Stone	150	g	58	14.3	1.4	0.4	0	0.4	2.3	12.6	0	0
+Pear	Fruit	Pome	178	g	101	27.1	0.6	0.2	0	0.2	5.5	17.4	2	0
+Cherry	Fruit	Stone	138	g	87	22.1	1.5	0.3	0.1	0.2	2.9	17.7	0	0
+Lemon	Fruit	Citrus	58	g	17	5.4	0.6	0.2	0	0.2	1.6	1.5	1	0
+Pomegranate	Fruit	Tropical	174	g	52	11.8	1	0.7	0.1	0.6	1.1	8.9	3	0
+Avocado	Fruit	Tropical	150	g	240	12.8	3	22	3.2	18.8	10.1	1	11	0
+Coconut (fresh)	Fruit	Tropical	45	g	159	6.9	1.5	15.1	13.4	1.7	4	2.8	9	0
+Fig	Fruit	Tropical	50	g	37	9.6	0.4	0.1	0	0.1	1.5	8.1	1	0
+Guava	Fruit	Tropical	165	g	112	23.6	4.2	1.6	0.5	1.1	8.9	14.7	3	0
+Broccoli	Vegetable	Cruciferous	91	g	31	6	2.6	0.3	0.1	0.2	2.4	1.6	30	0
+Spinach	Vegetable	Leafy Green	30	g	7	1.1	0.9	0.1	0	0.1	0.7	0.1	24	0
+Carrot	Vegetable	Root	61	g	25	5.8	0.6	0.1	0	0.1	1.7	2.9	42	0
+Potato	Vegetable	Root/Tuber	213	g	163	36.6	4.3	0.2	0.1	0.1	3.8	1.9	17	0
+Sweet Potato	Vegetable	Root/Tuber	130	g	112	25.8	2.1	0.1	0	0.1	3.8	5.4	72	0
+Tomato	Vegetable	Nightshade	123	g	22	4.8	1.1	0.2	0	0.2	1.5	3.3	6	0
+Cucumber	Vegetable	Gourd	119	g	16	3.8	0.7	0.1	0	0.1	0.5	1.8	2	0
+Onion	Vegetable	Allium	160	g	64	14.9	1.8	0.2	0	0.2	2.7	6.8	6	0
+Garlic	Vegetable	Allium	9	g	13	3	0.6	0	0	0	0.2	0.1	2	0
+Bell Pepper (Red)	Vegetable	Nightshade	149	g	46	9	1.5	0.4	0	0.4	3.1	6.3	9	0
+Cauliflower	Vegetable	Cruciferous	107	g	27	5.3	2.1	0.3	0	0.3	2.7	2.4	32	0
+Cabbage	Vegetable	Cruciferous	89	g	22	5.2	1.1	0.1	0	0.1	2.2	2.9	16	0
+Lettuce (Romaine)	Vegetable	Leafy Green	47	g	8	1.4	0.6	0.1	0	0.1	1	0.7	4	0
+Kale	Vegetable	Leafy Green	67	g	34	6.7	2.2	0.5	0.1	0.4	1.3	1.6	29	0
+Celery	Vegetable	Stalk	101	g	16	3.5	0.7	0.2	0	0.2	1.8	1.8	96	0
+Zucchini	Vegetable	Gourd	124	g	21	3.9	1.5	0.4	0.1	0.3	1.2	3.1	13	0
+Eggplant	Vegetable	Nightshade	82	g	20	4.8	0.8	0.2	0	0.2	2.5	2.9	2	0
+Peas (Green)	Vegetable	Legume	145	g	117	21	7.9	0.6	0.1	0.5	7.4	8	7	0
+Corn	Vegetable	Grain-like	154	g	132	29.6	4.3	1.8	0.3	1.5	3.6	4.5	23	0
+Mushroom (Button)	Vegetable	Fungi	96	g	21	3.1	3	0.3	0	0.3	1	1.7	5	0
+Beet	Vegetable	Root	136	g	58	13	2.2	0.2	0	0.2	3.8	9.2	106	0
+Asparagus	Vegetable	Stalk	134	g	27	5.2	2.9	0.3	0.1	0.2	2.8	2.5	3	0
+Green Beans	Vegetable	Legume	110	g	35	7.9	1.8	0.1	0	0.1	3.7	1.5	6	0
+Radish	Vegetable	Root	116	g	19	3.9	0.8	0.1	0	0.1	1.9	2.2	45	0
+Leek	Vegetable	Allium	89	g	54	12.6	1.3	0.3	0	0.3	1.6	3.3	18	0
+Chicken Breast (cooked)	Protein	Poultry	100	g	165	0	31	3.6	1	2.6	0	0	74	85
+Chicken Thigh (cooked)	Protein	Poultry	100	g	209	0	26	10.9	3	7.9	0	0	84	93
+Egg (whole)	Protein	Egg	50	g	78	0.6	6.3	5.3	1.6	3.7	0	0.6	62	186
+Egg White	Protein	Egg	33	g	17	0.2	3.6	0.1	0	0.1	0	0.2	55	0
+Salmon (cooked)	Protein	Seafood	100	g	208	0	20	13	3.1	9.9	0	0	59	63
+Tuna (canned in water)	Protein	Seafood	100	g	109	0	24	2.5	0.7	1.8	0	0	247	49
+Shrimp (cooked)	Protein	Seafood	100	g	99	0.9	24	0.3	0.1	0.2	0	0	111	189
+Cod (cooked)	Protein	Seafood	100	g	105	0	23	0.9	0.2	0.7	0	0	78	55
+Tilapia (cooked)	Protein	Seafood	100	g	128	0	26	2.7	0.9	1.8	0	0	56	57
+Sardines (canned)	Protein	Seafood	100	g	208	0	24.6	11.5	1.5	10	0	0	505	142
+Ground Beef 80/20 (cooked)	Protein	Red Meat	100	g	254	0	26	17	6.6	10.4	0	0	75	88
+Beef Steak (sirloin)	Protein	Red Meat	100	g	207	0	26	11	4.3	6.7	0	0	60	82
+Lamb (cooked)	Protein	Red Meat	100	g	258	0	25	17	7.3	9.7	0	0	72	97
+Pork Loin (cooked)	Protein	Red Meat	100	g	185	0	29	7	2.5	4.5	0	0	64	80
+Tofu (firm)	Protein	Plant-based	100	g	76	1.9	8.1	4.8	0.7	4.1	0.3	0.5	7	0
+Tempeh	Protein	Plant-based	100	g	193	9.4	19	11	2.2	8.8	0	0	9	0
+Chickpeas (cooked)	Protein	Legume	164	g	269	45	14.5	4.2	0.4	3.8	12.5	7.9	11	0
+Black Beans (cooked)	Protein	Legume	172	g	227	40.8	15.2	0.9	0.2	0.7	15	0.3	2	0
+Kidney Beans (cooked)	Protein	Legume	177	g	225	40.4	15.3	0.9	0.1	0.8	11.3	0.6	4	0
+Lentils (cooked)	Protein	Legume	198	g	230	39.9	17.9	0.8	0.1	0.7	15.6	3.6	4	0
+Edamame	Protein	Legume	155	g	188	13.8	18.4	8.1	0.9	7.2	8.1	3.4	9	0
+Whole Milk	Dairy	Milk	244	ml	149	11.7	8	8	4.6	3.4	0	12.3	105	24
+Skim Milk	Dairy	Milk	244	ml	83	12.2	8.3	0.2	0.1	0.1	0	12.5	103	5
+Greek Yogurt (plain)	Dairy	Yogurt	100	g	59	3.6	10	0.4	0.2	0.2	0	3.2	36	5
+Regular Yogurt (plain)	Dairy	Yogurt	245	g	149	11.4	8.5	8	5.1	2.9	0	11.4	113	32
+Cheddar Cheese	Dairy	Cheese	28	g	113	0.4	7	9.3	5.4	3.9	0	0.1	174	28
+Mozzarella Cheese	Dairy	Cheese	28	g	85	0.6	6.3	6.3	3.7	2.6	0	0.2	138	22
+Cottage Cheese	Dairy	Cheese	226	g	206	8.2	25.1	9	4.4	4.6	0	6.2	820	36
+Butter	Dairy	Fat	14	g	102	0	0.1	11.5	7.3	4.2	0	0	91	31
+Cream Cheese	Dairy	Cheese	28	g	99	1.2	1.7	9.8	5.8	4	0	0.9	85	31
+Paneer	Dairy	Cheese	100	g	265	1.2	18.3	20.8	12	8.8	0	0	364	61
+White Rice (cooked)	Grain	Rice	186	g	242	53.4	4.4	0.4	0.1	0.3	0.6	0.1	0	0
+Brown Rice (cooked)	Grain	Rice	195	g	216	44.8	5	1.8	0.4	1.4	3.5	0.7	10	0
+Basmati Rice (cooked)	Grain	Rice	163	g	210	45.6	4.4	0.5	0.1	0.4	0.6	0.1	1	0
+Oatmeal (cooked)	Grain	Oat	234	g	158	27.4	5.5	3.2	0.6	2.6	4	0.8	9	0
+Whole Wheat Bread	Grain	Bread	28	g	69	11.6	3.6	1.1	0.2	0.9	1.9	1.4	132	0
+White Bread	Grain	Bread	25	g	67	12.7	2.2	0.8	0.2	0.6	0.6	1.3	128	0
+Pasta (spaghetti cooked)	Grain	Pasta	140	g	220	42.9	8.1	1.3	0.2	1.1	2.5	0.6	1	0
+Whole Wheat Pasta (cooked)	Grain	Pasta	140	g	174	37.2	7.5	0.8	0.1	0.7	4	0.6	4	0
+Quinoa (cooked)	Grain	Pseudo-grain	185	g	222	39.4	8.1	3.6	0.4	3.2	5.2	1.6	13	0
+Barley (cooked)	Grain	Cereal	157	g	193	44.3	3.5	0.7	0.1	0.6	6	0.4	5	0
+Corn Tortilla	Grain	Flatbread	26	g	57	11.6	1.5	0.7	0.1	0.6	1.6	0.2	11	0
+Wheat Flour (all-purpose)	Grain	Flour	30	g	109	22.9	3.1	0.3	0	0.3	0.8	0.1	0	0
+Chapati (Whole Wheat)	Grain	Flatbread	45	g	120	22	4.3	2.5	0.4	2.1	3.5	0.5	190	0
+Naan Bread	Grain	Flatbread	90	g	262	44	8.7	5.1	1.1	4	1.8	3.1	419	15
+Cornflakes Cereal	Grain	Cereal	28	g	101	24.2	2	0.1	0	0.1	0.7	2.2	197	0
+Granola	Grain	Cereal	58	g	255	38.6	5.6	10.3	1.6	8.7	3.5	12	15	0
+Burger (fast food)	Fast Food	Burger	196	g	540	45	25	29	11	18	1	9	791	90
+French Fries (medium)	Fast Food	Side	117	g	365	47.5	3.9	17	2.6	14.4	4.3	0.5	246	0
+Pizza Margherita (1 slice)	Fast Food	Pizza	107	g	285	35.6	12	10.4	4.8	5.6	2.3	3.7	640	23
+Fried Chicken Piece	Fast Food	Fried	134	g	360	13.6	26	22.4	5.9	16.5	0.5	0	1065	105
+Hot Dog	Fast Food	Processed Meat	98	g	290	23	10	18	6.7	11.3	1	5	670	50
+Fish & Chips	Fast Food	Fried	340	g	840	86	36	40	6	34	4	3	1200	95
+Tacos (beef)	Fast Food	Mexican	170	g	350	30	19	17	7	10	3	4	670	60
+Nachos with Cheese	Fast Food	Snack	113	g	346	36	9.3	19.3	7.5	11.8	2.8	1.3	560	30
+Chicken Nuggets (6 pc)	Fast Food	Fried	100	g	296	18.4	13.5	19.4	3.3	16.1	0.6	0.2	607	44
+Submarine Sandwich (6in)	Fast Food	Sandwich	220	g	410	51	22	13	4.5	8.5	3	7	1090	50
+Almonds	Nut & Seed	Nut	28	g	164	6.1	6	14.2	1.1	13.1	3.5	1.2	0	0
+Peanut Butter	Nut & Seed	Nut Butter	32	g	191	7.1	7.1	16.4	2.9	13.5	1.6	3.4	136	0
+Walnuts	Nut & Seed	Nut	28	g	185	3.9	4.3	18.5	1.7	16.8	1.9	0.7	1	0
+Cashews	Nut & Seed	Nut	28	g	157	8.6	5.2	12.4	2.2	10.2	0.9	1.7	3	0
+Pistachios	Nut & Seed	Nut	28	g	159	7.7	5.7	12.9	1.6	11.3	3	2.2	0	0
+Sunflower Seeds	Nut & Seed	Seed	28	g	164	6.5	5.5	14	1.5	12.5	2.4	0.7	1	0
+Chia Seeds	Nut & Seed	Seed	28	g	138	11.9	4.7	8.7	0.9	7.8	9.8	0	5	0
+Flaxseeds	Nut & Seed	Seed	28	g	152	8.2	5.2	12	1.1	10.9	7.7	0.4	9	0
+Pumpkin Seeds	Nut & Seed	Seed	28	g	158	3	8.5	13.9	2.4	11.5	1.1	0.4	5	0
+Hemp Seeds	Nut & Seed	Seed	30	g	166	2.6	9.5	14.6	1.4	13.2	1.2	0.5	0	0
+Sesame Seeds	Nut & Seed	Seed	9	g	52	2.1	1.6	4.5	0.6	3.9	1.1	0	1	0
+Almond Butter	Nut & Seed	Nut Butter	32	g	196	6.4	6.7	17.8	1.7	16.1	1.6	1.5	72	0
+Potato Chips	Snack	Savory	28	g	155	15	2	10	3	7	1	0.1	149	0
+Dark Chocolate (70%)	Snack	Sweet	28	g	170	13	2.2	12.1	7	5.1	3.1	6.8	6	1
+Milk Chocolate	Snack	Sweet	28	g	153	16.8	2.2	8.5	5	3.5	0.9	14.8	24	5
+Granola Bar	Snack	Bar	47	g	193	29.4	4.9	7.6	3.6	4	1.5	12	95	0
+Protein Bar	Snack	Bar	60	g	230	25	20	8	2.5	5.5	3	10	240	10
+Rice Cakes	Snack	Savory	9	g	35	7.3	0.7	0.3	0	0.3	0.4	0	30	0
+Popcorn (air-popped)	Snack	Savory	8	g	31	6.2	1	0.4	0	0.4	1.2	0.1	1	0
+Crackers (whole grain)	Snack	Savory	15	g	60	10.5	1.8	1.5	0.3	1.2	1.5	0.5	120	0
+Pretzels	Snack	Savory	30	g	114	23.7	3	0.9	0.2	0.7	0.9	1.2	484	0
+Cookies (chocolate chip)	Snack	Sweet	28	g	136	18	1.4	6.4	3	3.4	0.4	10	89	13
+Muffin (blueberry)	Snack	Sweet	113	g	378	55	5.8	14	2.9	11.1	1.3	29	384	41
+Donut (glazed)	Snack	Sweet	60	g	253	27.8	2.6	14.5	3.6	10.9	0.7	12	185	15
+Ice Cream (vanilla)	Snack	Sweet	133	g	273	31.4	4.6	14.5	8.9	5.6	0.5	28.2	105	59
+Cake (chocolate)	Snack	Sweet	100	g	371	50.7	4.8	18.3	6.5	11.8	1.5	33.1	362	56
+Orange Juice (100%)	Beverage	Juice	248	ml	112	25.8	1.7	0.5	0.1	0.4	0.5	20.8	2	0
+Apple Juice	Beverage	Juice	248	ml	114	28	0.2	0.3	0	0.3	0.2	24	10	0
+Whole Milk Latte	Beverage	Coffee	355	ml	190	19	10	7	4	3	0	18	150	25
+Black Coffee	Beverage	Coffee	240	ml	2	0	0.3	0	0	0	0	0	5	0
+Green Tea	Beverage	Tea	240	ml	2	0.5	0	0	0	0	0	0	0	0
+Coca-Cola	Beverage	Soft Drink	355	ml	140	39	0	0	0	0	0	39	45	0
+Energy Drink	Beverage	Energy	250	ml	110	27.5	1	0	0	0	0	27	100	0
+Coconut Water	Beverage	Juice	240	ml	46	8.9	1.7	0.5	0.4	0.1	0	6.3	252	0
+Red Wine	Beverage	Alcohol	150	ml	125	3.8	0.1	0	0	0	0	0.9	8	0
+Beer (regular)	Beverage	Alcohol	355	ml	153	12.6	1.6	0	0	0	0	0	14	0
+Protein Shake (whey)	Beverage	Supplement	300	ml	160	8	25	3	1	2	0	5	130	30
+Smoothie (fruit)	Beverage	Smoothie	300	ml	175	40	2.5	1	0.1	0.9	2.5	30	35	0
+Olive Oil	Oil & Fat	Oil	14	ml	119	0	0	13.5	1.9	11.6	0	0	0	0
+Coconut Oil	Oil & Fat	Oil	14	ml	121	0	0	13.5	11.2	2.3	0	0	0	0
+Sunflower Oil	Oil & Fat	Oil	14	ml	124	0	0	14	1.4	12.6	0	0	0	0
+Ghee	Oil & Fat	Fat	14	g	123	0	0	14	8.7	5.3	0	0	0	37
+Mayonnaise	Oil & Fat	Condiment	14	g	94	0.1	0.1	10.3	1.5	8.8	0	0.1	88	5
+Honey	Sweetener	Natural	21	g	64	17.3	0.1	0	0	0	0	17.2	1	0
+Sugar (white)	Sweetener	Refined	12	g	46	12	0	0	0	0	0	12	0	0
+Maple Syrup	Sweetener	Natural	20	ml	52	13.4	0	0.1	0	0.1	0	12.1	2	0
+Ketchup	Condiment	Sauce	17	g	17	4.4	0.3	0.1	0	0.1	0.1	3.7	154	0
+Soy Sauce	Condiment	Sauce	16	ml	9	0.8	1.3	0.1	0	0.1	0	0.5	879	0
+Dal (cooked lentil soup)	Indian	Lentil Dish	240	ml	180	29	12	3	0.5	2.5	8	2	420	0
+Idli (2 pieces)	Indian	South Indian	100	g	150	28	4.5	0.5	0.1	0.4	0.5	0.5	300	0
+Dosa (plain)	Indian	South Indian	75	g	133	22.5	3.8	3.5	0.7	2.8	0.8	0.4	250	0
+Sambar	Indian	South Indian	240	ml	110	15	5	3	0.5	2.5	4	3	480	0
+Biryani (chicken)	Indian	Rice Dish	250	g	380	45	22	12	3.5	8.5	2	3	650	75
+Roti/Chapati	Indian	Bread	40	g	107	19.6	3.8	2.2	0.4	1.8	3.1	0.5	170	0
+Paneer Tikka	Indian	Snack	100	g	265	6	18.3	18.8	11	7.8	0.5	3	400	65
+Rajma (kidney bean curry)	Indian	Legume Dish	240	ml	210	33	12	4	0.8	3.2	8	2	380	0
+Chole (chickpea curry)	Indian	Legume Dish	240	ml	225	33	11	6	1	5	9	4	520	0
+Palak Paneer	Indian	Curry	240	ml	280	12	14	20	10	10	3	3	490	55
+Aloo Gobi	Indian	Curry	240	ml	150	22	4.5	5	0.8	4.2	4	4	350	0
+Upma	Indian	Breakfast	200	g	210	35	5.5	6	1	5	2	1.5	430	0
+Poha	Indian	Breakfast	200	g	220	44	4.5	3.5	0.5	3	1	2	390	0
+Khichdi	Indian	Rice Dish	240	g	280	42	10	7	2	5	3.5	1.5	420	0
+Sushi Roll (8 pcs)	Asian	Japanese	200	g	330	50	13	8	1.5	6.5	2	8	580	22
+Ramen (bowl)	Asian	Japanese	500	ml	470	65	18	15	4	11	2	6	1560	55
+Fried Rice	Asian	Chinese	250	g	400	58	11	14	2.5	11.5	1.5	3	860	110
+Pad Thai	Asian	Thai	250	g	450	60	18	17	3.5	13.5	2	8	980	80
+Spring Rolls (2 pcs)	Asian	Chinese	100	g	186	25	5.8	7.3	2	5.3	1.8	2	390	15
+Hummus	Mediterranean	Dip	60	g	136	15	4.8	7.9	1.1	6.8	2.9	0.7	213	0
+Falafel (3 pcs)	Mediterranean	Fried	100	g	333	31.8	13.3	17.7	2.1	15.6	4.9	2.5	294	0
+Shakshuka	Mediterranean	Egg Dish	300	g	280	16	14	17	4	13	3.5	8	780	370
+Greek Salad	Mediterranean	Salad	300	g	211	11.5	6.3	16.1	5.3	10.8	2.5	7	956	22
+Caesar Salad	Western	Salad	200	g	310	14	8	25	5.5	19.5	2	3	680	22
+Tomato Soup	Western	Soup	245	ml	85	17	2	1.9	0.3	1.6	2	9	870	0
+Pancakes (2 medium)	Western	Breakfast	100	g	227	28	5.8	10	2.2	7.8	0.8	7.5	428	53
+Waffle (1 medium)	Western	Breakfast	75	g	218	24.7	5.9	10.6	2.5	8.1	0.8	3.5	383	47
+Scrambled Eggs (2 eggs)	Western	Breakfast	110	g	204	2	14	15.4	4.8	10.6	0	1.8	177	372
+Omelette (2 eggs)	Western	Breakfast	100	g	154	1.6	11	11.8	3.6	8.2	0	1.2	208	372
+Beef Stew	Western	Stew	245	g	260	18	20	12	4.5	7.5	2.5	4	580	65
+Mac and Cheese	Western	Pasta	200	g	390	49	15	16	8.5	7.5	1.5	6	748	37
+Schezwan Fried Rice	Indian Chinese	Rice Dish	300	g	520	72	14	18	3.2	14.8	3.2	5	1120	45
+Triple Schezwan Fried Rice	Indian Chinese	Rice Dish	350	g	690	96	20	24	4.5	19.5	4.1	6	1450	60
+Veg Hakka Noodles	Indian Chinese	Noodles	300	g	470	64	11	16	2.6	13.4	3.1	6	980	25
+Chicken Hakka Noodles	Indian Chinese	Noodles	320	g	560	62	24	22	4.3	17.7	2.8	5	1220	78
+Paneer Chilli Dry	Indian Chinese	Starter	220	g	420	26	20	28	9	19	2.2	6	1180	40
+Chicken Chilli Dry	Indian Chinese	Starter	220	g	360	14	30	20	5	15	1.6	5	1240	95
+Veg Manchurian Gravy	Indian Chinese	Curry	260	g	340	34	9	18	3.2	14.8	2.5	7	1380	12
+Gobi Manchurian	Indian Chinese	Starter	220	g	380	36	8	22	3.8	18.2	3.1	6	1320	0
+Chicken Manchurian	Indian Chinese	Starter	230	g	410	18	31	24	5.3	18.7	1.8	4	1440	88
+Schezwan Noodles	Indian Chinese	Noodles	300	g	510	69	13	18	3.1	14.9	2.6	5	1280	40
+Paneer Fried Rice	Indian Chinese	Rice Dish	300	g	530	68	17	22	6.7	15.3	2.9	4	1060	38
+Cheese Corn Rice	Indian Fusion	Rice Dish	280	g	540	62	14	27	12	15	2.4	5	980	58
+Triple Cheese Pizza Slice	Western Fast Food	Pizza	120	g	360	34	15	21	10	11	2.1	4	760	35
+Loaded Veg Cheese Fries	Western Fast Food	Side	220	g	610	58	10	39	12	27	5.2	3	980	18

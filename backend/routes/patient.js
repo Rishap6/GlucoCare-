@@ -10,13 +10,53 @@ const Alert = require('../models/Alert');
 const User = require('../models/User');
 const { getDb } = require('../database');
 const { answerQuestion } = require('../../Ai/ai-engine');
+const { extractProjectDataFromDocument, evaluateExtractedData } = require('../../Ai/document-intelligence');
+const { parseDocumentToText } = require('../../Ai/document-reader');
+const { estimateNutrition } = require('../../Ai/meal-parser');
 const { askLlmFallback } = require('../services/llm');
+const {
+    verifyReportPatientName,
+    mapReportRow,
+    findRecentDuplicateReport,
+    parseReportJsonObject,
+    toFiniteNumberOrNull,
+    cleanupImportedBiometricsForReport,
+    normalizeCorrectionsInput,
+    ensureExtractedPayload,
+    readCorrectableField,
+    applyCorrectableField,
+    buildCorrectedReportStatus,
+} = require('../services/report-processing');
+const {
+    DIET_MEAL_SLOTS,
+    DIET_SUGAR_TIMINGS,
+    mapDietIntakeRow,
+    buildDietDateRange,
+    buildDietReportSummary,
+    buildDietAiResponse,
+} = require('../services/diet-analytics');
 
 const router = express.Router();
+const IST_TIME_ZONE = 'Asia/Kolkata';
 
 const db = {
     prepare: (...args) => getDb().prepare(...args),
 };
+
+function getIstDateKey(date = new Date()) {
+    return date.toLocaleDateString('sv-SE', {
+        timeZone: IST_TIME_ZONE,
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+    });
+}
+
+function getIstDateKeyDaysAgo(days) {
+    const d = new Date();
+    d.setDate(d.getDate() - Number(days || 0));
+    return getIstDateKey(d);
+}
 
 function resolveRangeDays(range) {
     if (!range) return 7;
@@ -43,21 +83,21 @@ function safeJsonParse(value, fallback) {
 }
 
 function computeDailyScore(patientId) {
-    const today = new Date().toISOString().slice(0, 10);
+    const today = getIstDateKey();
     const readings = db.prepare(`
         SELECT value FROM glucose_readings
-        WHERE patient = ? AND substr(recordedAt, 1, 10) = ?
+        WHERE patient = ? AND substr(datetime(recordedAt, '+5 hours', '+30 minutes'), 1, 10) = ?
     `).all(patientId, today);
 
     const medicationLogs = db.prepare(`
         SELECT status FROM medication_logs
-        WHERE patient_id = ? AND substr(COALESCE(taken_time, createdAt), 1, 10) = ?
+        WHERE patient_id = ? AND substr(datetime(COALESCE(taken_time, createdAt), '+5 hours', '+30 minutes'), 1, 10) = ?
     `).all(patientId, today);
 
     const activity = db.prepare(`
         SELECT COALESCE(SUM(duration_min), 0) AS total_duration
         FROM activity_logs
-        WHERE patient_id = ? AND substr(logged_at, 1, 10) = ?
+        WHERE patient_id = ? AND substr(datetime(logged_at, '+5 hours', '+30 minutes'), 1, 10) = ?
     `).get(patientId, today);
 
     const inRangeCount = readings.filter((r) => Number(r.value) >= 70 && Number(r.value) <= 180).length;
@@ -379,7 +419,7 @@ router.post('/reports', async (req, res) => {
         const reportName = sanitize(req.body.reportName);
         const type = sanitize(req.body.type);
         const date = sanitize(req.body.date);
-        const { doctor, status, notes } = req.body;
+        const { doctor, status } = req.body;
 
         if (!reportName || !type || !date) {
             return res.status(400).json({ error: 'Report name, type, and date are required.' });
@@ -393,6 +433,21 @@ router.post('/reports', async (req, res) => {
             return res.status(400).json({ error: 'Invalid date format.' });
         }
 
+        const duplicate = findRecentDuplicateReport({
+            patientId: req.user._id,
+            reportName,
+            type,
+            date,
+            fileUrl: null,
+        });
+        if (duplicate) {
+            return res.status(409).json({
+                error: 'Duplicate report detected. This report was already added recently.',
+                code: 'duplicate_report',
+                report: mapReportRow(duplicate),
+            });
+        }
+
         const report = Report.create({
             patient: req.user._id,
             reportName,
@@ -400,7 +455,6 @@ router.post('/reports', async (req, res) => {
             date,
             doctor,
             status: status || 'Pending',
-            notes: sanitize(notes || ''),
         });
 
         res.status(201).json(report);
@@ -610,14 +664,13 @@ router.get('/score/today', async (req, res) => {
 router.get('/score/history', async (req, res) => {
     try {
         const days = resolveRangeDays(req.query.range || '30d');
-        const since = new Date();
-        since.setDate(since.getDate() - days);
+        const sinceDateKey = getIstDateKeyDaysAgo(days);
 
         const rows = db.prepare(`
             SELECT * FROM diabetes_scores
             WHERE patient_id = ? AND date >= ?
             ORDER BY date DESC
-        `).all(req.user._id, since.toISOString().slice(0, 10));
+        `).all(req.user._id, sinceDateKey);
 
         res.json(rows.map((row) => ({
             date: row.date,
@@ -760,14 +813,18 @@ router.get('/medications/adherence', async (req, res) => {
         const since = new Date();
         since.setDate(since.getDate() - days);
 
-        const rows = db.prepare(`
-            SELECT status FROM medication_logs
+        const aggregate = db.prepare(`
+            SELECT
+                COUNT(*) AS total,
+                COALESCE(SUM(CASE WHEN status = 'taken' THEN 1 ELSE 0 END), 0) AS taken,
+                COALESCE(SUM(CASE WHEN status = 'missed' THEN 1 ELSE 0 END), 0) AS missed
+            FROM medication_logs
             WHERE patient_id = ? AND COALESCE(taken_time, createdAt) >= ?
-        `).all(req.user._id, since.toISOString());
+        `).get(req.user._id, since.toISOString());
 
-        const total = rows.length;
-        const taken = rows.filter((r) => r.status === 'taken').length;
-        const missed = rows.filter((r) => r.status === 'missed').length;
+        const total = Number(aggregate.total || 0);
+        const taken = Number(aggregate.taken || 0);
+        const missed = Number(aggregate.missed || 0);
         const adherencePercent = total === 0 ? 0 : Number(((taken / total) * 100).toFixed(2));
 
         res.json({ range: `${days}d`, total, taken, missed, adherencePercent });
@@ -777,6 +834,144 @@ router.get('/medications/adherence', async (req, res) => {
 });
 
 // ─── Feature 5: Meals and Activity ─────────────────────────────────
+
+// GET /api/patient/diet/intake/estimate?text=2%20idli
+router.get('/diet/intake/estimate', async (req, res) => {
+    try {
+        const text = sanitize(String(req.query.text || '')).trim();
+
+        if (!text) {
+            return res.json({
+                calories: null,
+                carbs: null,
+                protein: null,
+                fat: null,
+                fiber: null,
+                gi: null,
+                serving: null,
+                servingText: null,
+                itemCount: 0,
+                items: [],
+            });
+        }
+
+        if (text.length > 240) {
+            return res.status(400).json({ error: 'Meal text is too long for quick estimation.' });
+        }
+
+        const estimate = estimateNutrition(text);
+        return res.json({
+            calories: Number(estimate.calories || 0),
+            carbs: Number(estimate.carbs || 0),
+            protein: Number(estimate.protein || 0),
+            fat: Number(estimate.fat || 0),
+            fiber: Number(estimate.fiber || 0),
+            gi: estimate.gi !== null && estimate.gi !== undefined ? Number(estimate.gi) : null,
+            serving: estimate.serving !== null && estimate.serving !== undefined ? Number(estimate.serving) : null,
+            servingText: estimate.servingText || null,
+            itemCount: Number(estimate.itemCount || 0),
+            items: Array.isArray(estimate.items) ? estimate.items.slice(0, 10) : [],
+        });
+    } catch (_err) {
+        return res.status(500).json({ error: 'Failed to estimate meal nutrition.' });
+    }
+});
+
+router.post('/diet/intake', async (req, res) => {
+    try {
+        const mealSlot = sanitize(String(req.body.mealSlot || '')).toLowerCase();
+        const intakeText = sanitize(String(req.body.intakeText || req.body.intake || '')).trim();
+        const sugarTiming = sanitize(String(req.body.sugarTiming || '')).toLowerCase() || null;
+        const note = sanitize(String(req.body.note || '')).trim() || null;
+        const loggedAt = req.body.loggedAt || null;
+
+        const bloodSugarMgDl = toFiniteNumberOrNull(req.body.bloodSugarMgDl);
+        const carbsG = toFiniteNumberOrNull(req.body.carbsG);
+        const calories = toFiniteNumberOrNull(req.body.calories);
+
+        if (!isOneOf(mealSlot, DIET_MEAL_SLOTS)) {
+            return res.status(400).json({ error: 'Meal slot must be breakfast, lunch, dinner, or snack.' });
+        }
+
+        if (!intakeText) {
+            return res.status(400).json({ error: 'Meal intake details are required.' });
+        }
+
+        if (intakeText.length > 600) {
+            return res.status(400).json({ error: 'Meal intake details are too long (max 600 chars).' });
+        }
+
+        if (sugarTiming && !isOneOf(sugarTiming, DIET_SUGAR_TIMINGS)) {
+            return res.status(400).json({ error: 'Sugar timing must be before, after, or random.' });
+        }
+
+        if (bloodSugarMgDl !== null && !isFiniteInRange(bloodSugarMgDl, 40, 700)) {
+            return res.status(400).json({ error: 'Blood sugar must be between 40 and 700 mg/dL.' });
+        }
+
+        if (carbsG !== null && !isFiniteInRange(carbsG, 0, 1200)) {
+            return res.status(400).json({ error: 'Carbs must be between 0 and 1200 grams.' });
+        }
+
+        if (calories !== null && !isFiniteInRange(calories, 0, 10000)) {
+            return res.status(400).json({ error: 'Calories must be between 0 and 10000.' });
+        }
+
+        if (loggedAt && !isValidDate(loggedAt)) {
+            return res.status(400).json({ error: 'Invalid loggedAt date/time format.' });
+        }
+
+        const result = db.prepare(`
+            INSERT INTO diet_intakes (
+                patient_id, meal_slot, intake_text, blood_sugar_mgdl, sugar_timing, carbs_g, calories, note, logged_at
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `).run(
+            req.user._id,
+            mealSlot,
+            intakeText,
+            bloodSugarMgDl,
+            sugarTiming,
+            carbsG,
+            calories,
+            note,
+            loggedAt ? new Date(loggedAt).toISOString() : new Date().toISOString(),
+        );
+
+        const created = db.prepare('SELECT * FROM diet_intakes WHERE id = ?').get(result.lastInsertRowid);
+        return res.status(201).json(mapDietIntakeRow(created));
+    } catch (err) {
+        return res.status(500).json({ error: 'Failed to save diet intake log.' });
+    }
+});
+
+router.get('/diet/intake', async (req, res) => {
+    try {
+        const days = resolveRangeDays(req.query.range || req.query.days || '7d');
+        const { sinceIso } = buildDietDateRange(days);
+        const rows = db.prepare(`
+            SELECT *
+            FROM diet_intakes
+            WHERE patient_id = ?
+              AND datetime(logged_at) >= datetime(?)
+            ORDER BY datetime(logged_at) DESC
+        `).all(req.user._id, sinceIso);
+
+        return res.json(rows.map(mapDietIntakeRow));
+    } catch (err) {
+        return res.status(500).json({ error: 'Failed to fetch diet intake logs.' });
+    }
+});
+
+router.get('/diet/report', async (req, res) => {
+    try {
+        const days = resolveRangeDays(req.query.range || '7d');
+        const report = buildDietReportSummary(req.user._id, days);
+        return res.json(report);
+    } catch (err) {
+        return res.status(500).json({ error: 'Failed to build diet report.' });
+    }
+});
 
 router.post('/meals', async (req, res) => {
     try {
@@ -880,7 +1075,34 @@ router.get('/biometrics/trends', async (req, res) => {
 
 router.get('/messages/threads', async (req, res) => {
     try {
-        const rows = db.prepare('SELECT * FROM message_threads WHERE patient_id = ? ORDER BY last_message_at DESC').all(req.user._id);
+        const rows = db.prepare(`
+            SELECT
+                mt.*,
+                (
+                    SELECT m.body
+                    FROM messages m
+                    WHERE m.thread_id = mt.id
+                    ORDER BY m.id DESC
+                    LIMIT 1
+                ) AS lastMessageBody,
+                (
+                    SELECT m.sender_role
+                    FROM messages m
+                    WHERE m.thread_id = mt.id
+                    ORDER BY m.id DESC
+                    LIMIT 1
+                ) AS lastMessageSenderRole,
+                (
+                    SELECT COUNT(*)
+                    FROM messages m
+                    WHERE m.thread_id = mt.id
+                      AND m.sender_role = 'doctor'
+                      AND m.read_at IS NULL
+                ) AS unreadCount
+            FROM message_threads mt
+            WHERE mt.patient_id = ?
+            ORDER BY mt.last_message_at DESC
+        `).all(req.user._id);
         res.json(rows);
     } catch (err) {
         res.status(500).json({ error: 'Failed to fetch threads.' });
@@ -1017,14 +1239,66 @@ router.post('/appointments/:id/checklist', async (req, res) => {
 
 router.post('/reports/upload', async (req, res) => {
     try {
-        const { reportName, type, date, doctor, status, notes, fileUrl, fileType, parsed } = req.body;
+        const reportName = sanitize(req.body.reportName);
+        const type = sanitize(req.body.type);
+        const date = sanitize(req.body.date);
+        const { doctor, status, parsed } = req.body;
+        const fileUrl = req.body.fileUrl ? sanitize(String(req.body.fileUrl)) : null;
+        const fileType = req.body.fileType ? sanitize(String(req.body.fileType)) : null;
+
         if (!reportName || !type || !date) {
             return res.status(400).json({ error: 'Report name, type, and date are required.' });
         }
 
-        const mergedNotes = [notes, fileUrl ? `fileUrl:${fileUrl}` : null, fileType ? `fileType:${fileType}` : null]
-            .filter(Boolean)
-            .join(' | ');
+        if (!isOneOf(type, ['Lab Report', 'Imaging', 'Clinical Note', 'Diabetes Report'])) {
+            return res.status(400).json({ error: 'Invalid report type.' });
+        }
+
+        if (!isValidDate(date)) {
+            return res.status(400).json({ error: 'Invalid date format.' });
+        }
+
+        const duplicate = findRecentDuplicateReport({
+            patientId: req.user._id,
+            reportName,
+            type,
+            date,
+            fileUrl,
+        });
+        if (duplicate) {
+            return res.status(409).json({
+                error: 'Duplicate report detected. This report was already added recently.',
+                code: 'duplicate_report',
+                report: mapReportRow(duplicate),
+            });
+        }
+
+        const parsedObject = parsed && typeof parsed === 'object' ? parsed : null;
+        const extractedPatientName = parsedObject && parsedObject.extracted
+            ? parsedObject.extracted.patientName
+            : null;
+        const nameVerification = verifyReportPatientName(extractedPatientName, req.user.fullName);
+
+        if (parsedObject) {
+            parsedObject.nameVerification = nameVerification;
+        }
+
+        let finalStatus = status || 'Pending';
+        if (!status && parsedObject && parsedObject.review && parsedObject.review.label) {
+            finalStatus = (parsedObject.review.level === 'bad' || parsedObject.review.level === 'caution')
+                ? 'Needs Attention'
+                : 'Reviewed - Not Bad';
+        } else if (!status && parsedObject) {
+            finalStatus = 'Analyzed';
+        }
+        if (nameVerification.isMatch === false) {
+            finalStatus = 'Name Mismatch - Review';
+        }
+
+        const parsedJson = parsedObject ? JSON.stringify(parsedObject) : null;
+        const reviewJson = parsedObject && parsedObject.review && typeof parsedObject.review === 'object'
+            ? JSON.stringify(parsedObject.review)
+            : null;
 
         const report = Report.create({
             patient: req.user._id,
@@ -1032,12 +1306,265 @@ router.post('/reports/upload', async (req, res) => {
             type,
             date,
             doctor,
-            status,
-            notes: parsed ? `${mergedNotes} | parsed:${JSON.stringify(parsed)}` : mergedNotes,
+            status: finalStatus,
+            fileUrl,
+            fileType,
+            parsedJson,
+            reviewJson,
         });
-        res.status(201).json(report);
+        res.status(201).json({
+            ...report,
+            nameVerification,
+        });
     } catch (err) {
         res.status(500).json({ error: 'Failed to upload report metadata.' });
+    }
+});
+
+router.get('/reports/extraction-metrics', async (req, res) => {
+    try {
+        const days = resolveRangeDays(req.query.range || '30d');
+        const since = new Date();
+        since.setDate(since.getDate() - days);
+        const sinceIso = since.toISOString();
+
+        const reportRows = db.prepare(`
+            SELECT id, reportName, date, status, parsed_json, createdAt
+            FROM reports
+            WHERE patient = ? AND datetime(createdAt) >= datetime(?)
+            ORDER BY datetime(createdAt) DESC
+        `).all(req.user._id, sinceIso);
+
+        const correctionSummary = db.prepare(`
+            SELECT
+                COUNT(*) AS correctionCount,
+                COUNT(DISTINCT report_id) AS correctedReports
+            FROM report_corrections
+            WHERE patient_id = ? AND datetime(createdAt) >= datetime(?)
+        `).get(req.user._id, sinceIso);
+
+        const topCorrectedFields = db.prepare(`
+            SELECT field_key AS fieldKey, COUNT(*) AS count
+            FROM report_corrections
+            WHERE patient_id = ? AND datetime(createdAt) >= datetime(?)
+            GROUP BY field_key
+            ORDER BY count DESC
+            LIMIT 8
+        `).all(req.user._id, sinceIso).map((row) => ({
+            fieldKey: row.fieldKey,
+            count: Number(row.count || 0),
+        }));
+
+        let extractedReports = 0;
+        let highConfidence = 0;
+        let mediumConfidence = 0;
+        let lowConfidence = 0;
+        let confidenceTotal = 0;
+        let confidenceCount = 0;
+        let templateMatchedReports = 0;
+        let missingCriticalSignals = 0;
+        let nameMismatchReports = 0;
+        const recent = [];
+
+        reportRows.forEach((row) => {
+            const parsed = parseReportJsonObject(row);
+            if (!parsed) return;
+
+            extractedReports += 1;
+            const confidence = Number(parsed.confidence);
+            if (Number.isFinite(confidence)) {
+                confidenceTotal += confidence;
+                confidenceCount += 1;
+
+                if (confidence >= 0.86) highConfidence += 1;
+                else if (confidence >= 0.64) mediumConfidence += 1;
+                else lowConfidence += 1;
+            }
+
+            const template = parsed.confidenceDetails && parsed.confidenceDetails.template;
+            if (template && template.strategy === 'template') {
+                templateMatchedReports += 1;
+            }
+
+            const extracted = parsed.extracted || {};
+            const glucoseValues = Array.isArray(extracted.glucoseReadingsMgDl) ? extracted.glucoseReadingsMgDl : [];
+            if (extracted.hba1c === null && glucoseValues.length === 0) {
+                missingCriticalSignals += 1;
+            }
+
+            if ((parsed.nameVerification && parsed.nameVerification.isMatch === false)
+                || String(row.status || '').toLowerCase().includes('name mismatch')) {
+                nameMismatchReports += 1;
+            }
+
+            if (recent.length < 12) {
+                recent.push({
+                    reportId: row.id,
+                    reportName: row.reportName,
+                    date: row.date,
+                    status: row.status,
+                    confidence: Number.isFinite(confidence) ? Number(confidence.toFixed(3)) : null,
+                    qualityFlags: Array.isArray(parsed.qualityFlags) ? parsed.qualityFlags : [],
+                });
+            }
+        });
+
+        res.json({
+            range: `${days}d`,
+            summary: {
+                totalReports: reportRows.length,
+                extractedReports,
+                avgConfidence: confidenceCount ? Number((confidenceTotal / confidenceCount).toFixed(3)) : null,
+                highConfidenceReports: highConfidence,
+                mediumConfidenceReports: mediumConfidence,
+                lowConfidenceReports: lowConfidence,
+                templateMatchedReports,
+                missingCriticalSignals,
+                nameMismatchReports,
+            },
+            corrections: {
+                correctionCount: Number(correctionSummary.correctionCount || 0),
+                correctedReports: Number(correctionSummary.correctedReports || 0),
+                topCorrectedFields,
+            },
+            recent,
+        });
+    } catch (err) {
+        res.status(500).json({ error: 'Failed to build extraction metrics.' });
+    }
+});
+
+router.get('/reports/:id/corrections', async (req, res) => {
+    try {
+        const report = db.prepare('SELECT id FROM reports WHERE id = ? AND patient = ?').get(req.params.id, req.user._id);
+        if (!report) return res.status(404).json({ error: 'Report not found.' });
+
+        const rows = db.prepare(`
+            SELECT id, field_key, original_value_json, corrected_value_json, note, createdAt
+            FROM report_corrections
+            WHERE report_id = ? AND patient_id = ?
+            ORDER BY id DESC
+        `).all(req.params.id, req.user._id);
+
+        res.json(rows.map((row) => ({
+            id: row.id,
+            fieldKey: row.field_key,
+            originalValue: safeJsonParse(row.original_value_json, null),
+            correctedValue: safeJsonParse(row.corrected_value_json, null),
+            note: row.note || null,
+            createdAt: row.createdAt,
+        })));
+    } catch (err) {
+        res.status(500).json({ error: 'Failed to fetch report corrections.' });
+    }
+});
+
+router.post('/reports/:id/corrections', async (req, res) => {
+    try {
+        const reportRow = db.prepare('SELECT * FROM reports WHERE id = ? AND patient = ?').get(req.params.id, req.user._id);
+        if (!reportRow) return res.status(404).json({ error: 'Report not found.' });
+
+        const corrections = normalizeCorrectionsInput(req.body);
+        if (corrections.length === 0) {
+            return res.status(400).json({ error: 'Provide at least one valid correction entry.' });
+        }
+
+        const parsedObject = parseReportJsonObject(reportRow) || {
+            summary: null,
+            extracted: {},
+            confidence: null,
+            source: 'manual-correction',
+        };
+
+        const extracted = ensureExtractedPayload(parsedObject);
+        const applied = [];
+
+        corrections.forEach((correction) => {
+            const beforeValue = readCorrectableField(extracted, correction.fieldKey);
+            const afterValue = applyCorrectableField(extracted, correction.fieldKey, correction.value);
+
+            if (JSON.stringify(beforeValue) === JSON.stringify(afterValue)) {
+                return;
+            }
+
+            db.prepare(`
+                INSERT INTO report_corrections (
+                    report_id, patient_id, field_key, original_value_json, corrected_value_json, note
+                )
+                VALUES (?, ?, ?, ?, ?, ?)
+            `).run(
+                reportRow.id,
+                req.user._id,
+                correction.fieldKey,
+                JSON.stringify(beforeValue),
+                JSON.stringify(afterValue),
+                correction.note || null,
+            );
+
+            applied.push({
+                fieldKey: correction.fieldKey,
+                originalValue: beforeValue,
+                correctedValue: afterValue,
+                note: correction.note || null,
+            });
+        });
+
+        if (applied.length === 0) {
+            return res.status(200).json({
+                message: 'No effective changes detected in correction payload.',
+                report: mapReportRow(reportRow),
+                applied: [],
+            });
+        }
+
+        const evaluated = evaluateExtractedData(extracted, {
+            text: parsedObject.textPreview || '',
+            metadata: {
+                fileName: reportRow.reportName,
+                fileType: reportRow.file_type,
+                ocrDiagnostics: parsedObject.confidenceDetails && parsedObject.confidenceDetails.ocr
+                    ? parsedObject.confidenceDetails.ocr
+                    : null,
+            },
+            templateInfo: parsedObject.confidenceDetails && parsedObject.confidenceDetails.template
+                ? parsedObject.confidenceDetails.template
+                : null,
+        });
+
+        parsedObject.summary = evaluated.summary;
+        parsedObject.review = evaluated.review;
+        parsedObject.confidence = evaluated.confidence;
+        parsedObject.confidenceDetails = evaluated.confidenceDetails;
+        parsedObject.qualityFlags = evaluated.qualityFlags;
+        parsedObject.correctionMeta = {
+            correctedAt: new Date().toISOString(),
+            correctedFieldCount: Number((parsedObject.correctionMeta && parsedObject.correctionMeta.correctedFieldCount) || 0) + applied.length,
+        };
+
+        const nextStatus = buildCorrectedReportStatus(parsedObject);
+
+        db.prepare(`
+            UPDATE reports
+            SET parsed_json = ?, review_json = ?, status = ?, updatedAt = datetime('now')
+            WHERE id = ? AND patient = ?
+        `).run(
+            JSON.stringify(parsedObject),
+            parsedObject.review ? JSON.stringify(parsedObject.review) : null,
+            nextStatus,
+            reportRow.id,
+            req.user._id,
+        );
+
+        const updatedRow = db.prepare('SELECT * FROM reports WHERE id = ? AND patient = ?').get(reportRow.id, req.user._id);
+
+        res.json({
+            message: 'Corrections applied successfully.',
+            applied,
+            report: mapReportRow(updatedRow),
+            result: parsedObject,
+        });
+    } catch (err) {
+        res.status(400).json({ error: err && err.message ? err.message : 'Failed to apply report corrections.' });
     }
 });
 
@@ -1045,7 +1572,7 @@ router.get('/reports/:id', async (req, res) => {
     try {
         const row = db.prepare('SELECT * FROM reports WHERE id = ? AND patient = ?').get(req.params.id, req.user._id);
         if (!row) return res.status(404).json({ error: 'Report not found.' });
-        res.json({ ...row, _id: row.id });
+        res.json(mapReportRow(row));
     } catch (err) {
         res.status(500).json({ error: 'Failed to fetch report.' });
     }
@@ -1053,9 +1580,21 @@ router.get('/reports/:id', async (req, res) => {
 
 router.delete('/reports/:id', async (req, res) => {
     try {
+        const reportRow = db.prepare('SELECT * FROM reports WHERE id = ? AND patient = ?').get(req.params.id, req.user._id);
+        if (!reportRow) return res.status(404).json({ error: 'Report not found.' });
+
+        let cleanup = { glucoseDeleted: 0, healthMetricsDeleted: 0 };
+        try {
+            cleanup = cleanupImportedBiometricsForReport(reportRow, req.user._id);
+        } catch (_cleanupErr) {
+        }
+
         const result = db.prepare('DELETE FROM reports WHERE id = ? AND patient = ?').run(req.params.id, req.user._id);
         if (result.changes === 0) return res.status(404).json({ error: 'Report not found.' });
-        res.json({ message: 'Report deleted.' });
+        res.json({
+            message: 'Report deleted.',
+            cleanup,
+        });
     } catch (err) {
         res.status(500).json({ error: 'Failed to delete report.' });
     }
@@ -1119,6 +1658,11 @@ router.post('/ai/ask', async (req, res) => {
             return res.status(400).json({ error: 'Question is too long. Keep it below 600 characters.' });
         }
 
+        const dietAnalyticsResponse = buildDietAiResponse(req.user._id, question);
+        if (dietAnalyticsResponse) {
+            return res.json(withDebug(dietAnalyticsResponse, 'diet-analytics'));
+        }
+
         const allergies = Array.isArray(req.user.allergies) ? req.user.allergies : [];
         const profile = {
             chronicConditions: Array.isArray(req.user.chronicConditions) ? req.user.chronicConditions : [],
@@ -1150,6 +1694,63 @@ router.post('/ai/ask', async (req, res) => {
         res.json(withDebug(localResponse, 'local-ai'));
     } catch (err) {
         res.status(500).json({ error: 'Failed to process AI question.' });
+    }
+});
+
+router.post('/ai/extract-document', async (req, res) => {
+    try {
+        const fileName = String(req.body.fileName || '').trim() || null;
+        const fileType = String(req.body.fileType || '').trim() || null;
+        const text = req.body.text;
+        const base64Content = req.body.base64Content;
+
+        if (!text && !base64Content) {
+            return res.status(400).json({
+                error: 'Provide either text or base64Content from uploaded document.',
+            });
+        }
+
+        const parsed = await parseDocumentToText({
+            fileName,
+            fileType,
+            text,
+            base64Content,
+        });
+
+        if (!parsed.text) {
+            return res.status(422).json({
+                error: 'Could not read text from the provided document.',
+                parser: parsed.parser,
+                inferredType: parsed.inferredType,
+            });
+        }
+
+        const extracted = extractProjectDataFromDocument(parsed.text, {
+            fileName,
+            fileType: parsed.inferredType,
+            parser: parsed.parser,
+            ocrDiagnostics: parsed.ocrDiagnostics || null,
+        });
+
+        const extractedPatientName = extracted && extracted.extracted
+            ? extracted.extracted.patientName
+            : null;
+        const nameVerification = verifyReportPatientName(extractedPatientName, req.user.fullName);
+        if (extracted && typeof extracted === 'object') {
+            extracted.nameVerification = nameVerification;
+        }
+
+        res.json({
+            parser: parsed.parser,
+            inferredType: parsed.inferredType,
+            diagnostics: {
+                ocr: parsed.ocrDiagnostics || null,
+            },
+            result: extracted,
+            nameVerification,
+        });
+    } catch (err) {
+        res.status(500).json({ error: 'Failed to extract data from document.' });
     }
 });
 
