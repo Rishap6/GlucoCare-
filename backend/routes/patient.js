@@ -38,6 +38,8 @@ const {
 
 const router = express.Router();
 const IST_TIME_ZONE = 'Asia/Kolkata';
+const AI_HISTORY_MAX_MESSAGES = 80;
+const AI_HISTORY_MAX_CHATS = 40;
 
 const db = {
     prepare: (...args) => getDb().prepare(...args),
@@ -80,6 +82,184 @@ function safeJsonParse(value, fallback) {
     } catch {
         return fallback;
     }
+}
+
+function shouldUseConciseAiResponse(question, explicit) {
+    if (explicit) return true;
+    const q = String(question || '').toLowerCase();
+    return /\b(summar(y|ize|ise)|brief|concise|short|in short|tldr)\b/.test(q);
+}
+
+function toConciseSentence(value, maxSentences, maxChars) {
+    const source = String(value || '').replace(/\s+/g, ' ').trim();
+    if (!source) return '';
+
+    const chunks = source.match(/[^.!?]+[.!?]?/g) || [source];
+    let compact = chunks.slice(0, Math.max(1, Number(maxSentences || 1))).join(' ').trim();
+
+    const limit = Number(maxChars || 280);
+    if (compact.length > limit) {
+        compact = compact.slice(0, limit).replace(/[\s,;:.!?-]+$/, '') + '...';
+    }
+
+    return compact;
+}
+
+function applyAiResponseStyle(payload, options) {
+    if (!payload || typeof payload !== 'object') return payload;
+    const opts = options || {};
+    if (!opts.concise) return payload;
+
+    const answer = toConciseSentence(payload.answer, 2, 280);
+    const whatItMeans = toConciseSentence(payload.whatItMeans, 1, 140);
+    const nextSteps = toConciseSentence(payload.nextSteps, 1, 140);
+
+    const compactAnswer = [
+        answer,
+        whatItMeans ? `Meaning: ${whatItMeans}` : '',
+        nextSteps ? `Next: ${nextSteps}` : '',
+    ].filter(Boolean).join(' ');
+
+    return {
+        ...payload,
+        answer: compactAnswer || answer || payload.answer,
+        suggestions: Array.isArray(payload.suggestions)
+            ? payload.suggestions.slice(0, 2)
+            : [],
+    };
+}
+
+function sanitizeAiHistoryAttachment(raw) {
+    if (!raw || typeof raw !== 'object') return null;
+
+    const name = String(raw.name || '').trim();
+    if (!name) return null;
+
+    let size = Number(raw.size || 0);
+    if (!Number.isFinite(size) || size < 0) size = 0;
+
+    return {
+        name,
+        size,
+        isImage: Boolean(raw.isImage),
+        isPdf: Boolean(raw.isPdf),
+    };
+}
+
+function sanitizeAiHistoryEntry(raw) {
+    if (!raw || typeof raw !== 'object') return null;
+
+    const role = String(raw.role || '').trim();
+    if (role !== 'assistant' && role !== 'patient') return null;
+
+    const text = String(raw.text || '').trim();
+    const attachments = Array.isArray(raw.attachments)
+        ? raw.attachments.map(sanitizeAiHistoryAttachment).filter(Boolean).slice(0, 3)
+        : [];
+
+    if (!text && attachments.length === 0) return null;
+
+    const entry = {
+        role,
+        text: text.slice(0, 4000),
+        attachments,
+    };
+
+    const meta = String(raw.meta || '').trim();
+    if (meta) entry.meta = meta.slice(0, 200);
+
+    if (raw.debug && typeof raw.debug === 'object' && raw.debug.engine) {
+        entry.debug = {
+            engine: String(raw.debug.engine).slice(0, 40),
+            provider: raw.debug.provider ? String(raw.debug.provider).slice(0, 40) : null,
+        };
+    }
+
+    if (Array.isArray(raw.suggestions)) {
+        const suggestions = raw.suggestions
+            .map((item) => String(item || '').trim())
+            .filter(Boolean)
+            .slice(0, 3)
+            .map((item) => item.slice(0, 200));
+        if (suggestions.length > 0) {
+            entry.suggestions = suggestions;
+        }
+    }
+
+    return entry;
+}
+
+function sanitizeAiConversation(rawConversation) {
+    if (!Array.isArray(rawConversation)) return [];
+    return rawConversation
+        .map(sanitizeAiHistoryEntry)
+        .filter(Boolean)
+        .slice(-AI_HISTORY_MAX_MESSAGES);
+}
+
+function deriveAiChatTitleFromConversation(conversation) {
+    const list = Array.isArray(conversation) ? conversation : [];
+    const userEntry = list.find((item) => item && item.role === 'patient' && String(item.text || '').trim());
+    const assistantEntry = list.find((item) => item && item.role === 'assistant' && String(item.text || '').trim());
+    const sourceText = String((userEntry && userEntry.text) || (assistantEntry && assistantEntry.text) || '').replace(/\s+/g, ' ').trim();
+    if (!sourceText) return 'New chat';
+    return sourceText.length > 80 ? `${sourceText.slice(0, 80)}...` : sourceText;
+}
+
+function sanitizeAiChatItem(raw) {
+    if (!raw || typeof raw !== 'object') return null;
+
+    const messages = sanitizeAiConversation(raw.messages || raw.conversation || []);
+    const id = String(raw.id || '').trim() || `chat-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    const updatedAtRaw = String(raw.updatedAt || '').trim();
+    const updatedAt = updatedAtRaw || new Date().toISOString();
+    const titleRaw = String(raw.title || '').replace(/\s+/g, ' ').trim();
+    const title = titleRaw ? titleRaw.slice(0, 120) : deriveAiChatTitleFromConversation(messages);
+
+    return {
+        id,
+        title,
+        updatedAt,
+        messages,
+    };
+}
+
+function sanitizeAiHistoryPayload(raw) {
+    if (!raw || typeof raw !== 'object') {
+        return { chats: [], activeChatId: null };
+    }
+
+    const chats = Array.isArray(raw.chats)
+        ? raw.chats.map(sanitizeAiChatItem).filter(Boolean).slice(0, AI_HISTORY_MAX_CHATS)
+        : [];
+
+    let activeChatId = String(raw.activeChatId || '').trim() || null;
+    if (chats.length > 0 && !chats.some((item) => item.id === activeChatId)) {
+        activeChatId = chats[0].id;
+    }
+
+    return {
+        chats,
+        activeChatId,
+    };
+}
+
+function convertLegacyAiConversationToHistory(rawConversation) {
+    const messages = sanitizeAiConversation(rawConversation || []);
+    if (messages.length === 0) {
+        return { chats: [], activeChatId: null };
+    }
+
+    const legacyId = 'legacy-main-chat';
+    return {
+        chats: [{
+            id: legacyId,
+            title: deriveAiChatTitleFromConversation(messages),
+            updatedAt: new Date().toISOString(),
+            messages,
+        }],
+        activeChatId: legacyId,
+    };
 }
 
 function computeDailyScore(patientId) {
@@ -1633,6 +1813,63 @@ router.post('/education/:id/feedback', async (req, res) => {
 
 // ─── Feature 10b: AI Diabetes Assistant ────────────────────────────
 
+router.get('/ai/history', async (req, res) => {
+    try {
+        const row = db.prepare(`
+            SELECT conversation_json
+            FROM ai_chat_history
+            WHERE patient_id = ?
+            LIMIT 1
+        `).get(req.user._id);
+
+        const stored = row && row.conversation_json ? safeJsonParse(row.conversation_json, []) : [];
+        const history = Array.isArray(stored)
+            ? convertLegacyAiConversationToHistory(stored)
+            : sanitizeAiHistoryPayload(stored);
+
+        res.json({ history });
+    } catch (err) {
+        res.status(500).json({ error: 'Failed to fetch AI history.' });
+    }
+});
+
+router.put('/ai/history', async (req, res) => {
+    try {
+        let history = null;
+
+        if (req.body && typeof req.body.history === 'object' && req.body.history) {
+            history = sanitizeAiHistoryPayload(req.body.history);
+        } else if (Array.isArray(req.body.conversation)) {
+            history = convertLegacyAiConversationToHistory(req.body.conversation);
+        } else {
+            return res.status(400).json({ error: 'Provide history object or conversation array.' });
+        }
+
+        const payload = JSON.stringify(history);
+
+        db.prepare(`
+            INSERT INTO ai_chat_history (patient_id, conversation_json)
+            VALUES (?, ?)
+            ON CONFLICT(patient_id) DO UPDATE SET
+                conversation_json = excluded.conversation_json,
+                updatedAt = datetime('now')
+        `).run(req.user._id, payload);
+
+        res.json({ history });
+    } catch (err) {
+        res.status(500).json({ error: 'Failed to save AI history.' });
+    }
+});
+
+router.delete('/ai/history', async (req, res) => {
+    try {
+        db.prepare('DELETE FROM ai_chat_history WHERE patient_id = ?').run(req.user._id);
+        res.json({ message: 'AI history cleared.' });
+    } catch (err) {
+        res.status(500).json({ error: 'Failed to clear AI history.' });
+    }
+});
+
 router.post('/ai/ask', async (req, res) => {
     try {
         const debugSourceEnabled = String(process.env.AI_DEBUG_SOURCE || 'false').toLowerCase() === 'true';
@@ -1654,13 +1891,21 @@ router.post('/ai/ask', async (req, res) => {
             return res.status(400).json({ error: 'Question is required.' });
         }
 
+        const conciseRequested = shouldUseConciseAiResponse(
+            question,
+            Boolean(
+                (req.body && req.body.concise === true)
+                || String((req.body && req.body.responseStyle) || '').toLowerCase() === 'concise',
+            ),
+        );
+
         if (question.length > 600) {
             return res.status(400).json({ error: 'Question is too long. Keep it below 600 characters.' });
         }
 
         const dietAnalyticsResponse = buildDietAiResponse(req.user._id, question);
         if (dietAnalyticsResponse) {
-            return res.json(withDebug(dietAnalyticsResponse, 'diet-analytics'));
+            return res.json(withDebug(applyAiResponseStyle(dietAnalyticsResponse, { concise: conciseRequested }), 'diet-analytics'));
         }
 
         const allergies = Array.isArray(req.user.allergies) ? req.user.allergies : [];
@@ -1687,11 +1932,11 @@ router.post('/ai/ask', async (req, res) => {
             });
 
             if (llmResponse) {
-                return res.json(withDebug(llmResponse, 'llm-fallback'));
+                return res.json(withDebug(applyAiResponseStyle(llmResponse, { concise: conciseRequested }), 'llm-fallback'));
             }
         }
 
-        res.json(withDebug(localResponse, 'local-ai'));
+        res.json(withDebug(applyAiResponseStyle(localResponse, { concise: conciseRequested }), 'local-ai'));
     } catch (err) {
         res.status(500).json({ error: 'Failed to process AI question.' });
     }

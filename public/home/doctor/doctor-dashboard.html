@@ -47,6 +47,10 @@
             min-height: 100vh;
         }
 
+        body.sidebar-open {
+            overflow: hidden;
+        }
+
         /* ==================== SIDEBAR ==================== */
         .sidebar {
             position: fixed;
@@ -633,6 +637,16 @@
             border-collapse: collapse;
         }
 
+        .table-scroll {
+            width: 100%;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .table-scroll .patient-table {
+            min-width: 760px;
+        }
+
         .patient-table thead th {
             padding: 12px 24px;
             font-size: 12px;
@@ -1173,10 +1187,18 @@
         @media (max-width: 768px) {
             .topbar {
                 padding: 12px 16px;
+                flex-wrap: wrap;
+                gap: 10px;
+                align-items: flex-start;
             }
 
             .topbar-search {
                 display: none;
+            }
+
+            .topbar-right {
+                width: 100%;
+                justify-content: flex-end;
             }
 
             .dashboard-body {
@@ -1205,6 +1227,32 @@
                 font-size: 18px;
             }
 
+            .page-title p {
+                font-size: 12px;
+            }
+
+            .card-header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 12px;
+            }
+
+            .card-header-actions {
+                width: 100%;
+                flex-wrap: wrap;
+            }
+
+            .card-header-actions .form-input,
+            .card-header-actions .card-btn {
+                width: 100% !important;
+            }
+
+            .table-footer {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 10px;
+            }
+
             .overview-highlights-grid {
                 grid-template-columns: 1fr;
                 padding: 14px 16px;
@@ -1218,6 +1266,15 @@
         @media (max-width: 480px) {
             .stats-grid {
                 grid-template-columns: 1fr;
+            }
+
+            .topbar-btn {
+                width: 36px;
+                height: 36px;
+            }
+
+            .table-scroll .patient-table {
+                min-width: 680px;
             }
 
             .quick-actions {
@@ -1596,23 +1653,25 @@
                         </div>
                     </div>
                     <div class="card-body">
-                        <table class="patient-table">
-                            <thead>
-                                <tr>
-                                    <th>Patient</th>
-                                    <th>Email</th>
-                                    <th>Phone</th>
-                                    <th class="hide-mobile">Blood Type</th>
-                                    <th class="hide-mobile">Conditions</th>
-                                    <th></th>
-                                </tr>
-                            </thead>
-                            <tbody id="doctor-patients-body">
-                                <tr>
-                                    <td colspan="6" style="color: var(--gray-500); text-align: center;">Loading patients...</td>
-                                </tr>
-                            </tbody>
-                        </table>
+                        <div class="table-scroll">
+                            <table class="patient-table">
+                                <thead>
+                                    <tr>
+                                        <th>Patient</th>
+                                        <th>Email</th>
+                                        <th>Phone</th>
+                                        <th class="hide-mobile">Blood Type</th>
+                                        <th class="hide-mobile">Conditions</th>
+                                        <th></th>
+                                    </tr>
+                                </thead>
+                                <tbody id="doctor-patients-body">
+                                    <tr>
+                                        <td colspan="6" style="color: var(--gray-500); text-align: center;">Loading patients...</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                     <div class="table-footer">
                         <div class="table-footer-info" id="doctor-patient-table-info">Showing 0 patients</div>
@@ -2018,6 +2077,7 @@
             var overlay = document.getElementById('sidebarOverlay');
             sidebar.classList.toggle('open');
             overlay.classList.toggle('show');
+            document.body.classList.toggle('sidebar-open', sidebar.classList.contains('open'));
         }
 
         function closeSidebar() {
@@ -2025,6 +2085,7 @@
             var overlay = document.getElementById('sidebarOverlay');
             sidebar.classList.remove('open');
             overlay.classList.remove('show');
+            document.body.classList.remove('sidebar-open');
         }
 
         // Active nav highlight
@@ -2034,7 +2095,16 @@
                     i.classList.remove('active');
                 });
                 this.classList.add('active');
+                if (window.innerWidth <= 1024) {
+                    closeSidebar();
+                }
             });
+        });
+
+        window.addEventListener('resize', function() {
+            if (window.innerWidth > 1024) {
+                closeSidebar();
+            }
         });
 
         // Search is handled in /home/doctor/doctor.js against name + email.
