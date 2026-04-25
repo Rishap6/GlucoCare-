@@ -1208,8 +1208,13 @@ function matchSmallTalkIntent(question) {
     const text = normalizeQuestionText(question).trim();
     if (!text) return null;
 
-    if (/^(h+i+|he+l+o+|hey+|yo+|hola+|gay|namaste|good\s*(morning|afternoon|evening)|howdy)\b/.test(text)) {
-        return 'greeting';
+    const greetingMatch = text.match(/^(h+i+|he+l+o+|hey+|yo+|hola+|gay|namaste|good\s*(morning|afternoon|evening)|howdy)\b/);
+    if (greetingMatch) {
+        const remainder = text.slice(greetingMatch[0].length).trim();
+        // If the user adds a real diabetes question after greeting, do not route to small talk.
+        if (!remainder || /^(there|buddy|friend|sir|mam|maam|doctor)$/i.test(remainder)) {
+            return 'greeting';
+        }
     }
 
     if (/\bhow are you\b|\bhow r u\b|\bhowre you\b|\bhow do you do\b/.test(text)) {

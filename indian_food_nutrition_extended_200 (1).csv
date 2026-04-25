@@ -1,0 +1,296 @@
+food_name,calories_kcal,carbs_g,protein_g,fat_g,fiber_g,glycemic_index,serving_size_g,unit
+Phulka (Plain Roti),76,15.0,3.0,0.5,2.5,62,30,1 roti
+Butter Roti,94,15.0,3.0,2.5,2.5,62,35,1 roti with butter
+Tandoori Roti,113,22.0,4.0,1.0,3.5,65,45,1 tandoori roti
+Butter Tandoori Roti,140,22.0,4.0,4.0,3.5,65,50,1 tandoori roti with butter
+Plain Naan,182,35.0,6.0,2.0,2.0,71,70,1 naan
+Butter Naan,227,35.0,6.0,7.0,2.0,71,80,1 butter naan
+Garlic Naan,242,36.0,6.5,8.0,2.5,71,85,1 garlic naan
+Lachha Paratha,221,30.0,5.0,9.0,3.0,68,75,1 paratha
+Aloo Paratha,236,35.0,6.0,8.0,4.0,65,120,1 medium paratha
+Gobi Paratha,220,32.0,6.0,7.5,4.5,63,120,1 medium paratha
+Paneer Paratha,250,30.0,10.0,10.0,3.0,60,120,1 medium paratha
+Mooli Paratha,207,31.0,5.0,7.0,4.5,62,120,1 medium paratha
+Methi Thepla,122,18.0,3.5,4.0,3.0,58,40,1 thepla
+Bhatura,268,35.0,5.0,12.0,1.5,75,80,1 bhatura
+Puri,118,14.0,2.0,6.0,1.0,72,30,1 puri
+Missi Roti,122,20.0,6.0,2.0,4.0,55,45,1 missi roti
+Makki ki Roti,134,25.0,3.0,2.5,4.0,68,50,1 roti
+Bajra Roti,126,23.0,4.0,2.0,4.5,54,50,1 roti
+Jowar Roti,124,24.0,3.5,1.5,4.0,55,50,1 roti
+Rumali Roti,154,30.0,5.0,1.5,2.0,70,50,1 rumali roti
+Steamed White Rice,178,40.0,3.5,0.5,0.5,73,150,1 cup cooked
+Steamed Brown Rice,167,35.0,4.0,1.2,3.0,68,150,1 cup cooked
+Jeera Rice,202,38.0,3.5,4.0,1.0,70,150,1 cup cooked
+Peas Pulao,233,42.0,5.0,5.0,3.5,65,200,1 plate
+Veg Biryani,302,45.0,8.0,10.0,4.5,60,250,1 plate
+Chicken Biryani,394,45.0,22.0,14.0,2.5,65,300,1 plate
+Mutton Biryani,442,45.0,25.0,18.0,2.5,65,300,1 plate
+Egg Biryani,348,44.0,16.0,12.0,2.5,65,300,1 plate
+Paneer Biryani,359,42.0,14.0,15.0,3.0,62,300,1 plate
+Lemon Rice,222,38.0,4.0,6.0,1.5,68,200,1 plate
+Tamarind Rice,241,40.0,4.5,7.0,2.0,68,200,1 plate
+Curd Rice,180,30.0,6.0,4.0,1.0,60,200,1 bowl
+Tomato Rice,213,38.0,4.0,5.0,2.0,65,200,1 plate
+Bisi Bele Bath,292,45.0,10.0,8.0,6.0,55,250,1 plate
+Dal Khichdi,233,35.0,12.0,5.0,5.0,50,250,1 bowl
+Masala Khichdi,264,36.0,12.0,8.0,6.0,50,250,1 bowl
+Palak Khichdi,242,34.0,13.0,6.0,7.0,48,250,1 bowl
+Ghee Rice,244,35.0,3.5,10.0,0.5,70,150,1 cup cooked
+Pudina Rice,213,38.0,4.0,5.0,1.5,68,200,1 plate
+Soya Pulao,274,40.0,15.0,6.0,5.0,55,250,1 plate
+Dal Tadka,153,20.0,7.0,5.0,6.0,45,150,1 bowl
+Dal Fry,166,20.0,7.0,6.5,6.0,45,150,1 bowl
+Dal Makhani,275,25.0,10.0,15.0,8.0,40,200,1 bowl
+Chana Masala,240,30.0,12.0,8.0,10.0,43,200,1 bowl
+Rajma Masala,259,35.0,14.0,7.0,12.0,42,200,1 bowl
+Moong Dal,122,18.0,8.0,2.0,5.0,45,150,1 bowl
+Masoor Dal,130,19.0,8.0,2.5,5.5,45,150,1 bowl
+Urad Dal,143,20.0,9.0,3.0,6.0,45,150,1 bowl
+Lobia Curry (Black-eyed peas),188,28.0,10.0,4.0,8.0,45,200,1 bowl
+Panchratna Dal,169,22.0,9.0,5.0,7.0,44,150,1 bowl
+Kala Chana Curry,214,28.0,12.0,6.0,10.0,42,200,1 bowl
+Sambar,103,15.0,4.0,3.0,3.0,50,150,1 bowl
+Rasam,56,8.0,1.5,2.0,1.0,50,150,1 bowl
+Gujarati Kadhi,96,12.0,4.0,3.5,1.0,50,150,1 bowl
+Punjabi Kadhi Pakora,258,25.0,8.0,14.0,4.0,52,200,1 bowl
+Moth Dal,139,20.0,8.0,3.0,6.0,45,150,1 bowl
+Horse Gram Dal (Kollu),146,22.0,10.0,2.0,8.0,40,150,1 bowl
+Cholar Dal,186,25.0,8.0,6.0,5.0,45,150,1 bowl
+Dal Palak,144,18.0,9.0,4.0,7.0,42,150,1 bowl
+Matar Paneer,226,15.0,10.0,14.0,5.0,40,200,1 bowl
+Aloo Gobi,151,18.0,4.0,7.0,5.0,60,150,1 bowl
+Aloo Jeera,164,20.0,3.0,8.0,3.0,65,150,1 bowl
+Aloo Matar,162,22.0,5.0,6.0,5.0,60,150,1 bowl
+Bhindi Masala,132,12.0,3.0,8.0,4.5,45,150,1 bowl
+Baingan Bharta,113,10.0,2.5,7.0,5.0,40,150,1 bowl
+Palak Paneer,224,8.0,12.0,16.0,4.0,35,200,1 bowl
+Paneer Butter Masala,302,12.0,14.0,22.0,2.0,38,200,1 bowl
+Kadai Paneer,258,10.0,14.0,18.0,3.0,38,200,1 bowl
+Shahi Paneer,284,14.0,12.0,20.0,2.0,40,200,1 bowl
+Mix Veg Curry,148,15.0,4.0,8.0,5.0,50,150,1 bowl
+Malai Kofta,328,20.0,8.0,24.0,3.0,55,200,1 bowl
+Navratan Korma,231,18.0,6.0,15.0,4.0,50,200,1 bowl
+Lauki ki Sabzi,74,8.0,1.5,4.0,3.0,40,150,1 bowl
+Tinda Masala,93,10.0,2.0,5.0,3.5,40,150,1 bowl
+Karela Sabzi,100,9.0,2.5,6.0,4.0,35,150,1 bowl
+Capsicum Besan,156,15.0,6.0,8.0,4.0,45,150,1 bowl
+Mushroom Masala,133,8.0,5.0,9.0,3.0,35,150,1 bowl
+Soya Chunk Curry,183,12.0,18.0,7.0,6.0,40,150,1 bowl
+Cabbage Peas Sabzi,99,10.0,3.5,5.0,4.0,45,150,1 bowl
+Gajar Matar,113,14.0,3.0,5.0,4.5,50,150,1 bowl
+Chicken Curry,220,6.0,22.0,12.0,1.0,20,200,1 bowl
+Butter Chicken,326,12.0,20.0,22.0,1.0,35,200,1 bowl
+Kadai Chicken,255,8.0,22.0,15.0,2.0,25,200,1 bowl
+Chicken Tikka Masala,290,10.0,22.0,18.0,2.0,30,200,1 bowl
+Chicken Korma,282,10.0,20.0,18.0,1.5,30,200,1 bowl
+Mutton Curry,260,5.0,24.0,16.0,1.0,20,200,1 bowl
+Mutton Rogan Josh,274,6.0,22.0,18.0,1.0,25,200,1 bowl
+Mutton Keema,250,5.0,26.0,14.0,1.0,20,200,1 bowl
+Fish Curry,190,5.0,20.0,10.0,0.5,20,200,1 bowl
+Fish Tikka Masala,220,8.0,20.0,12.0,1.0,25,200,1 bowl
+Prawn Curry,168,6.0,18.0,8.0,1.0,20,200,1 bowl
+Egg Curry,206,8.0,12.0,14.0,1.5,25,200,1 bowl (2 eggs)
+Egg Bhurji,172,4.0,12.0,12.0,1.0,20,150,1 bowl
+Chicken Chettinad,264,8.0,22.0,16.0,2.5,25,200,1 bowl
+Goan Fish Curry,222,6.0,18.0,14.0,1.0,25,200,1 bowl
+Chicken 65,276,15.0,18.0,16.0,1.0,40,150,1 plate
+Chilli Chicken,270,18.0,18.0,14.0,1.5,45,200,1 bowl
+Tandoori Chicken,228,2.0,28.0,12.0,0.5,10,150,1 leg/breast piece
+Chicken Saagwala,220,6.0,22.0,12.0,3.5,25,200,1 bowl
+Andhra Chicken Curry,238,6.0,22.0,14.0,1.5,25,200,1 bowl
+Samosa,234,24.0,3.0,14.0,2.0,70,70,1 piece
+Kachori,212,22.0,4.0,12.0,1.5,68,60,1 piece
+Vada Pav,319,40.0,6.0,15.0,3.5,75,120,1 piece
+Pav Bhaji,356,45.0,8.0,16.0,6.0,65,250,1 plate (2 pavs)
+Bhel Puri,210,35.0,4.0,6.0,3.0,65,150,1 plate
+Pani Puri (Gol Gappa),157,25.0,3.0,5.0,2.0,70,100,6 pieces
+Sev Puri,226,30.0,4.0,10.0,2.5,68,120,6 pieces
+Dahi Vada,186,25.0,8.0,6.0,3.0,55,150,2 pieces
+Aloo Tikki,172,22.0,3.0,8.0,2.0,70,80,1 piece
+Onion Pakora (Bhajiya),226,20.0,5.0,14.0,3.0,60,100,1 plate
+Paneer Pakora,236,15.0,8.0,16.0,1.5,55,100,1 plate
+Khaman Dhokla,140,20.0,6.0,4.0,2.5,50,100,3 pieces
+Khandvi,134,15.0,5.0,6.0,2.0,45,100,1 plate
+Mathri,220,25.0,3.0,12.0,1.0,65,50,2 pieces
+Fafda,194,22.0,4.0,10.0,1.5,60,50,1 plate
+Chakli (Murukku),207,24.0,3.0,11.0,1.5,65,50,5 pieces
+Poha Chivda,244,30.0,4.0,12.0,2.0,65,50,1 small bowl
+Moong Dal Namkeen,228,20.0,10.0,12.0,3.0,45,50,1 small bowl
+Roasted Makhana,101,20.0,3.0,1.0,4.0,40,30,1 bowl
+Masala Peanuts,286,10.0,12.0,22.0,4.0,30,50,1 small bowl
+Gulab Jamun,204,30.0,3.0,8.0,0.5,80,80,2 pieces
+Rasgulla,165,35.0,4.0,1.0,0.0,75,100,2 pieces
+Jalebi,214,38.0,2.0,6.0,0.5,85,50,2 pieces
+Kaju Katli,178,18.0,4.0,10.0,1.0,55,40,2 pieces
+Besan Ladoo,224,25.0,4.0,12.0,1.5,65,50,1 piece
+Motichoor Ladoo,204,30.0,3.0,8.0,1.0,75,50,1 piece
+Gajar Ka Halwa,268,35.0,5.0,12.0,3.0,60,100,1 bowl
+Moong Dal Halwa,306,30.0,6.0,18.0,2.0,55,100,1 bowl
+Sooji Halwa (Sheera),242,35.0,3.0,10.0,1.0,70,100,1 bowl
+Rice Kheer,236,35.0,6.0,8.0,0.5,65,150,1 bowl
+Rasmalai,240,25.0,8.0,12.0,0.0,60,100,2 pieces
+Peda,168,20.0,4.0,8.0,0.0,70,40,2 pieces
+Mysore Pak,270,25.0,2.0,18.0,0.5,75,50,1 piece
+Shrikhand,242,30.0,8.0,10.0,0.0,55,100,1 bowl
+Ghevar,352,40.0,3.0,20.0,0.5,80,100,1 piece
+Kalakand,212,18.0,8.0,12.0,0.0,55,50,1 piece
+Balushahi,254,30.0,2.0,14.0,0.5,75,50,1 piece
+Sandesh,129,15.0,6.0,5.0,0.0,50,50,2 pieces
+Coconut Ladoo,186,22.0,2.0,10.0,2.0,60,50,1 piece
+Imarti,206,35.0,3.0,6.0,1.0,80,50,2 pieces
+Idli,58,12.0,1.5,0.4,1.0,70,40,1 piece
+Plain Dosa,130,25.0,3.0,2.0,1.0,75,100,1 dosa
+Masala Dosa,210,35.0,4.0,6.0,2.0,70,150,1 dosa
+Rava Dosa,179,30.0,3.5,5.0,1.5,72,120,1 dosa
+Onion Uttappam,189,32.0,4.0,5.0,2.5,68,150,1 piece
+Medu Vada,160,18.0,4.0,8.0,2.0,65,50,1 piece
+Upma,181,30.0,4.0,5.0,2.5,68,150,1 bowl
+Ven Pongal,236,35.0,6.0,8.0,2.0,65,200,1 bowl
+Appam,89,18.0,2.0,1.0,1.0,70,50,1 piece
+Puttu,130,25.0,3.0,2.0,2.0,65,100,1 portion
+Idiyappam,102,22.0,2.5,0.5,1.0,68,100,1 portion
+Poha,250,45.0,4.0,6.0,2.5,65,150,1 bowl
+Sabudana Khichdi,272,48.0,2.0,8.0,1.5,75,150,1 bowl
+Neer Dosa,77,15.0,2.0,1.0,0.5,72,60,1 dosa
+Pesarattu,139,22.0,6.0,3.0,2.5,55,100,1 dosa
+Masala Chai (with milk & sugar),86,15.0,2.0,2.0,0.0,55,150,1 cup
+Filter Coffee,68,12.0,1.5,1.5,0.0,50,100,1 cup
+Sweet Lassi,174,25.0,5.0,6.0,0.0,60,200,1 glass
+Salted Lassi,106,8.0,5.0,6.0,0.0,30,200,1 glass
+Chaas (Buttermilk),42,4.0,3.0,1.5,0.0,25,200,1 glass
+Aam Panna,82,20.0,0.5,0.0,1.0,65,200,1 glass
+Jaljeera,22,5.0,0.5,0.0,0.5,45,200,1 glass
+Thandai,208,30.0,4.0,8.0,1.0,60,200,1 glass
+Sugarcane Juice,160,40.0,0.0,0.0,0.0,75,200,1 glass
+Nimbu Pani (Sweet),60,15.0,0.0,0.0,0.0,65,200,1 glass
+Kathi Roll (Paneer),343,40.0,12.0,15.0,4.0,65,150,1 roll
+Kathi Roll (Chicken),320,35.0,18.0,12.0,3.0,60,150,1 roll
+Momos (Veg Steamed),134,25.0,4.0,2.0,2.0,65,100,6 pieces
+Momos (Chicken Steamed),147,20.0,10.0,3.0,1.0,60,100,6 pieces
+Aloo Chaat,224,35.0,3.0,8.0,4.0,70,150,1 plate
+Dabeli,300,42.0,6.0,12.0,4.0,72,120,1 piece
+Misal Pav,390,45.0,12.0,18.0,8.0,65,250,1 plate
+Mirchi Bada,224,25.0,4.0,12.0,2.0,68,100,1 piece
+Litti Chokha,292,45.0,10.0,8.0,6.0,60,200,2 pieces + chokha
+Ram Ladoo,202,20.0,8.0,10.0,4.0,60,100,1 plate
+Phulka (Plain Roti) (Restaurant Style),88,17.2,3.0,0.8,2.5,64,30,1 roti
+Butter Roti (Restaurant Style),115,17.2,3.0,3.8,2.5,64,35,1 roti with butter
+Tandoori Roti (Restaurant Style),131,25.3,4.0,1.5,3.5,67,45,1 tandoori roti
+Butter Tandoori Roti (Restaurant Style),171,25.3,4.0,6.0,3.5,67,50,1 tandoori roti with butter
+Plain Naan (Restaurant Style),212,40.2,6.0,3.0,2.0,73,70,1 naan
+Butter Naan (Restaurant Style),279,40.2,6.0,10.5,2.0,73,80,1 butter naan
+Garlic Naan (Restaurant Style),300,41.4,6.5,12.0,2.5,73,85,1 garlic naan
+Lachha Paratha (Restaurant Style),280,34.5,5.0,13.5,3.0,70,75,1 paratha
+Aloo Paratha (Restaurant Style),293,40.2,6.0,12.0,4.0,67,120,1 medium paratha
+Gobi Paratha (Restaurant Style),272,36.8,6.0,11.2,4.5,65,120,1 medium paratha
+Paneer Paratha (Restaurant Style),313,34.5,10.0,15.0,3.0,62,120,1 medium paratha
+Mooli Paratha (Restaurant Style),257,35.6,5.0,10.5,4.5,64,120,1 medium paratha
+Methi Thepla (Restaurant Style),151,20.7,3.5,6.0,3.0,60,40,1 thepla
+Bhatura (Restaurant Style),343,40.2,5.0,18.0,1.5,77,80,1 bhatura
+Puri (Restaurant Style),153,16.1,2.0,9.0,1.0,74,30,1 puri
+Missi Roti (Restaurant Style),143,23.0,6.0,3.0,4.0,57,45,1 missi roti
+Makki ki Roti (Restaurant Style),161,28.7,3.0,3.8,4.0,70,50,1 roti
+Bajra Roti (Restaurant Style),149,26.4,4.0,3.0,4.5,56,50,1 roti
+Jowar Roti (Restaurant Style),144,27.6,3.5,2.2,4.0,57,50,1 roti
+Rumali Roti (Restaurant Style),178,34.5,5.0,2.2,2.0,72,50,1 rumali roti
+Steamed White Rice (Restaurant Style),205,46.0,3.5,0.8,0.5,75,150,1 cup cooked
+Steamed Brown Rice (Restaurant Style),193,40.2,4.0,1.8,3.0,70,150,1 cup cooked
+Jeera Rice (Restaurant Style),243,43.7,3.5,6.0,1.0,72,150,1 cup cooked
+Peas Pulao (Restaurant Style),281,48.3,5.0,7.5,3.5,67,200,1 plate
+Veg Biryani (Restaurant Style),374,51.7,8.0,15.0,4.5,62,250,1 plate
+Chicken Biryani (Restaurant Style),484,51.7,22.0,21.0,2.5,67,300,1 plate
+Mutton Biryani (Restaurant Style),550,51.7,25.0,27.0,2.5,67,300,1 plate
+Egg Biryani (Restaurant Style),428,50.6,16.0,18.0,2.5,67,300,1 plate
+Paneer Biryani (Restaurant Style),452,48.3,14.0,22.5,3.0,64,300,1 plate
+Lemon Rice (Restaurant Style),272,43.7,4.0,9.0,1.5,70,200,1 plate
+Tamarind Rice (Restaurant Style),296,46.0,4.5,10.5,2.0,70,200,1 plate
+Curd Rice (Restaurant Style),216,34.5,6.0,6.0,1.0,62,200,1 bowl
+Tomato Rice (Restaurant Style),258,43.7,4.0,7.5,2.0,67,200,1 plate
+Bisi Bele Bath (Restaurant Style),355,51.7,10.0,12.0,6.0,57,250,1 plate
+Dal Khichdi (Restaurant Style),276,40.2,12.0,7.5,5.0,52,250,1 bowl
+Masala Khichdi (Restaurant Style),322,41.4,12.0,12.0,6.0,52,250,1 bowl
+Palak Khichdi (Restaurant Style),289,39.1,13.0,9.0,7.0,50,250,1 bowl
+Ghee Rice (Restaurant Style),310,40.2,3.5,15.0,0.5,72,150,1 cup cooked
+Pudina Rice (Restaurant Style),258,43.7,4.0,7.5,1.5,70,200,1 plate
+Soya Pulao (Restaurant Style),325,46.0,15.0,9.0,5.0,57,250,1 plate
+Dal Tadka (Restaurant Style),188,23.0,7.0,7.5,6.0,47,150,1 bowl
+Dal Fry (Restaurant Style),208,23.0,7.0,9.8,6.0,47,150,1 bowl
+Dal Makhani (Restaurant Style),357,28.7,10.0,22.5,8.0,42,200,1 bowl
+Chana Masala (Restaurant Style),294,34.5,12.0,12.0,10.0,45,200,1 bowl
+Rajma Masala (Restaurant Style),311,40.2,14.0,10.5,12.0,44,200,1 bowl
+Moong Dal (Restaurant Style),142,20.7,8.0,3.0,5.0,47,150,1 bowl
+Masoor Dal (Restaurant Style),153,21.8,8.0,3.8,5.5,47,150,1 bowl
+Urad Dal (Restaurant Style),168,23.0,9.0,4.5,6.0,47,150,1 bowl
+Lobia Curry (Black-eyed peas) (Restaurant Style),223,32.2,10.0,6.0,8.0,47,200,1 bowl
+Panchratna Dal (Restaurant Style),205,25.3,9.0,7.5,7.0,46,150,1 bowl
+Kala Chana Curry (Restaurant Style),258,32.2,12.0,9.0,10.0,44,200,1 bowl
+Sambar (Restaurant Style),125,17.2,4.0,4.5,3.0,52,150,1 bowl
+Rasam (Restaurant Style),70,9.2,1.5,3.0,1.0,52,150,1 bowl
+Gujarati Kadhi (Restaurant Style),118,13.8,4.0,5.2,1.0,52,150,1 bowl
+Punjabi Kadhi Pakora (Restaurant Style),336,28.7,8.0,21.0,4.0,54,200,1 bowl
+Moth Dal (Restaurant Style),164,23.0,8.0,4.5,6.0,47,150,1 bowl
+Horse Gram Dal (Kollu) (Restaurant Style),168,25.3,10.0,3.0,8.0,42,150,1 bowl
+Cholar Dal (Restaurant Style),228,28.7,8.0,9.0,5.0,47,150,1 bowl
+Dal Palak (Restaurant Style),173,20.7,9.0,6.0,7.0,44,150,1 bowl
+Matar Paneer (Restaurant Style),298,17.2,10.0,21.0,5.0,42,200,1 bowl
+Aloo Gobi (Restaurant Style),193,20.7,4.0,10.5,5.0,62,150,1 bowl
+Aloo Jeera (Restaurant Style),212,23.0,3.0,12.0,3.0,67,150,1 bowl
+Aloo Matar (Restaurant Style),202,25.3,5.0,9.0,5.0,62,150,1 bowl
+Bhindi Masala (Restaurant Style),175,13.8,3.0,12.0,4.5,47,150,1 bowl
+Baingan Bharta (Restaurant Style),150,11.5,2.5,10.5,5.0,42,150,1 bowl
+Dal Tadka (Low Fat),126,20.0,7.0,2.0,6.0,43,150,1 bowl
+Dal Fry (Low Fat),131,20.0,7.0,2.6,6.0,43,150,1 bowl
+Dal Makhani (Low Fat),194,25.0,10.0,6.0,8.0,38,200,1 bowl
+Chana Masala (Low Fat),197,30.0,12.0,3.2,10.0,41,200,1 bowl
+Rajma Masala (Low Fat),221,35.0,14.0,2.8,12.0,40,200,1 bowl
+Moong Dal (Low Fat),111,18.0,8.0,0.8,5.0,43,150,1 bowl
+Masoor Dal (Low Fat),117,19.0,8.0,1.0,5.5,43,150,1 bowl
+Urad Dal (Low Fat),127,20.0,9.0,1.2,6.0,43,150,1 bowl
+Lobia Curry (Black-eyed peas) (Low Fat),166,28.0,10.0,1.6,8.0,43,200,1 bowl
+Panchratna Dal (Low Fat),142,22.0,9.0,2.0,7.0,42,150,1 bowl
+Kala Chana Curry (Low Fat),182,28.0,12.0,2.4,10.0,40,200,1 bowl
+Sambar (Low Fat),87,15.0,4.0,1.2,3.0,48,150,1 bowl
+Rasam (Low Fat),45,8.0,1.5,0.8,1.0,48,150,1 bowl
+Gujarati Kadhi (Low Fat),77,12.0,4.0,1.4,1.0,48,150,1 bowl
+Punjabi Kadhi Pakora (Low Fat),182,25.0,8.0,5.6,4.0,50,200,1 bowl
+Moth Dal (Low Fat),123,20.0,8.0,1.2,6.0,43,150,1 bowl
+Horse Gram Dal (Kollu) (Low Fat),135,22.0,10.0,0.8,8.0,38,150,1 bowl
+Cholar Dal (Low Fat),154,25.0,8.0,2.4,5.0,43,150,1 bowl
+Dal Palak (Low Fat),122,18.0,9.0,1.6,7.0,40,150,1 bowl
+Matar Paneer (Low Fat),150,15.0,10.0,5.6,5.0,38,200,1 bowl
+Aloo Gobi (Low Fat),113,18.0,4.0,2.8,5.0,58,150,1 bowl
+Aloo Jeera (Low Fat),121,20.0,3.0,3.2,3.0,63,150,1 bowl
+Aloo Matar (Low Fat),130,22.0,5.0,2.4,5.0,58,150,1 bowl
+Bhindi Masala (Low Fat),89,12.0,3.0,3.2,4.5,43,150,1 bowl
+Baingan Bharta (Low Fat),75,10.0,2.5,2.8,5.0,38,150,1 bowl
+Palak Paneer (Low Fat),138,8.0,12.0,6.4,4.0,33,200,1 bowl
+Paneer Butter Masala (Low Fat),183,12.0,14.0,8.8,2.0,36,200,1 bowl
+Kadai Paneer (Low Fat),161,10.0,14.0,7.2,3.0,36,200,1 bowl
+Shahi Paneer (Low Fat),176,14.0,12.0,8.0,2.0,38,200,1 bowl
+Mix Veg Curry (Low Fat),105,15.0,4.0,3.2,5.0,48,150,1 bowl
+Malai Kofta (Low Fat),198,20.0,8.0,9.6,3.0,53,200,1 bowl
+Navratan Korma (Low Fat),150,18.0,6.0,6.0,4.0,48,200,1 bowl
+Lauki ki Sabzi (Low Fat),52,8.0,1.5,1.6,3.0,38,150,1 bowl
+Tinda Masala (Low Fat),66,10.0,2.0,2.0,3.5,38,150,1 bowl
+Karela Sabzi (Low Fat),68,9.0,2.5,2.4,4.0,33,150,1 bowl
+Capsicum Besan (Low Fat),113,15.0,6.0,3.2,4.0,43,150,1 bowl
+Mushroom Masala (Low Fat),84,8.0,5.0,3.6,3.0,33,150,1 bowl
+Soya Chunk Curry (Low Fat),145,12.0,18.0,2.8,6.0,38,150,1 bowl
+Cabbage Peas Sabzi (Low Fat),72,10.0,3.5,2.0,4.0,43,150,1 bowl
+Gajar Matar (Low Fat),86,14.0,3.0,2.0,4.5,48,150,1 bowl
+Chicken Curry (Low Fat),155,6.0,22.0,4.8,1.0,18,200,1 bowl
+Butter Chicken (Low Fat),207,12.0,20.0,8.8,1.0,33,200,1 bowl
+Kadai Chicken (Low Fat),174,8.0,22.0,6.0,2.0,23,200,1 bowl
+Chicken Tikka Masala (Low Fat),193,10.0,22.0,7.2,2.0,28,200,1 bowl
+Chicken Korma (Low Fat),185,10.0,20.0,7.2,1.5,28,200,1 bowl
+Mutton Curry (Low Fat),174,5.0,24.0,6.4,1.0,18,200,1 bowl
+Mutton Rogan Josh (Low Fat),177,6.0,22.0,7.2,1.0,23,200,1 bowl
+Mutton Keema (Low Fat),174,5.0,26.0,5.6,1.0,18,200,1 bowl
+Fish Curry (Low Fat),136,5.0,20.0,4.0,0.5,18,200,1 bowl
+Fish Tikka Masala (Low Fat),155,8.0,20.0,4.8,1.0,23,200,1 bowl
+Prawn Curry (Low Fat),125,6.0,18.0,3.2,1.0,18,200,1 bowl
+Egg Curry (Low Fat),130,8.0,12.0,5.6,1.5,23,200,1 bowl (2 eggs)
+Egg Bhurji (Low Fat),107,4.0,12.0,4.8,1.0,18,150,1 bowl
+Chicken Chettinad (Low Fat),178,8.0,22.0,6.4,2.5,23,200,1 bowl
+Goan Fish Curry (Low Fat),146,6.0,18.0,5.6,1.0,23,200,1 bowl

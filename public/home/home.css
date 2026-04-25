@@ -113,6 +113,7 @@
             align-items: center;
             justify-content: space-between;
             padding: 16px 0;
+            position: relative;
         }
 
         .logo {
@@ -955,6 +956,33 @@
 
             .mobile-menu-btn {
                 display: block;
+            }
+
+            nav {
+                flex-wrap: wrap;
+                gap: 10px;
+            }
+
+            nav.mobile-menu-open .nav-links {
+                display: flex;
+                width: 100%;
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 12px;
+                padding: 12px 0 6px;
+                border-top: 1px solid rgba(255, 255, 255, 0.12);
+            }
+
+            nav.mobile-menu-open .nav-cta {
+                display: flex;
+                width: 100%;
+                flex-direction: column;
+                gap: 10px;
+                padding-bottom: 6px;
+            }
+
+            nav.mobile-menu-open .nav-cta .btn {
+                width: 100%;
             }
 
             .hero h1 {

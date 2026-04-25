@@ -469,6 +469,15 @@ async function initDatabase() {
         )
     `);
 
+    _wrapper.exec(`
+        CREATE TABLE IF NOT EXISTS ai_chat_history (
+            patient_id INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+            conversation_json TEXT NOT NULL,
+            createdAt TEXT DEFAULT (datetime('now')),
+            updatedAt TEXT DEFAULT (datetime('now'))
+        )
+    `);
+
     // Migration: add delivered_at column if missing
     try {
         _wrapper.exec(`ALTER TABLE messages ADD COLUMN delivered_at TEXT`);
@@ -696,6 +705,7 @@ async function initDatabase() {
     _wrapper.exec(`CREATE INDEX IF NOT EXISTS idx_activity_patient ON activity_logs(patient_id)`);
     _wrapper.exec(`CREATE INDEX IF NOT EXISTS idx_threads_patient ON message_threads(patient_id)`);
     _wrapper.exec(`CREATE INDEX IF NOT EXISTS idx_messages_thread ON messages(thread_id)`);
+    _wrapper.exec(`CREATE INDEX IF NOT EXISTS idx_ai_chat_history_patient ON ai_chat_history(patient_id)`);
     _wrapper.exec(`CREATE INDEX IF NOT EXISTS idx_safety_events_patient ON safety_events(patient_id)`);
     _wrapper.exec(`CREATE INDEX IF NOT EXISTS idx_goals_patient ON goals(patient_id)`);
     _wrapper.exec(`CREATE INDEX IF NOT EXISTS idx_exports_patient ON exports(patient_id)`);

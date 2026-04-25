@@ -63,9 +63,9 @@ const REPORT_TEMPLATE_RULES = [
 // ── 60+ Biomarker extraction patterns ───────────────────────────────
 const BIOMARKER_PATTERNS = {
     // Patient info
-    patientAge: [/(?:age|a\/g)\s*[:\-|]?\s*(\d{1,3})\s*(?:yrs?|years?|yr)?/i, /(\d{1,3})\s*(?:yrs?|years?)\s*[\/\\]/],
+    patientAge: [/(?:\bage\b|a\/g)\s*[:\-|]?\s*(\d{1,3})\s*(?:yrs?|years?|yr)?/i, /(\d{1,3})\s*(?:yrs?|years?)\s*[\/\\]/],
     patientSex: [/(?:sex|gender)\s*[:\-|]?\s*(male|female|m|f)\b/i, /\/(male|female)\b/i],
-    referringDoctor: [/(?:ref(?:erred)?\.?\s*(?:by|dr\.?)?|doctor|consulting\s*(?:dr\.?|physician))\s*[:\-|]?\s*([A-Za-z\s.]{3,50})/i],
+    referringDoctor: [/(?:ref(?:erred)?\s*by|ref\.?\s*dr\.?|doctor|consulting\s*(?:dr\.?|physician))\s*[:\-|]?\s*([A-Za-z][A-Za-z\s.]{2,50})/i],
     sampleId: [/(?:sample|barcode|accession|order|lab|reg(?:istration)?)\s*(?:id|no\.?|number|#)\s*[:\-|]?\s*([A-Z0-9\-]{4,30})/i],
     // CBC Panel
     haemoglobin: [/(?:h[ae]moglobin|hgb|hb)\s*[:\-|]?\s*([\d.]+)\s*(?:g\/?d?l)?/i],

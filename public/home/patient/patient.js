@@ -1,5 +1,17 @@
 // Logout logic
 function logoutPatient() {
+    try {
+        var storedUser = sessionStorage.getItem('user') || localStorage.getItem('user');
+        if (storedUser) {
+            var parsedUser = JSON.parse(storedUser);
+            var userId = parsedUser && (parsedUser._id || parsedUser.id || parsedUser.email);
+            if (userId) {
+                localStorage.removeItem('glucocare.ai.history.patient.' + String(userId));
+            }
+        }
+    } catch (_err) {
+    }
+
     // Remove any session tokens (example: localStorage/sessionStorage)
     localStorage.removeItem('token');
     localStorage.removeItem('user');
@@ -34,6 +46,8 @@ var state = {
     exports: [],
     shares: [],
     aiConversation: [],
+    aiChats: [],
+    activeAiChatId: null,
     aiRequestPending: false,
     reportSubmitPending: false,
     aiAttachedFiles: [],
@@ -218,6 +232,12 @@ var chatSocket = null;
 var AI_TYPING_BASE_DELAY_MS = 16;
 var AI_TYPING_PUNCTUATION_DELAY_MS = 55;
 var AI_TYPING_SPACE_DELAY_MS = 7;
+var AI_HISTORY_STORAGE_KEY_PREFIX = 'glucocare.ai.history.patient.';
+var AI_HISTORY_MAX_MESSAGES = 80;
+var AI_CONCISE_HINT_REGEX = /\b(summar(y|ize|ise)|brief|concise|short|in short|tldr)\b/i;
+var aiHistorySaveTimer = null;
+var aiHistoryLastSavedSignature = '';
+var aiHistoryPanelOpen = false;
 var dietEstimateDebounceTimer = null;
 var dietEstimateRequestSeq = 0;
 
@@ -367,6 +387,442 @@ function queueDietTextEstimate() {
             // Silent failure: user can still submit manually.
         });
     }, 320);
+}
+
+function getAiHistoryStorageKey() {
+    var user = state.currentUser || (typeof API !== 'undefined' && API.getUser ? API.getUser() : null);
+
+    if (!user) {
+        try {
+            var cachedUser = sessionStorage.getItem('user') || localStorage.getItem('user');
+            user = cachedUser ? JSON.parse(cachedUser) : null;
+        } catch (_err) {
+            user = null;
+        }
+    }
+
+    var userId = user && (user._id || user.id || user.email);
+    return userId ? (AI_HISTORY_STORAGE_KEY_PREFIX + String(userId)) : null;
+}
+
+function normalizeAiHistoryAttachment(raw) {
+    if (!raw || typeof raw !== 'object') return null;
+
+    var name = String(raw.name || '').trim();
+    if (!name) return null;
+
+    var size = Number(raw.size || 0);
+    if (!Number.isFinite(size) || size < 0) size = 0;
+
+    return {
+        name: name,
+        size: size,
+        isImage: Boolean(raw.isImage),
+        isPdf: Boolean(raw.isPdf),
+        thumbUrl: null,
+    };
+}
+
+function normalizeAiHistoryEntry(raw) {
+    if (!raw || typeof raw !== 'object') return null;
+
+    var role = String(raw.role || '').trim();
+    if (role !== 'assistant' && role !== 'patient') return null;
+
+    var text = String(raw.text || '').trim();
+    var attachments = Array.isArray(raw.attachments)
+        ? raw.attachments.map(normalizeAiHistoryAttachment).filter(Boolean)
+        : [];
+
+    if (!text && attachments.length === 0) return null;
+
+    var suggestions = Array.isArray(raw.suggestions)
+        ? raw.suggestions.map(function(item) {
+            return String(item || '').trim();
+        }).filter(Boolean).slice(0, 3)
+        : null;
+
+    var entry = {
+        role: role,
+        text: text,
+        attachments: attachments,
+        loading: false,
+        typing: false,
+    };
+
+    var meta = String(raw.meta || '').trim();
+    if (meta) entry.meta = meta;
+
+    if (raw.debug && typeof raw.debug === 'object' && raw.debug.engine) {
+        entry.debug = {
+            engine: String(raw.debug.engine),
+            provider: raw.debug.provider ? String(raw.debug.provider) : null,
+        };
+    }
+
+    if (suggestions && suggestions.length > 0) {
+        entry.suggestions = suggestions;
+    }
+
+    return entry;
+}
+
+function sanitizeAiConversationEntries(entries) {
+    if (!Array.isArray(entries)) return [];
+
+    return entries
+        .filter(function(item) {
+            return item && !item.loading;
+        })
+        .map(normalizeAiHistoryEntry)
+        .filter(Boolean)
+        .slice(-AI_HISTORY_MAX_MESSAGES);
+}
+
+function createAiChatId() {
+    return 'chat_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8);
+}
+
+function sortAiChatsByUpdatedAt() {
+    state.aiChats.sort(function(a, b) {
+        var aTs = Date.parse(a && a.updatedAt ? a.updatedAt : '') || 0;
+        var bTs = Date.parse(b && b.updatedAt ? b.updatedAt : '') || 0;
+        return bTs - aTs;
+    });
+}
+
+function deriveAiChatTitleFromMessages(messages) {
+    var list = Array.isArray(messages) ? messages : [];
+
+    for (var i = 0; i < list.length; i++) {
+        if (list[i] && list[i].role === 'patient' && String(list[i].text || '').trim()) {
+            return getAiHistoryPreviewText(list[i].text);
+        }
+    }
+
+    for (var j = 0; j < list.length; j++) {
+        if (list[j] && String(list[j].text || '').trim()) {
+            return getAiHistoryPreviewText(list[j].text);
+        }
+    }
+
+    return 'New chat';
+}
+
+function normalizeAiHistoryChat(raw) {
+    if (!raw || typeof raw !== 'object') return null;
+
+    var id = String(raw.id || '').trim() || createAiChatId();
+    var messages = sanitizeAiConversationEntries(raw.messages || raw.conversation || []);
+    var updatedAt = String(raw.updatedAt || '').trim() || new Date().toISOString();
+    var title = String(raw.title || '').replace(/\s+/g, ' ').trim();
+    if (!title) {
+        title = deriveAiChatTitleFromMessages(messages);
+    }
+
+    return {
+        id: id,
+        title: title,
+        updatedAt: updatedAt,
+        messages: messages,
+    };
+}
+
+function buildHistoryPayloadFromLegacyConversation(conversation) {
+    var messages = sanitizeAiConversationEntries(conversation || []);
+    if (messages.length === 0) {
+        return { chats: [], activeChatId: null };
+    }
+
+    var chatId = 'legacy-main-chat';
+    return {
+        chats: [{
+            id: chatId,
+            title: deriveAiChatTitleFromMessages(messages),
+            updatedAt: new Date().toISOString(),
+            messages: messages,
+        }],
+        activeChatId: chatId,
+    };
+}
+
+function sanitizeAiHistoryPayload(raw) {
+    if (!raw || typeof raw !== 'object') {
+        return { chats: [], activeChatId: null };
+    }
+
+    var chats = Array.isArray(raw.chats)
+        ? raw.chats.map(normalizeAiHistoryChat).filter(Boolean).slice(0, 40)
+        : [];
+
+    var activeChatId = String(raw.activeChatId || '').trim() || null;
+    if (chats.length > 0 && !chats.some(function(chat) { return chat.id === activeChatId; })) {
+        activeChatId = chats[0].id;
+    }
+
+    return {
+        chats: chats,
+        activeChatId: activeChatId,
+    };
+}
+
+function applyAiHistoryPayload(payload) {
+    var normalized = sanitizeAiHistoryPayload(payload);
+
+    state.aiChats = normalized.chats;
+    state.activeAiChatId = normalized.activeChatId;
+
+    if (!Array.isArray(state.aiChats) || state.aiChats.length === 0) {
+        var freshId = createAiChatId();
+        state.aiChats = [{
+            id: freshId,
+            title: 'New chat',
+            updatedAt: new Date().toISOString(),
+            messages: [],
+        }];
+        state.activeAiChatId = freshId;
+    }
+
+    sortAiChatsByUpdatedAt();
+
+    var activeChat = state.aiChats.find(function(chat) {
+        return chat.id === state.activeAiChatId;
+    });
+
+    if (!activeChat) {
+        activeChat = state.aiChats[0];
+        state.activeAiChatId = activeChat.id;
+    }
+
+    state.aiConversation = sanitizeAiConversationEntries(activeChat.messages || []);
+}
+
+function syncActiveAiChatFromConversation() {
+    if (!Array.isArray(state.aiChats) || state.aiChats.length === 0) {
+        applyAiHistoryPayload({ chats: [], activeChatId: null });
+    }
+
+    var activeChat = state.aiChats.find(function(chat) {
+        return chat.id === state.activeAiChatId;
+    });
+
+    if (!activeChat) {
+        activeChat = state.aiChats[0];
+        state.activeAiChatId = activeChat.id;
+    }
+
+    if (!activeChat) return;
+
+    var sanitized = sanitizeAiConversationEntries(state.aiConversation);
+    activeChat.messages = sanitized;
+    activeChat.title = deriveAiChatTitleFromMessages(sanitized);
+    activeChat.updatedAt = new Date().toISOString();
+
+    sortAiChatsByUpdatedAt();
+}
+
+async function loadAiConversationHistory() {
+    try {
+        var remote = await API.get('/api/patient/ai/history', {
+            timeoutMs: 10000,
+        });
+        if (remote.ok && remote.data) {
+            if (remote.data.history && typeof remote.data.history === 'object') {
+                applyAiHistoryPayload(remote.data.history);
+            } else if (Array.isArray(remote.data.conversation)) {
+                applyAiHistoryPayload(buildHistoryPayloadFromLegacyConversation(remote.data.conversation));
+            }
+
+            var remoteKey = getAiHistoryStorageKey();
+            if (remoteKey) {
+                var remotePayload = {
+                    chats: state.aiChats,
+                    activeChatId: state.activeAiChatId,
+                };
+                aiHistoryLastSavedSignature = JSON.stringify(remotePayload);
+                localStorage.setItem(remoteKey, aiHistoryLastSavedSignature);
+            }
+            return;
+        }
+    } catch (_err) {
+    }
+
+    var key = getAiHistoryStorageKey();
+    if (!key) {
+        applyAiHistoryPayload({ chats: [], activeChatId: null });
+        return;
+    }
+
+    try {
+        var raw = localStorage.getItem(key);
+        if (!raw) {
+            applyAiHistoryPayload({ chats: [], activeChatId: null });
+            return;
+        }
+
+        var parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) {
+            applyAiHistoryPayload(buildHistoryPayloadFromLegacyConversation(parsed));
+        } else {
+            applyAiHistoryPayload(parsed);
+        }
+    } catch (_err) {
+        applyAiHistoryPayload({ chats: [], activeChatId: null });
+    }
+}
+
+async function persistAiConversationHistory() {
+    syncActiveAiChatFromConversation();
+
+    var payload = {
+        chats: state.aiChats,
+        activeChatId: state.activeAiChatId,
+    };
+    var signature = JSON.stringify(payload);
+    if (signature === aiHistoryLastSavedSignature) return;
+
+    var key = getAiHistoryStorageKey();
+    if (key) {
+        try {
+            localStorage.setItem(key, signature);
+        } catch (_err) {
+        }
+    }
+
+    try {
+        var remoteResult = await API.put('/api/patient/ai/history', {
+            history: payload,
+        }, {
+            timeoutMs: 10000,
+        });
+
+        if (remoteResult.ok) {
+            aiHistoryLastSavedSignature = signature;
+        }
+    } catch (_err) {
+    }
+}
+
+function scheduleAiConversationPersist() {
+    if (aiHistorySaveTimer) clearTimeout(aiHistorySaveTimer);
+    aiHistorySaveTimer = setTimeout(function() {
+        persistAiConversationHistory().catch(function() {
+        });
+    }, 300);
+}
+
+function shouldRequestConciseAiAnswer(question) {
+    return AI_CONCISE_HINT_REGEX.test(String(question || ''));
+}
+
+function getAiHistoryPreviewText(value) {
+    var text = String(value || '').replace(/\s+/g, ' ').trim();
+    if (!text) return 'New chat';
+    return text.length > 64 ? (text.slice(0, 64) + '...') : text;
+}
+
+function sanitizeAiQuestionForRouting(question) {
+    var raw = String(question || '').trim();
+    if (!raw) return '';
+
+    var stripped = raw.replace(/^(?:h+i+|he+l+o+|hey+|yo+|hola+|namaste|good\s*(?:morning|afternoon|evening))\b[\s,.:;!?-]*/i, '');
+    var hasSubstance = /\b(what|why|how|when|which|blood|sugar|glucose|diabetes|medicine|diet|food|symptom|measure|check|test|reading)\b/i.test(stripped);
+
+    if (stripped && hasSubstance) {
+        return stripped;
+    }
+    return raw;
+}
+
+function renderAiHistoryPanel() {
+    var panel = document.getElementById('ai-history-panel');
+    var list = document.getElementById('ai-history-list');
+    var toggle = document.getElementById('ai-history-toggle');
+    if (!panel || !list) return;
+
+    var chats = Array.isArray(state.aiChats) ? state.aiChats : [];
+
+    if (chats.length === 0) {
+        list.innerHTML = '<div class="ai-history-empty">No chat history yet.</div>';
+    } else {
+        list.innerHTML = chats.map(function(chat) {
+            var activeClass = chat.id === state.activeAiChatId ? ' active' : '';
+            return [
+                '<button class="ai-history-item' + activeClass + '" type="button" onclick="openAiChatFromHistory(\'' + escapeHtml(chat.id) + '\')">',
+                '<div class="ai-history-item-text" title="' + escapeHtml(chat.title || 'New chat') + '">' + escapeHtml(chat.title || 'New chat') + '</div>',
+                '</button>',
+            ].join('');
+        }).join('');
+    }
+
+    panel.style.display = 'flex';
+    panel.setAttribute('aria-hidden', 'false');
+
+    if (toggle) {
+        toggle.classList.add('active');
+        toggle.setAttribute('aria-expanded', 'true');
+    }
+}
+
+function openAiChatFromHistory(chatId) {
+    var id = String(chatId || '').trim();
+    if (!id) return;
+
+    var selected = state.aiChats.find(function(chat) {
+        return chat.id === id;
+    });
+    if (!selected) return;
+
+    state.activeAiChatId = selected.id;
+    state.aiConversation = sanitizeAiConversationEntries(selected.messages || []);
+    renderAiConversation();
+}
+
+function toggleAiHistoryPanel(force) {
+    if (typeof force === 'boolean') {
+        aiHistoryPanelOpen = force;
+    } else {
+        aiHistoryPanelOpen = !aiHistoryPanelOpen;
+    }
+    renderAiHistoryPanel();
+}
+
+async function startNewAiChat() {
+    if (state.aiRequestPending) return;
+
+    stopAiTypingAnimation();
+
+    syncActiveAiChatFromConversation();
+
+    var freshId = createAiChatId();
+    state.aiChats.unshift({
+        id: freshId,
+        title: 'New chat',
+        updatedAt: new Date().toISOString(),
+        messages: [],
+    });
+    state.activeAiChatId = freshId;
+    state.aiConversation = [];
+    state.aiAttachedFiles = [];
+
+    sortAiChatsByUpdatedAt();
+    renderAiFilePreview();
+    renderAiConversation();
+    await persistAiConversationHistory();
+}
+
+function makeConciseAssistantText(value) {
+    var source = String(value || '').replace(/\s+/g, ' ').trim();
+    if (!source) return '';
+
+    var sentenceChunks = source.match(/[^.!?]+[.!?]?/g) || [source];
+    var concise = sentenceChunks.slice(0, 2).join(' ').trim();
+
+    if (concise.length > 280) {
+        concise = concise.slice(0, 280).replace(/[\s,;:.!?-]+$/, '') + '...';
+    }
+
+    return concise;
 }
 
 // ── AI File Upload Handling ──────────────────────────────────────────
@@ -1069,10 +1525,57 @@ function initNavigation() {
         item.addEventListener('click', function() {
             var section = this.getAttribute('data-section');
             updateNav(section);
+            closeMobileSidebar();
             if (section !== 'ai-assistant') {
                 closeAiAssistantPanel();
             }
         });
+    });
+}
+
+function closeMobileSidebar() {
+    var sidebar = document.getElementById('patient-sidebar');
+    var overlay = document.getElementById('sidebar-overlay');
+    var toggle = document.getElementById('patient-menu-toggle');
+    if (sidebar) sidebar.classList.remove('open');
+    if (overlay) overlay.classList.remove('show');
+    if (toggle) toggle.setAttribute('aria-expanded', 'false');
+    document.body.classList.remove('sidebar-open');
+}
+
+function toggleMobileSidebar() {
+    var sidebar = document.getElementById('patient-sidebar');
+    var overlay = document.getElementById('sidebar-overlay');
+    var toggle = document.getElementById('patient-menu-toggle');
+    if (!sidebar || !overlay) return;
+
+    var willOpen = !sidebar.classList.contains('open');
+    sidebar.classList.toggle('open', willOpen);
+    overlay.classList.toggle('show', willOpen);
+    document.body.classList.toggle('sidebar-open', willOpen);
+    if (toggle) toggle.setAttribute('aria-expanded', willOpen ? 'true' : 'false');
+}
+
+function initMobileSidebar() {
+    var toggle = document.getElementById('patient-menu-toggle');
+    var overlay = document.getElementById('sidebar-overlay');
+
+    if (toggle) {
+        toggle.addEventListener('click', function() {
+            toggleMobileSidebar();
+        });
+    }
+
+    if (overlay) {
+        overlay.addEventListener('click', function() {
+            closeMobileSidebar();
+        });
+    }
+
+    window.addEventListener('resize', function() {
+        if (window.innerWidth > 992) {
+            closeMobileSidebar();
+        }
     });
 }
 
@@ -2169,16 +2672,90 @@ function renderTodayMealSnapshot(entries) {
     });
 }
 
+function filterDietEntriesBySelectedDate(entries) {
+    var selectedDateEl = document.getElementById('diet-track-date');
+    var selectedDate = selectedDateEl ? String(selectedDateEl.value || '').trim() : '';
+    if (!selectedDate) return Array.isArray(entries) ? entries.slice() : [];
+
+    return (Array.isArray(entries) ? entries : []).filter(function(item) {
+        var rawLoggedAt = item.loggedAt || item.logged_at;
+        var loggedDate = new Date(rawLoggedAt || '');
+        if (Number.isNaN(loggedDate.getTime())) return false;
+        return getIstDateKey(loggedDate) === selectedDate;
+    });
+}
+
+function renderDietDatewiseTracking(entries) {
+    var container = document.getElementById('diet-datewise-list');
+    if (!container) return;
+
+    var filtered = filterDietEntriesBySelectedDate(entries);
+    if (!Array.isArray(filtered) || filtered.length === 0) {
+        var selectedDateEl = document.getElementById('diet-track-date');
+        var selectedDate = selectedDateEl ? String(selectedDateEl.value || '').trim() : '';
+        container.innerHTML = selectedDate
+            ? '<div class="empty-state">No intake logs for selected date.</div>'
+            : '<div class="empty-state">No diet intake logs yet.</div>';
+        return;
+    }
+
+    var grouped = {};
+    filtered.forEach(function(item) {
+        var rawLoggedAt = item.loggedAt || item.logged_at;
+        var loggedDate = new Date(rawLoggedAt || '');
+        if (Number.isNaN(loggedDate.getTime())) return;
+        var key = getIstDateKey(loggedDate);
+        if (!grouped[key]) grouped[key] = [];
+        grouped[key].push(item);
+    });
+
+    var keys = Object.keys(grouped).sort().reverse();
+    container.innerHTML = keys.map(function(dateKey) {
+        var dayItems = grouped[dateKey].slice().sort(function(a, b) {
+            var aTime = Date.parse(a.loggedAt || a.logged_at || '') || 0;
+            var bTime = Date.parse(b.loggedAt || b.logged_at || '') || 0;
+            return bTime - aTime;
+        });
+
+        var headingDate = new Date(dateKey + 'T00:00:00');
+        var dateLabel = Number.isNaN(headingDate.getTime())
+            ? dateKey
+            : formatIstDate(headingDate, { day: '2-digit', month: 'short', year: 'numeric' });
+
+        var rows = dayItems.map(function(item) {
+            var loggedAt = new Date((item.loggedAt || item.logged_at || ''));
+            var timeText = Number.isNaN(loggedAt.getTime())
+                ? '--'
+                : formatIstTime(loggedAt, { hour: '2-digit', minute: '2-digit' });
+            var meal = formatMealSlotLabel(item.mealSlot);
+            var intake = item.intakeText || '--';
+            return '<div class="stack-item-meta">' + escapeHtml(timeText + ' - ' + meal + ': ' + intake) + '</div>';
+        }).join('');
+
+        return [
+            '<div class="stack-item">',
+            '<div class="stack-item-header">',
+            '<div class="stack-item-title">' + escapeHtml(dateLabel) + '</div>',
+            '<div class="stack-item-meta">' + escapeHtml(String(dayItems.length) + ' meal(s)') + '</div>',
+            '</div>',
+            rows,
+            '</div>',
+        ].join('');
+    }).join('');
+}
+
 function renderDietIntakeTable(entries) {
     var body = document.getElementById('diet-intake-table-body');
     if (!body) return;
 
-    if (!Array.isArray(entries) || entries.length === 0) {
+    var filteredEntries = filterDietEntriesBySelectedDate(entries);
+
+    if (!Array.isArray(filteredEntries) || filteredEntries.length === 0) {
         body.innerHTML = '<tr><td colspan="5" style="text-align:center; color: var(--gray-500);">No diet intake logs yet.</td></tr>';
         return;
     }
 
-    body.innerHTML = entries.slice(0, 20).map(function(item) {
+    body.innerHTML = filteredEntries.slice(0, 20).map(function(item) {
         var loggedAt = item.loggedAt ? formatDate(item.loggedAt) + ' ' + formatIstTime(new Date(item.loggedAt), { hour: '2-digit', minute: '2-digit' }) : '--';
         var sugar = Number(item.bloodSugarMgDl);
         var sugarText = Number.isFinite(sugar) ? (sugar + ' mg/dL') : '--';
@@ -2256,6 +2833,13 @@ function renderDietReport(report) {
 
     if (metrics[2]) metrics[2].textContent = String(highEvents);
     if (progressBars[2]) progressBars[2].style.width = highPct + '%';
+}
+
+function clearDietTrackingDate() {
+    var dateEl = document.getElementById('diet-track-date');
+    if (dateEl) dateEl.value = '';
+    renderDietDatewiseTracking(state.dietIntakes || []);
+    renderDietIntakeTable(state.dietIntakes || []);
 }
 
 function boolFromSelectValue(value) {
@@ -2676,7 +3260,7 @@ function renderAiConversation() {
         if (item.loading) {
             var loadingText = escapeHtml(item.loadingText || 'Thinking...');
             return [
-                '<div class="message-bubble ' + roleClass + ' is-loading' + noAnimate + '">',
+                '<div class="message-bubble ' + roleClass + ' is-loading' + noAnimate + '" data-ai-msg-index="' + index + '">',
                 '<div class="ai-loading-dots" aria-hidden="true"><span></span><span></span><span></span></div>',
                 '<div class="message-bubble-meta">' + loadingText + '</div>',
                 '</div>',
@@ -2716,11 +3300,13 @@ function renderAiConversation() {
             }).join('') + '</div>';
         }
         // Use a span container for the AI text to allow efficient direct updates.
-        return '<div class="message-bubble ' + roleClass + typingClass + noAnimate + '">' + attachmentsHtml + '<span class="bubble-txt">' + safeText + '</span>' + meta + debugMeta + suggestions + '</div>';
+        return '<div class="message-bubble ' + roleClass + typingClass + noAnimate + '" data-ai-msg-index="' + index + '">' + attachmentsHtml + '<span class="bubble-txt">' + safeText + '</span>' + meta + debugMeta + suggestions + '</div>';
     }).join('');
 
     container.innerHTML = html;
     container.scrollTop = container.scrollHeight;
+    renderAiHistoryPanel();
+    scheduleAiConversationPersist();
 }
 
 function setAiComposerBusy(isBusy) {
@@ -2823,7 +3409,9 @@ async function askAiAssistant() {
     if (state.aiRequestPending) return;
 
     var question = String(input.value || '').trim();
+    var routingQuestion = sanitizeAiQuestionForRouting(question);
     var hasFiles = state.aiAttachedFiles.length > 0;
+    var conciseRequested = shouldRequestConciseAiAnswer(routingQuestion || question);
 
     if (!question && !hasFiles) {
         alert('Please enter a question or attach a file.');
@@ -2902,12 +3490,20 @@ async function askAiAssistant() {
                 }
             }
 
-            var contextQuestion = question || 'Please analyze the attached document(s) and provide relevant health insights.';
+            var contextQuestion = routingQuestion || question || 'Please analyze the attached document(s) and provide relevant health insights.';
             var fullQuestion = contextQuestion + '\n\n[Attached Document Content]:\n' + extractedTexts.join('\n\n');
 
-            result = await API.post('/api/patient/ai/ask', { question: fullQuestion }, { timeoutMs: 30000 });
+            result = await API.post('/api/patient/ai/ask', {
+                question: fullQuestion,
+                concise: conciseRequested,
+                responseStyle: conciseRequested ? 'concise' : 'default',
+            }, { timeoutMs: 30000 });
         } else {
-            result = await API.post('/api/patient/ai/ask', { question: question }, { timeoutMs: 30000 });
+            result = await API.post('/api/patient/ai/ask', {
+                question: routingQuestion || question,
+                concise: conciseRequested,
+                responseStyle: conciseRequested ? 'concise' : 'default',
+            }, { timeoutMs: 30000 });
         }
     } catch (e) {
         result = { ok: false, data: { error: (e && e.message) || 'AI request failed. Please try again.' } };
@@ -2934,6 +3530,9 @@ async function askAiAssistant() {
     loadingEntry.suggestions = result.data && Array.isArray(result.data.suggestions) ? result.data.suggestions : null;
 
     var finalAnswer = result.data && result.data.answer ? result.data.answer : 'No answer available.';
+    if (conciseRequested) {
+        finalAnswer = makeConciseAssistantText(finalAnswer);
+    }
     animateAssistantMessage(loadingEntry, finalAnswer, function() {
         if (result.data && result.data.disclaimer) {
             state.aiConversation.push({ role: 'assistant', text: result.data.disclaimer });
@@ -3030,6 +3629,8 @@ function initAiAssistantPanel() {
             }
         });
     }
+
+    renderAiHistoryPanel();
 }
 
 async function openDoctorChat(doctorId) {
@@ -3970,12 +4571,19 @@ async function loadNutrition() {
     });
 
     renderTodayMealSnapshot(todaysIntakes);
+    renderDietDatewiseTracking(intakes);
     renderDietIntakeTable(intakes);
     renderDietReport(dietReport);
 
     var goalMetrics = document.querySelectorAll('#nutritionist .metrics-grid .metric-card .metric-value');
+    var goalUnits = document.querySelectorAll('#nutritionist .metrics-grid .metric-card .metric-unit');
+    var goalProgress = document.querySelectorAll('#nutritionist .metrics-grid .metric-card .metric-progress-bar');
     if (goalMetrics[0]) goalMetrics[0].textContent = Number(totalCalories.toFixed(0));
     if (goalMetrics[1]) goalMetrics[1].textContent = Number(totalCarbs.toFixed(0)) + 'g';
+    if (goalUnits[0]) goalUnits[0].textContent = 'Logged today';
+    if (goalUnits[1]) goalUnits[1].textContent = 'Logged today';
+    if (goalProgress[0]) goalProgress[0].style.width = '0%';
+    if (goalProgress[1]) goalProgress[1].style.width = '0%';
     if (goalMetrics[2]) {
         var highEvents = dietReport && dietReport.summary ? Number(dietReport.summary.highSugarEvents || 0) : 0;
         goalMetrics[2].textContent = String(highEvents);
@@ -4117,6 +4725,14 @@ function initInteractions() {
     var dietIntakeText = document.getElementById('diet-intake-text');
     if (dietIntakeText) {
         dietIntakeText.addEventListener('input', queueDietTextEstimate);
+    }
+
+    var dietTrackDate = document.getElementById('diet-track-date');
+    if (dietTrackDate) {
+        dietTrackDate.addEventListener('change', function() {
+            renderDietDatewiseTracking(state.dietIntakes || []);
+            renderDietIntakeTable(state.dietIntakes || []);
+        });
     }
 
     var dietCarbs = document.getElementById('diet-carbs');
@@ -4279,6 +4895,7 @@ async function bootstrap() {
     if (!authorized) return;
 
     initNavigation();
+    initMobileSidebar();
     initModals();
     initAiAssistantPanel();
     initCharts();
@@ -4291,6 +4908,8 @@ async function bootstrap() {
         populateProfileView(localUser);
         populateProfileModal(localUser);
     }
+
+    await loadAiConversationHistory();
 
     try {
         renderAiConversation();
@@ -4349,9 +4968,13 @@ window.askAiSuggestion = askAiSuggestion;
 window.askAiDietReport = askAiDietReport;
 window.openAiAssistantPanel = openAiAssistantPanel;
 window.closeAiAssistantPanel = closeAiAssistantPanel;
+window.toggleAiHistoryPanel = toggleAiHistoryPanel;
+window.openAiChatFromHistory = openAiChatFromHistory;
+window.startNewAiChat = startNewAiChat;
 window.handleAiFileSelect = handleAiFileSelect;
 window.removeAiFile = removeAiFile;
 window.autoResizeAiInput = autoResizeAiInput;
+window.clearDietTrackingDate = clearDietTrackingDate;
 window.openNotificationThread = openNotificationThread;
 
 bootstrap();

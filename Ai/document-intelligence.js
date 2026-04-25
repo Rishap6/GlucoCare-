@@ -401,6 +401,153 @@ function findAll(regex, text, mapFn) {
     return out;
 }
 
+function cleanPatientName(value) {
+    var cleaned = String(value || '')
+        .replace(/\s+/g, ' ')
+        .trim();
+    if (!cleaned) return null;
+
+    cleaned = cleaned
+        .replace(/\b(sample\s*collect(?:ed)?|sample\s*reg(?:istered|istred)|sample\s*report(?:ed)?|barcode|test\s*asked|ref\/?by|id\s*[- ]?pc)\b[\s\S]*$/i, '')
+        .replace(/\(\s*\d{1,3}\s*\/\s*[mf]\s*(?:\/\s*[a-z]{1,3})?\s*\)/i, '')
+        .replace(/[|,;:~\-]+$/g, '')
+        .replace(/\s{2,}/g, ' ')
+        .trim();
+
+    if (!cleaned) return null;
+    if (/^(?:name|patient|sample|test)$/i.test(cleaned)) return null;
+    if (cleaned.length > 80) cleaned = cleaned.slice(0, 80).trim();
+    return cleaned || null;
+}
+
+function extractPatientDemographicsFromNameLine(text) {
+    var out = { patientAge: null, patientSex: null };
+    var lineMatch = String(text || '').match(/(?:patient\s*name|name)\s*[:\-]\s*([^\n]{2,140})/i);
+    if (!lineMatch || !lineMatch[1]) return out;
+
+    var line = lineMatch[1];
+    var match = line.match(/\(\s*(\d{1,3})\s*\/\s*([mf])(?:\s*\/\s*[a-z]{1,3})?\s*\)/i)
+        || line.match(/\b(\d{1,3})\s*\/\s*([mf])\b/i);
+
+    if (!match) return out;
+
+    var age = Number(match[1]);
+    if (Number.isFinite(age) && age >= 0 && age <= 120) {
+        out.patientAge = Math.round(age);
+    }
+
+    var sexToken = String(match[2] || '').toLowerCase();
+    if (sexToken === 'm') out.patientSex = 'male';
+    if (sexToken === 'f') out.patientSex = 'female';
+
+    return out;
+}
+
+function extractReportLifecycleDates(text) {
+    var reportText = String(text || '');
+    var patterns = {
+        sampleCollectedOn: /sample\s*collect(?:ed)?\s*on\s*[~:\-\s]*\s*(\d{1,2}\s+[a-z]{3,9}\s+\d{2,4}(?:\s+\d{1,2}:\d{2}\s*(?:am|pm))?)/i,
+        sampleRegisteredOn: /sample\s*reg(?:istered|istred)\s*on\s*[~:\-\s]*\s*(\d{1,2}\s+[a-z]{3,9}\s+\d{2,4}(?:\s+\d{1,2}:\d{2}\s*(?:am|pm))?)/i,
+        sampleReportedOn: /sample\s*report(?:ed)?\s*on\s*[~:\-\s]*\s*(\d{1,2}\s+[a-z]{3,9}\s+\d{2,4}(?:\s+\d{1,2}:\d{2}\s*(?:am|pm))?)/i,
+    };
+
+    var out = {
+        sampleCollectedOn: null,
+        sampleRegisteredOn: null,
+        sampleReportedOn: null,
+    };
+
+    Object.keys(patterns).forEach(function(key) {
+        var match = reportText.match(patterns[key]);
+        if (match && match[1]) {
+            out[key] = normalizeWhitespace(match[1]);
+        }
+    });
+
+    return out;
+}
+
+function normalizeSexToken(value) {
+    var token = String(value || '').trim().toLowerCase();
+    if (token === 'm' || token === 'male') return 'male';
+    if (token === 'f' || token === 'female') return 'female';
+    return null;
+}
+
+function sanitizeReferringDoctor(value) {
+    var cleaned = String(value || '')
+        .replace(/\s+/g, ' ')
+        .trim()
+        .replace(/[|,;:~\-]+$/g, '')
+        .replace(/(?:m\.?d\.?|dm|mbbs|dnb)\s*$/i, '')
+        .trim();
+    if (!cleaned) return null;
+    if (/\b(reference\s*range|normal\s*value|borderline\s*control|euglycemic\s*control|impaired\s*control|diabetic\s*control|poor\s*control)\b/i.test(cleaned)) {
+        return null;
+    }
+    if (cleaned.length < 3) return null;
+    if (cleaned.length > 60) cleaned = cleaned.slice(0, 60).trim();
+    return cleaned;
+}
+
+function extractDoctorName(text) {
+    var matches = findAll(/\bdr\.?\s*([a-z][a-z .'-]{2,50})/gi, text, function(m) { return m[1]; });
+    var normalized = matches
+        .map(function(item) {
+            return String(item || '')
+                .replace(/\b(?:m\.?d\.?|dm|mbbs|dnb)\b/gi, '')
+                .replace(/(?:m\.?d\.?|dm|mbbs|dnb)\s*$/i, '')
+                .replace(/\s{2,}/g, ' ')
+                .trim();
+        })
+        .filter(function(item) {
+            return item && !/\b(reference|range|technology|control)\b/i.test(item);
+        });
+
+    return normalized.length ? normalized[0] : null;
+}
+
+function sanitizeBiomarkers(biomarkers, text, demographics) {
+    var out = Object.assign({}, biomarkers || {});
+
+    var age = Number(out.patientAge);
+    if (!Number.isFinite(age) || age < 0 || age > 120) {
+        out.patientAge = null;
+    } else {
+        out.patientAge = Math.round(age);
+    }
+
+    out.patientSex = normalizeSexToken(out.patientSex);
+    out.referringDoctor = sanitizeReferringDoctor(out.referringDoctor);
+
+    if (demographics && Number.isFinite(Number(demographics.patientAge))) {
+        out.patientAge = Number(demographics.patientAge);
+    }
+    if (demographics && demographics.patientSex) {
+        out.patientSex = demographics.patientSex;
+    }
+    if (!out.referringDoctor) {
+        out.referringDoctor = extractDoctorName(text);
+    }
+
+    return out;
+}
+
+function toDisplayDateOnly(value) {
+    var dates = extractDates(String(value || ''));
+    return dates.length ? dates[0] : null;
+}
+
+function pickPrimaryReportDate(dateHits, lifecycleDates) {
+    var reported = toDisplayDateOnly(lifecycleDates && lifecycleDates.sampleReportedOn);
+    if (reported) return reported;
+
+    var collected = toDisplayDateOnly(lifecycleDates && lifecycleDates.sampleCollectedOn);
+    if (collected) return collected;
+
+    return Array.isArray(dateHits) && dateHits.length ? dateHits[0] : null;
+}
+
 function extractPatientName(text) {
     const patterns = [
         /(?:patient\s*name|name)\s*[:\-]\s*([^\n]{2,80})/i,
@@ -413,11 +560,7 @@ function extractPatientName(text) {
     for (const pattern of patterns) {
         const match = text.match(pattern);
         if (match && match[1]) {
-            const cleaned = match[1]
-                .trim()
-                .replace(/[|,;]+$/, '')
-                .replace(/\(\s*\d+\s*\/\s*[a-z]+\s*\/\s*[a-z]+\s*\)$/i, '')
-                .trim();
+            const cleaned = cleanPatientName(match[1]);
             return cleaned || null;
         }
     }
@@ -842,9 +985,12 @@ function extractProjectDataFromDocument(rawText, metadata) {
     if (!text) {
         const emptyExtracted = {
             patientName: null, patientId: null, hba1c: null,
+            patientAge: null, patientSex: null, referringDoctor: null,
             glucoseReadingsMgDl: [], averageGlucoseMgDl: null, bloodPressure: [],
             weightKg: null, diagnoses: [], medications: [], allergies: [],
-            dates: [], reportDate: null, biomarkers: emptyBiomarkers, abnormalityFlags: {}, tableRows: [],
+            dates: [], reportDate: null,
+            sampleCollectedOn: null, sampleRegisteredOn: null, sampleReportedOn: null,
+            biomarkers: emptyBiomarkers, abnormalityFlags: {}, tableRows: [],
         };
         const evaluatedEmpty = evaluateExtractedData(emptyExtracted, { text, metadata });
         return {
@@ -858,21 +1004,28 @@ function extractProjectDataFromDocument(rawText, metadata) {
     }
 
     const dateHits = extractDates(text);
+    const lifecycleDates = extractReportLifecycleDates(text);
+    const demographicsFromName = extractPatientDemographicsFromNameLine(text);
+    const patientName = extractPatientName(text);
     const averageGlucoseMgDl = extractAverageBloodGlucose(text);
     let glucoseReadings = extractGlucoseValues(text);
     if (averageGlucoseMgDl !== null) {
         glucoseReadings = [averageGlucoseMgDl].concat(glucoseReadings.filter((v) => v !== averageGlucoseMgDl));
     }
 
-    const biomarkers = extractAllBiomarkers(text);
+    const biomarkers = sanitizeBiomarkers(extractAllBiomarkers(text), text, demographicsFromName);
     const patientSex = biomarkers.patientSex || null;
     const abnormalityFlags = flagAbnormalities(biomarkers, patientSex);
     const tableRows = extractTableRows(text);
+    const reportDate = pickPrimaryReportDate(dateHits, lifecycleDates);
 
     const extracted = {
-        patientName: extractPatientName(text),
+        patientName,
         patientId: extractPatientId(text),
         hba1c: extractHba1c(text),
+        patientAge: biomarkers.patientAge,
+        patientSex: biomarkers.patientSex,
+        referringDoctor: biomarkers.referringDoctor,
         glucoseReadingsMgDl: glucoseReadings,
         averageGlucoseMgDl,
         bloodPressure: extractBloodPressure(text),
@@ -881,7 +1034,10 @@ function extractProjectDataFromDocument(rawText, metadata) {
         medications: extractMedications(text),
         allergies: extractAllergies(text),
         dates: dateHits,
-        reportDate: dateHits.length ? dateHits[0] : null,
+        reportDate,
+        sampleCollectedOn: lifecycleDates.sampleCollectedOn,
+        sampleRegisteredOn: lifecycleDates.sampleRegisteredOn,
+        sampleReportedOn: lifecycleDates.sampleReportedOn,
         biomarkers,
         abnormalityFlags,
         tableRows: tableRows.slice(0, 50),

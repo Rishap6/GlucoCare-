@@ -12,8 +12,10 @@
 </head>
 <body>
     <div class="dashboard-container">
+        <div class="sidebar-overlay" id="sidebar-overlay"></div>
+
         <!-- Sidebar -->
-        <aside class="sidebar">
+        <aside class="sidebar" id="patient-sidebar">
             <div class="sidebar-header">
                 <a href="../index.html" class="sidebar-logo">
                     <div class="logo-icon">
@@ -101,8 +103,15 @@
             <!-- Top Header -->
             <header class="top-header">
                 <div class="header-left">
-                    <h1 id="page-title">Dashboard Overview</h1>
-                    <p>Welcome back. Your health summary will appear once data is available.</p>
+                    <button class="mobile-menu-toggle" id="patient-menu-toggle" type="button" aria-label="Open navigation" aria-expanded="false">
+                        <span></span>
+                        <span></span>
+                        <span></span>
+                    </button>
+                    <div class="header-title">
+                        <h1 id="page-title">Dashboard Overview</h1>
+                        <p>Welcome back. Your health summary will appear once data is available.</p>
+                    </div>
                 </div>
                 <div class="header-right">
                     <div class="search-box">
@@ -372,21 +381,23 @@
                         </button>
                     </div>
 
-                    <table class="data-table">
-                        <thead>
-                            <tr>
-                                <th>Report Name</th>
-                                <th>Type</th>
-                                <th>Date</th>
-                                <th>Doctor</th>
-                                <th>Status</th>
-                                <th>Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody id="reports-table-body">
+                    <div class="table-container">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Report Name</th>
+                                    <th>Type</th>
+                                    <th>Date</th>
+                                    <th>Doctor</th>
+                                    <th>Status</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="reports-table-body">
 <tr><td colspan="6" style="text-align:center; color: var(--gray-500);">No reports available.</td></tr>
 </tbody>
-                    </table>
+                        </table>
+                    </div>
                 </div>
             </section>
 
@@ -591,40 +602,42 @@
 
                 <div class="card" style="margin-top: 24px;">
                     <h3 class="card-title" style="margin-bottom: 20px;">Appointment History</h3>
-                    <table class="data-table">
-                        <thead>
-                            <tr>
-                                <th>Date</th>
-                                <th>Doctor</th>
-                                <th>Specialty</th>
-                                <th>Reason</th>
-                                <th>Status</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr>
-                                <td>--</td>
-                                <td>Assigned Doctor</td>
-                                <td>Endocrinologist</td>
-                                <td>Diabetes Check-up</td>
-                                <td><span class="status-badge normal">Completed</span></td>
-                            </tr>
-                            <tr>
-                                <td>--</td>
-                                <td>Doctor 2</td>
-                                <td>Diabetes Specialist</td>
-                                <td>HbA1c Review</td>
-                                <td><span class="status-badge normal">Completed</span></td>
-                            </tr>
-                            <tr>
-                                <td>--</td>
-                                <td>Doctor 3</td>
-                                <td>General Physician</td>
-                                <td>Annual Physical</td>
-                                <td><span class="status-badge normal">Completed</span></td>
-                            </tr>
-                        </tbody>
-                    </table>
+                    <div class="table-container">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Doctor</th>
+                                    <th>Specialty</th>
+                                    <th>Reason</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>--</td>
+                                    <td>Assigned Doctor</td>
+                                    <td>Endocrinologist</td>
+                                    <td>Diabetes Check-up</td>
+                                    <td><span class="status-badge normal">Completed</span></td>
+                                </tr>
+                                <tr>
+                                    <td>--</td>
+                                    <td>Doctor 2</td>
+                                    <td>Diabetes Specialist</td>
+                                    <td>HbA1c Review</td>
+                                    <td><span class="status-badge normal">Completed</span></td>
+                                </tr>
+                                <tr>
+                                    <td>--</td>
+                                    <td>Doctor 3</td>
+                                    <td>General Physician</td>
+                                    <td>Annual Physical</td>
+                                    <td><span class="status-badge normal">Completed</span></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </section>
 
@@ -797,11 +810,21 @@
 
                 <div class="card" style="margin-top: 24px;">
                     <h3 class="card-title" style="margin-bottom: 20px;">Recent Intake Logs</h3>
+                    <div class="filter-bar" style="margin-bottom: 16px;">
+                        <input id="diet-track-date" class="filter-input" type="date" aria-label="Filter intake logs by date">
+                        <button class="btn btn-outline" type="button" onclick="clearDietTrackingDate()">
+                            <i class="fas fa-times"></i>
+                            Clear Date
+                        </button>
+                    </div>
+                    <div id="diet-datewise-list" class="stack-list" style="margin-bottom: 16px;">
+                        <div class="empty-state">No diet intake logs yet.</div>
+                    </div>
                     <div class="table-container">
                         <table class="table">
                             <thead>
                                 <tr>
-                                    <th>Time</th>
+                                    <th>Date & Time</th>
                                     <th>Meal</th>
                                     <th>Intake</th>
                                     <th>Sugar</th>
@@ -824,27 +847,27 @@
                             <div class="metric-header">
                                 <span class="metric-title">Daily Calories</span>
                             </div>
-                            <div class="metric-value">--</div>
-                            <div class="metric-unit">92% of goal</div>
+                            <div class="metric-value">0</div>
+                            <div class="metric-unit">Logged today</div>
                             <div class="metric-progress">
-                                <div class="metric-progress-bar success" style="width: 92%"></div>
+                                <div class="metric-progress-bar success" style="width: 0%"></div>
                             </div>
                         </div>
                         <div class="metric-card">
                             <div class="metric-header">
                                 <span class="metric-title">Carbs</span>
                             </div>
-                            <div class="metric-value">--</div>
-                            <div class="metric-unit">84% of goal</div>
+                            <div class="metric-value">0g</div>
+                            <div class="metric-unit">Logged today</div>
                             <div class="metric-progress">
-                                <div class="metric-progress-bar success" style="width: 84%"></div>
+                                <div class="metric-progress-bar success" style="width: 0%"></div>
                             </div>
                         </div>
                         <div class="metric-card">
                             <div class="metric-header">
                                 <span class="metric-title">High Sugar Events</span>
                             </div>
-                            <div class="metric-value">--</div>
+                            <div class="metric-value">0</div>
                             <div class="metric-unit">Events >= 180 mg/dL</div>
                             <div class="metric-progress">
                                 <div class="metric-progress-bar warning" style="width: 0%"></div>
@@ -1192,57 +1215,72 @@
 
                 <!-- Chat Body -->
                 <div class="ai-chat-body">
-                    <!-- Messages Area -->
-                    <div id="ai-conversation" class="ai-message-area">
-                        <div class="ai-welcome-state">
-                            <div class="ai-welcome-icon">
-                                <svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="1.2">
-                                    <circle cx="24" cy="24" r="20" stroke-opacity="0.15"/>
-                                    <path d="M24 8a12 12 0 0 0-12 12c0 4.1 2 7.7 5.2 9.9V34a3 3 0 0 0 3 3h7.6a3 3 0 0 0 3-3v-4.1C34 27.7 36 24.1 36 20a12 12 0 0 0-12-12Z" stroke-opacity="0.5"/>
-                                    <path d="M18 31v3a3 3 0 0 0 6 0 3 3 0 0 0 6 0v-3" stroke-opacity="0.3"/>
-                                    <circle cx="19" cy="18" r="1.5" fill="currentColor" fill-opacity="0.5"/>
-                                    <circle cx="29" cy="18" r="1.5" fill="currentColor" fill-opacity="0.5"/>
-                                    <path d="M16 24h16" stroke-opacity="0.3"/>
-                                </svg>
+                    <div class="ai-chat-content">
+                        <aside id="ai-history-panel" class="ai-history-panel" aria-hidden="false">
+                            <div class="ai-history-sidebar-head">
+                                <button class="ai-history-new-btn" type="button" onclick="startNewAiChat()">
+                                    <i class="fas fa-plus"></i>
+                                    <span>New chat</span>
+                                </button>
+                                <div class="ai-history-sidebar-label">Recent</div>
                             </div>
-                            <h3>How can I help you today?</h3>
-                            <p>Ask me anything about diabetes care, symptoms, nutrition, medications, or safety.</p>
+                            <div id="ai-history-list" class="ai-history-list"></div>
+                        </aside>
+
+                        <div class="ai-chat-main">
+                            <!-- Messages Area -->
+                            <div id="ai-conversation" class="ai-message-area">
+                                <div class="ai-welcome-state">
+                                    <div class="ai-welcome-icon">
+                                        <svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="1.2">
+                                            <circle cx="24" cy="24" r="20" stroke-opacity="0.15"/>
+                                            <path d="M24 8a12 12 0 0 0-12 12c0 4.1 2 7.7 5.2 9.9V34a3 3 0 0 0 3 3h7.6a3 3 0 0 0 3-3v-4.1C34 27.7 36 24.1 36 20a12 12 0 0 0-12-12Z" stroke-opacity="0.5"/>
+                                            <path d="M18 31v3a3 3 0 0 0 6 0 3 3 0 0 0 6 0v-3" stroke-opacity="0.3"/>
+                                            <circle cx="19" cy="18" r="1.5" fill="currentColor" fill-opacity="0.5"/>
+                                            <circle cx="29" cy="18" r="1.5" fill="currentColor" fill-opacity="0.5"/>
+                                            <path d="M16 24h16" stroke-opacity="0.3"/>
+                                        </svg>
+                                    </div>
+                                    <h3>How can I help you today?</h3>
+                                    <p>Ask me anything about diabetes care, symptoms, nutrition, medications, or safety.</p>
+                                </div>
+                            </div>
+
+                            <!-- Quick Suggestion Chips -->
+                            <div class="ai-suggestions-row" id="ai-suggestions-row">
+                                <button class="ai-suggestion-chip" onclick="askAiPreset('What foods help lower blood sugar?')">
+                                    <i class="fas fa-apple-alt"></i> Foods that lower blood sugar
+                                </button>
+                                <button class="ai-suggestion-chip" onclick="askAiPreset('Explain what HbA1c means and how to improve it')">
+                                    <i class="fas fa-vial"></i> Explain my HbA1c
+                                </button>
+                                <button class="ai-suggestion-chip" onclick="askAiPreset('What are the best exercises for managing diabetes?')">
+                                    <i class="fas fa-running"></i> Exercise tips
+                                </button>
+                                <button class="ai-suggestion-chip" onclick="askAiPreset('What are symptoms of low blood sugar?')">
+                                    <i class="fas fa-exclamation-triangle"></i> Low sugar symptoms
+                                </button>
+                            </div>
+
+                            <!-- File Preview Area (hidden by default) -->
+                            <div id="ai-file-preview" class="ai-file-preview" style="display: none;">
+                                <!-- File chips will be inserted here dynamically -->
+                            </div>
+
+                            <!-- Frosted Glass Input Bar -->
+                            <div class="ai-input-bar">
+                                <input type="file" id="ai-file-input" accept=".pdf,.png,.jpg,.jpeg,.webp,.bmp,.tif,.tiff,image/*,application/pdf" multiple style="display: none;" onchange="handleAiFileSelect(event)">
+                                <button class="ai-attach-btn" onclick="document.getElementById('ai-file-input').click()" title="Upload image or PDF" aria-label="Upload image or PDF">
+                                    <i class="fas fa-paperclip"></i>
+                                </button>
+                                <textarea id="ai-question" class="ai-input-field" placeholder="Ask about your health..." rows="1"></textarea>
+                                <button id="ai-send-btn" class="ai-send-btn" onclick="askAiAssistant()" title="Send message" aria-label="Send">
+                                    <i class="fas fa-paper-plane"></i>
+                                </button>
+                            </div>
+                            <p class="ai-input-hint">Press Enter to send · Shift+Enter for new line · Attach images or PDFs for AI analysis</p>
                         </div>
                     </div>
-
-                    <!-- Quick Suggestion Chips -->
-                    <div class="ai-suggestions-row" id="ai-suggestions-row">
-                        <button class="ai-suggestion-chip" onclick="askAiPreset('What foods help lower blood sugar?')">
-                            <i class="fas fa-apple-alt"></i> Foods that lower blood sugar
-                        </button>
-                        <button class="ai-suggestion-chip" onclick="askAiPreset('Explain what HbA1c means and how to improve it')">
-                            <i class="fas fa-vial"></i> Explain my HbA1c
-                        </button>
-                        <button class="ai-suggestion-chip" onclick="askAiPreset('What are the best exercises for managing diabetes?')">
-                            <i class="fas fa-running"></i> Exercise tips
-                        </button>
-                        <button class="ai-suggestion-chip" onclick="askAiPreset('What are symptoms of low blood sugar?')">
-                            <i class="fas fa-exclamation-triangle"></i> Low sugar symptoms
-                        </button>
-                    </div>
-
-                    <!-- File Preview Area (hidden by default) -->
-                    <div id="ai-file-preview" class="ai-file-preview" style="display: none;">
-                        <!-- File chips will be inserted here dynamically -->
-                    </div>
-
-                    <!-- Frosted Glass Input Bar -->
-                    <div class="ai-input-bar">
-                        <input type="file" id="ai-file-input" accept=".pdf,.png,.jpg,.jpeg,.webp,.bmp,.tif,.tiff,image/*,application/pdf" multiple style="display: none;" onchange="handleAiFileSelect(event)">
-                        <button class="ai-attach-btn" onclick="document.getElementById('ai-file-input').click()" title="Upload image or PDF" aria-label="Upload image or PDF">
-                            <i class="fas fa-paperclip"></i>
-                        </button>
-                        <textarea id="ai-question" class="ai-input-field" placeholder="Ask about your health..." rows="1"></textarea>
-                        <button id="ai-send-btn" class="ai-send-btn" onclick="askAiAssistant()" title="Send message" aria-label="Send">
-                            <i class="fas fa-paper-plane"></i>
-                        </button>
-                    </div>
-                    <p class="ai-input-hint">Press Enter to send · Shift+Enter for new line · Attach images or PDFs for AI analysis</p>
                 </div>
             </section>
 
