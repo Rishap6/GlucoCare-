@@ -1,5 +1,6 @@
 const jwt = require('jsonwebtoken');
 const User = require('../../backend/models/User');
+const { ensureDatabaseReady } = require('../../backend/server');
 const { sendJson } = require('../_lib');
 
 module.exports = async function meHandler(req, res) {
@@ -9,6 +10,7 @@ module.exports = async function meHandler(req, res) {
     }
 
     try {
+        await ensureDatabaseReady();
         const header = String(req.headers.authorization || '');
         if (!header.startsWith('Bearer ')) {
             sendJson(res, 401, { error: 'Authentication required' });
