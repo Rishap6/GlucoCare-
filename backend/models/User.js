@@ -5,14 +5,53 @@ const db = {
     prepare: (...args) => getDb().prepare(...args),
 };
 
+function readField(row, key, fallback = undefined) {
+    if (!row || typeof row !== 'object') return fallback;
+    if (Object.prototype.hasOwnProperty.call(row, key)) return row[key];
+    const lowerKey = String(key || '').toLowerCase();
+    if (Object.prototype.hasOwnProperty.call(row, lowerKey)) return row[lowerKey];
+    const snakeKey = String(key || '')
+        .replace(/([a-z0-9])([A-Z])/g, '$1_$2')
+        .toLowerCase();
+    if (Object.prototype.hasOwnProperty.call(row, snakeKey)) return row[snakeKey];
+    return fallback;
+}
+
+function parseJsonList(value) {
+    if (!value) return [];
+    if (Array.isArray(value)) return value;
+    try {
+        return JSON.parse(value);
+    } catch (_e) {
+        return [];
+    }
+}
+
 function transformUser(row) {
     if (!row) return null;
-    const user = { ...row, _id: row.id };
-    user.allergies = row.allergies ? JSON.parse(row.allergies) : [];
-    user.chronicConditions = row.chronicConditions ? JSON.parse(row.chronicConditions) : [];
+    const user = {
+        ...row,
+        _id: readField(row, 'id'),
+        id: readField(row, 'id'),
+        fullName: readField(row, 'fullName'),
+        email: readField(row, 'email'),
+        phone: readField(row, 'phone'),
+        role: readField(row, 'role'),
+        dateOfBirth: readField(row, 'dateOfBirth'),
+        bloodType: readField(row, 'bloodType'),
+        allergies: parseJsonList(readField(row, 'allergies')),
+        chronicConditions: parseJsonList(readField(row, 'chronicConditions')),
+        emergencyContactName: readField(row, 'emergencyContactName'),
+        emergencyContactPhone: readField(row, 'emergencyContactPhone'),
+        medicalRegistrationNumber: readField(row, 'medicalRegistrationNumber'),
+        specialization: readField(row, 'specialization'),
+        clinicName: readField(row, 'clinicName'),
+        createdAt: readField(row, 'createdAt'),
+        updatedAt: readField(row, 'updatedAt'),
+    };
     user.emergencyContact = {
-        name: row.emergencyContactName || undefined,
-        phone: row.emergencyContactPhone || undefined,
+        name: user.emergencyContactName || undefined,
+        phone: user.emergencyContactPhone || undefined,
     };
     delete user.emergencyContactName;
     delete user.emergencyContactPhone;
@@ -29,15 +68,11 @@ const User = {
     findByEmail(email) {
         const row = db.prepare('SELECT * FROM users WHERE email = ?').get(String(email || '').toLowerCase().trim());
         if (!row) return null;
-        const user = { ...row, _id: row.id };
-        user.allergies = row.allergies ? JSON.parse(row.allergies) : [];
-        user.chronicConditions = row.chronicConditions ? JSON.parse(row.chronicConditions) : [];
+        const user = transformUser(row);
         user.emergencyContact = {
-            name: row.emergencyContactName || undefined,
-            phone: row.emergencyContactPhone || undefined,
+            name: user.emergencyContactName || undefined,
+            phone: user.emergencyContactPhone || undefined,
         };
-        delete user.emergencyContactName;
-        delete user.emergencyContactPhone;
         user.comparePassword = async function (candidatePassword) {
             return bcrypt.compare(candidatePassword, this.password);
         };
@@ -121,9 +156,7 @@ const User = {
             WHERE u.role = 'patient' AND pd.doctor_id = ?
         `).all(doctorId);
         return rows.map(row => {
-            const user = { ...row, _id: row.id };
-            user.chronicConditions = row.chronicConditions ? JSON.parse(row.chronicConditions) : [];
-            return user;
+            return transformUser(row);
         });
     },
 
@@ -144,11 +177,7 @@ const User = {
         sql += ' ORDER BY fullName ASC';
 
         const rows = db.prepare(sql).all(...params);
-        return rows.map((row) => ({
-            ...row,
-            _id: row.id,
-            chronicConditions: row.chronicConditions ? JSON.parse(row.chronicConditions) : [],
-        }));
+        return rows.map((row) => transformUser(row));
     },
 
     findPatientByIdAndDoctor(patientId, doctorId) {
@@ -214,7 +243,7 @@ const User = {
             WHERE u.role = 'doctor'
             GROUP BY u.id, u.fullName, u.email, u.phone, u.specialization, u.clinicName
             ORDER BY u.fullName ASC
-        `).all();
+        `).all().map((row) => transformUser(row));
     },
 
     findLoggedInDoctors() {
@@ -227,7 +256,7 @@ const User = {
             WHERE u.role = 'doctor' AND s.revoked_at IS NULL
             GROUP BY u.id, u.fullName, u.email, u.phone, u.specialization, u.clinicName
             ORDER BY u.fullName ASC
-        `).all();
+        `).all().map((row) => transformUser(row));
     },
 
     createSession(userId, { deviceInfo, ipAddress } = {}) {
