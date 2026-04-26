@@ -27,12 +27,13 @@ function parseJsonList(value) {
     }
 }
 
-function transformUser(row) {
+function transformUser(row, { includePassword = false } = {}) {
     if (!row) return null;
     const user = {
         ...row,
         _id: readField(row, 'id'),
         id: readField(row, 'id'),
+        password: includePassword ? readField(row, 'password') : undefined,
         fullName: readField(row, 'fullName'),
         email: readField(row, 'email'),
         phone: readField(row, 'phone'),
@@ -55,7 +56,7 @@ function transformUser(row) {
     };
     delete user.emergencyContactName;
     delete user.emergencyContactPhone;
-    delete user.password;
+    if (!includePassword) delete user.password;
     return user;
 }
 
@@ -68,7 +69,7 @@ const User = {
     findByEmail(email) {
         const row = db.prepare('SELECT * FROM users WHERE email = ?').get(String(email || '').toLowerCase().trim());
         if (!row) return null;
-        const user = transformUser(row);
+        const user = transformUser(row, { includePassword: true });
         user.emergencyContact = {
             name: user.emergencyContactName || undefined,
             phone: user.emergencyContactPhone || undefined,
