@@ -1,5 +1,5 @@
 const jwt = require('jsonwebtoken');
-const { initDatabase } = require('../../backend/database');
+const { initAuthDatabase } = require('../../backend/database');
 const User = require('../../backend/models/User');
 const { logAudit } = require('../../backend/services/audit');
 const { readBody, sendJson, getClientIp, getUserAgent } = require('../_lib');
@@ -12,7 +12,7 @@ module.exports = async function registerHandler(req, res) {
     }
 
     try {
-        await initDatabase();
+        await initAuthDatabase();
         const body = await readBody(req);
         const fullName = sanitize(body.fullName);
         const email = sanitize(body.email).toLowerCase();

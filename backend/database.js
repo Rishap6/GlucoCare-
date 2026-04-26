@@ -7,6 +7,7 @@ require('dotenv').config({ path: path.join(__dirname, '.env') });
 
 const runnerPath = path.join(__dirname, 'services', 'postgres-runner.js');
 let _wrapper = null;
+let _initPromise = null;
 
 function transformSql(sql) {
     let out = String(sql || '');
@@ -221,6 +222,10 @@ class PostgresWrapper {
 }
 
 async function initDatabase() {
+    if (_wrapper) return _wrapper;
+    if (_initPromise) return _initPromise;
+
+    _initPromise = (async () => {
     _wrapper = new PostgresWrapper();
 
     _wrapper.pragma('journal_mode = WAL');
@@ -814,6 +819,107 @@ async function initDatabase() {
     _wrapper.exec(`CREATE INDEX IF NOT EXISTS idx_audit_user ON access_audit_logs(user_id)`);
 
     return _wrapper;
+    })();
+
+    try {
+        return await _initPromise;
+    } finally {
+        _initPromise = null;
+    }
+}
+
+async function initAuthDatabase() {
+    if (_wrapper) return _wrapper;
+    if (_initPromise) return _initPromise;
+
+    _initPromise = (async () => {
+        _wrapper = new PostgresWrapper();
+
+        _wrapper.pragma('journal_mode = WAL');
+        _wrapper.pragma('foreign_keys = ON');
+
+        _wrapper.exec(`
+            CREATE TABLE IF NOT EXISTS users (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                fullName TEXT NOT NULL,
+                email TEXT NOT NULL UNIQUE COLLATE NOCASE,
+                password TEXT NOT NULL,
+                phone TEXT,
+                role TEXT NOT NULL CHECK(role IN ('patient', 'doctor')),
+                dateOfBirth TEXT,
+                bloodType TEXT,
+                allergies TEXT DEFAULT '[]',
+                chronicConditions TEXT DEFAULT '[]',
+                emergencyContactName TEXT,
+                emergencyContactPhone TEXT,
+                medicalRegistrationNumber TEXT,
+                specialization TEXT,
+                clinicName TEXT,
+                createdAt TEXT DEFAULT (datetime('now')),
+                updatedAt TEXT DEFAULT (datetime('now'))
+            )
+        `);
+
+        _wrapper.exec(`
+            CREATE TABLE IF NOT EXISTS patient_doctors (
+                patient_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                doctor_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                PRIMARY KEY (patient_id, doctor_id)
+            )
+        `);
+
+        _wrapper.exec(`
+            CREATE TABLE IF NOT EXISTS privacy_settings (
+                patient_id INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+                share_with_doctor INTEGER DEFAULT 1,
+                share_with_caregiver INTEGER DEFAULT 0,
+                research_opt_in INTEGER DEFAULT 0,
+                marketing_opt_in INTEGER DEFAULT 0,
+                updated_at TEXT DEFAULT (datetime('now')),
+                createdAt TEXT DEFAULT (datetime('now')),
+                updatedAt TEXT DEFAULT (datetime('now'))
+            )
+        `);
+
+        _wrapper.exec(`
+            CREATE TABLE IF NOT EXISTS user_sessions (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                device_info TEXT,
+                ip_address TEXT,
+                last_seen_at TEXT DEFAULT (datetime('now')),
+                revoked_at TEXT,
+                createdAt TEXT DEFAULT (datetime('now')),
+                updatedAt TEXT DEFAULT (datetime('now'))
+            )
+        `);
+
+        _wrapper.exec(`
+            CREATE TABLE IF NOT EXISTS access_audit_logs (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                actor_id INTEGER REFERENCES users(id),
+                actor_role TEXT,
+                action TEXT NOT NULL,
+                resource_type TEXT,
+                resource_id TEXT,
+                meta_json TEXT,
+                createdAt TEXT DEFAULT (datetime('now')),
+                updatedAt TEXT DEFAULT (datetime('now'))
+            )
+        `);
+
+        _wrapper.exec(`CREATE INDEX IF NOT EXISTS idx_sessions_user ON user_sessions(user_id)`);
+        _wrapper.exec(`CREATE INDEX IF NOT EXISTS idx_audit_user ON access_audit_logs(user_id)`);
+
+        return _wrapper;
+    })();
+
+    try {
+        return await _initPromise;
+    } finally {
+        _initPromise = null;
+    }
 }
 
 function getDb() {
@@ -821,4 +927,4 @@ function getDb() {
     return _wrapper;
 }
 
-module.exports = { initDatabase, getDb };
+module.exports = { initDatabase, initAuthDatabase, getDb };
