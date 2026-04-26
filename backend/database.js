@@ -28,6 +28,79 @@ function transformSql(sql) {
         .replace(/COLLATE\s+NOCASE/gi, '');
 }
 
+function convertPositionalPlaceholders(sqlText) {
+    const text = String(sqlText || '');
+    let out = '';
+    let paramIndex = 1;
+    let inSingle = false;
+    let inDouble = false;
+    let inBacktick = false;
+    let inLineComment = false;
+    let inBlockComment = false;
+
+    for (let i = 0; i < text.length; i += 1) {
+        const ch = text[i];
+        const next = text[i + 1];
+
+        if (inLineComment) {
+            out += ch;
+            if (ch === '\n') inLineComment = false;
+            continue;
+        }
+
+        if (inBlockComment) {
+            out += ch;
+            if (ch === '*' && next === '/') {
+                out += next;
+                i += 1;
+                inBlockComment = false;
+            }
+            continue;
+        }
+
+        if (!inDouble && !inBacktick && ch === "'" && text[i - 1] !== '\\') {
+            inSingle = !inSingle;
+            out += ch;
+            continue;
+        }
+
+        if (!inSingle && !inBacktick && ch === '"') {
+            inDouble = !inDouble;
+            out += ch;
+            continue;
+        }
+
+        if (!inSingle && !inDouble && ch === '`') {
+            inBacktick = !inBacktick;
+            out += ch;
+            continue;
+        }
+
+        if (!inSingle && !inDouble && !inBacktick && ch === '-' && next === '-') {
+            inLineComment = true;
+            out += ch + next;
+            i += 1;
+            continue;
+        }
+
+        if (!inSingle && !inDouble && !inBacktick && ch === '/' && next === '*') {
+            inBlockComment = true;
+            out += ch + next;
+            i += 1;
+            continue;
+        }
+
+        if (!inSingle && !inDouble && !inBacktick && ch === '?') {
+            out += `$${paramIndex++}`;
+            continue;
+        }
+
+        out += ch;
+    }
+
+    return out;
+}
+
 function normalizeValue(value) {
     if (value instanceof Date) return value.toISOString();
     if (Array.isArray(value)) return value.map(normalizeValue);
@@ -44,7 +117,7 @@ function normalizeValue(value) {
 function runDbAction(action, sql, params = []) {
     const payload = {
         action,
-        sql: transformSql(sql),
+        sql: convertPositionalPlaceholders(transformSql(sql)),
         params: Array.isArray(params) ? params : [],
     };
 
