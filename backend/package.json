@@ -26,6 +26,7 @@
     "jsonwebtoken": "^9.0.2",
     "mammoth": "^1.9.0",
     "pdf-parse": "^1.1.1",
+    "postgres": "^3.4.9",
     "socket.io": "^4.8.3",
     "sql.js": "^1.11.0",
     "tesseract.js": "^6.0.1"

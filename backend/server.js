@@ -19,6 +19,7 @@ const predictRoutes = require('./routes/predict');
 
 const DEFAULT_PORT = Number(process.env.PORT || 5000);
 let activePort = DEFAULT_PORT;
+let dbInitPromise = null;
 
 const CONFIGURED_ORIGINS = process.env.ALLOWED_ORIGINS
     ? process.env.ALLOWED_ORIGINS.split(',').map(function(s) { return s.trim(); }).filter(Boolean)
@@ -42,9 +43,31 @@ function corsOriginValidator(origin, callback) {
     callback(new Error('Not allowed by CORS'));
 }
 
+function ensureDatabaseReady() {
+    if (!dbInitPromise) {
+        dbInitPromise = initDatabase();
+    }
+    return dbInitPromise;
+}
+
 const app = express();
-const server = http.createServer(app);
-const io = new Server(server, {
+const usingVercel = !!process.env.VERCEL;
+
+function createNoopIo() {
+    return {
+        use() {},
+        on() {},
+        emit() {},
+        to() {
+            return {
+                emit() {},
+            };
+        },
+    };
+}
+
+const server = usingVercel ? null : http.createServer(app);
+const io = usingVercel ? createNoopIo() : new Server(server, {
     cors: { origin: corsOriginValidator, credentials: true },
     pingTimeout: 20000,
     pingInterval: 25000,
@@ -209,7 +232,11 @@ app.use(function(err, req, res, _next) {
 
 // ── Graceful shutdown ───────────────────────────────────────────────
 function gracefulShutdown(signal) {
-    console.log(`\n${signal} received — shutting down gracefully`);
+    console.log(`\n${signal} received - shutting down gracefully`);
+    if (!server) {
+        process.exit(0);
+        return;
+    }
     server.close(function() {
         console.log('HTTP server closed');
         process.exit(0);
@@ -222,8 +249,8 @@ process.on('SIGTERM', function() { gracefulShutdown('SIGTERM'); });
 
 async function startServer() {
     try {
-        await initDatabase();
-        console.log('Connected to SQLite database');
+        await ensureDatabaseReady();
+        console.log('Connected to database');
 
         function listenOnPort(port) {
             activePort = port;
@@ -260,4 +287,9 @@ async function startServer() {
     }
 }
 
-startServer();
+if (!process.env.VERCEL) {
+    startServer();
+}
+
+module.exports = { app, ensureDatabaseReady };
+

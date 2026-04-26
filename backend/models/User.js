@@ -27,7 +27,7 @@ const User = {
     },
 
     findByEmail(email) {
-        const row = db.prepare('SELECT * FROM users WHERE email = ?').get(email);
+        const row = db.prepare('SELECT * FROM users WHERE email = ?').get(String(email || '').toLowerCase().trim());
         if (!row) return null;
         const user = { ...row, _id: row.id };
         user.allergies = row.allergies ? JSON.parse(row.allergies) : [];
@@ -136,7 +136,7 @@ const User = {
         const params = [];
 
         if (search) {
-            sql += ' AND (fullName LIKE ? OR email LIKE ?)';
+            sql += ' AND (fullName ILIKE ? OR email ILIKE ?)';
             const term = `%${String(search).trim()}%`;
             params.push(term, term);
         }

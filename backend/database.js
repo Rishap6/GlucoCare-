@@ -1,8 +1,90 @@
-const initSqlJs = require('sql.js');
+const { Worker } = require('worker_threads');
 const fs = require('fs');
+const os = require('os');
 const path = require('path');
 
+require('dotenv').config({ path: path.join(__dirname, '.env') });
+
+const runnerPath = path.join(__dirname, 'services', 'postgres-runner.js');
 let _wrapper = null;
+
+function transformSql(sql) {
+    let out = String(sql || '');
+
+    if (/INSERT\s+OR\s+IGNORE/i.test(out)) {
+        out = out.replace(/INSERT\s+OR\s+IGNORE/i, 'INSERT');
+        if (!/ON\s+CONFLICT/i.test(out)) {
+            out = out.replace(/;?\s*$/i, ' ON CONFLICT DO NOTHING');
+        }
+    }
+
+    return out
+        .replace(/INTEGER\s+PRIMARY\s+KEY\s+AUTOINCREMENT/gi, 'BIGSERIAL PRIMARY KEY')
+        .replace(/\bINTEGER(?=\s+(?:PRIMARY\s+KEY\s+)?(?:NOT\s+NULL\s+)?REFERENCES\b)/gi, 'BIGINT')
+        .replace(/\bAUTOINCREMENT\b/gi, '')
+        .replace(/TEXT\s+DEFAULT\s+\(datetime\('now'\)\)/gi, 'TIMESTAMPTZ DEFAULT NOW()')
+        .replace(/datetime\('now'\)/gi, 'NOW()')
+        .replace(/COLLATE\s+NOCASE/gi, '');
+}
+
+function normalizeValue(value) {
+    if (value instanceof Date) return value.toISOString();
+    if (Array.isArray(value)) return value.map(normalizeValue);
+    if (value && typeof value === 'object') {
+        const out = {};
+        for (const [key, item] of Object.entries(value)) {
+            out[key] = normalizeValue(item);
+        }
+        return out;
+    }
+    return value;
+}
+
+function runDbAction(action, sql, params = []) {
+    const payload = {
+        action,
+        sql: transformSql(sql),
+        params: Array.isArray(params) ? params : [],
+    };
+
+    const status = new Int32Array(new SharedArrayBuffer(4));
+    const outputPath = path.join(os.tmpdir(), `glucocare-db-${Date.now()}-${Math.random().toString(36).slice(2)}.json`);
+
+    const worker = new Worker(runnerPath, {
+        workerData: {
+            payload,
+            outputPath,
+            statusBuffer: status.buffer,
+        },
+    });
+
+    const timeoutMs = Number(process.env.DB_WORKER_TIMEOUT_MS || 60000);
+    const deadline = Date.now() + timeoutMs;
+
+    while (Atomics.load(status, 0) === 0) {
+        const remaining = deadline - Date.now();
+        if (remaining <= 0) {
+            try { worker.terminate(); } catch (_e) {}
+            throw new Error('Database query timed out');
+        }
+        Atomics.wait(status, 0, 0, Math.min(remaining, 1000));
+    }
+
+    try {
+        const stdout = fs.existsSync(outputPath) ? fs.readFileSync(outputPath, 'utf8').trim() : '';
+        if (!stdout) return null;
+        const parsed = JSON.parse(stdout);
+        if (!parsed.ok) {
+            const err = new Error(parsed.error || 'Database query failed');
+            if (parsed.stack) err.stack = parsed.stack;
+            throw err;
+        }
+        return normalizeValue(parsed);
+    } finally {
+        try { if (fs.existsSync(outputPath)) fs.unlinkSync(outputPath); } catch (_e) {}
+        try { worker.terminate(); } catch (_e) {}
+    }
+}
 
 function parseLegacyReportNotes(notesValue) {
     const text = String(notesValue || '').trim();
@@ -53,75 +135,93 @@ function parseLegacyReportNotes(notesValue) {
     return out;
 }
 
-class SqliteWrapper {
-    constructor(db, dbPath) {
-        this._db = db;
-        this._dbPath = dbPath;
-    }
-
-    _save() {
-        const data = this._db.export();
-        fs.writeFileSync(this._dbPath, Buffer.from(data));
-    }
-
+class PostgresWrapper {
     exec(sql) {
-        this._db.run(sql);
-        this._save();
+        return runDbAction('exec', sql);
     }
 
-    pragma(str) {
-        this._db.run(`PRAGMA ${str}`);
+    pragma(_str) {
+        return undefined;
     }
 
     prepare(sql) {
-        const db = this._db;
-        const wrapper = this;
+        const query = String(sql || '').trim();
         return {
             get(...params) {
-                const stmt = db.prepare(sql);
-                if (params.length > 0) stmt.bind(params);
-                let row;
-                if (stmt.step()) {
-                    row = stmt.getAsObject();
+                if (/^PRAGMA\s+table_info\s*\(\s*reports\s*\)/i.test(query)) {
+                    return [
+                        { cid: 0, name: 'id' },
+                        { cid: 1, name: 'patient' },
+                        { cid: 2, name: 'reportName' },
+                        { cid: 3, name: 'type' },
+                        { cid: 4, name: 'date' },
+                        { cid: 5, name: 'doctor' },
+                        { cid: 6, name: 'status' },
+                        { cid: 7, name: 'file_url' },
+                        { cid: 8, name: 'file_type' },
+                        { cid: 9, name: 'parsed_json' },
+                        { cid: 10, name: 'review_json' },
+                        { cid: 11, name: 'createdAt' },
+                        { cid: 12, name: 'updatedAt' },
+                    ];
                 }
-                stmt.free();
-                return row;
+                const result = runDbAction('get', query, params);
+                return Array.isArray(result?.rows) ? result.rows[0] || null : null;
             },
             all(...params) {
-                const rows = [];
-                const stmt = db.prepare(sql);
-                if (params.length > 0) stmt.bind(params);
-                while (stmt.step()) {
-                    rows.push(stmt.getAsObject());
+                if (/^PRAGMA\s+table_info\s*\(\s*reports\s*\)/i.test(query)) {
+                    return [
+                        { cid: 0, name: 'id' },
+                        { cid: 1, name: 'patient' },
+                        { cid: 2, name: 'reportName' },
+                        { cid: 3, name: 'type' },
+                        { cid: 4, name: 'date' },
+                        { cid: 5, name: 'doctor' },
+                        { cid: 6, name: 'status' },
+                        { cid: 7, name: 'file_url' },
+                        { cid: 8, name: 'file_type' },
+                        { cid: 9, name: 'parsed_json' },
+                        { cid: 10, name: 'review_json' },
+                        { cid: 11, name: 'createdAt' },
+                        { cid: 12, name: 'updatedAt' },
+                    ];
                 }
-                stmt.free();
-                return rows;
+                const result = runDbAction('all', query, params);
+                return Array.isArray(result?.rows) ? result.rows : [];
             },
             run(...params) {
-                db.run(sql, params);
-                const idResult = db.exec('SELECT last_insert_rowid() as id');
-                const lastInsertRowid = idResult[0]?.values[0]?.[0];
-                const changes = db.getRowsModified();
-                wrapper._save();
-                return { lastInsertRowid, changes };
+                const noIdTables = new Set([
+                    'patient_doctors',
+                    'alert_settings',
+                    'ai_chat_history',
+                    'privacy_settings',
+                    'safety_profiles',
+                ]);
+
+                let q = query;
+                let returningId = false;
+                const insertMatch = q.match(/^INSERT\s+INTO\s+([^\s(]+)/i);
+                if (insertMatch && !/RETURNING\s+id/i.test(q)) {
+                    const table = String(insertMatch[1] || '').trim().replace(/["'`]/g, '');
+                    if (!noIdTables.has(table)) {
+                        q = `${q.replace(/;?\s*$/i, '')} RETURNING id`;
+                        returningId = true;
+                    }
+                }
+
+                const result = runDbAction('run', q, params);
+                const row = Array.isArray(result?.rows) ? result.rows[0] || null : null;
+                return {
+                    lastInsertRowid: returningId && row ? row.id : null,
+                    changes: Number(result?.count || 0),
+                };
             },
         };
     }
 }
 
 async function initDatabase() {
-    const dbPath = path.join(__dirname, process.env.DB_PATH || 'glucocare.db');
-    const SQL = await initSqlJs();
-
-    let db;
-    if (fs.existsSync(dbPath)) {
-        const buffer = fs.readFileSync(dbPath);
-        db = new SQL.Database(buffer);
-    } else {
-        db = new SQL.Database();
-    }
-
-    _wrapper = new SqliteWrapper(db, dbPath);
+    _wrapper = new PostgresWrapper();
 
     _wrapper.pragma('journal_mode = WAL');
     _wrapper.pragma('foreign_keys = ON');
