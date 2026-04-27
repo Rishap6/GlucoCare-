@@ -982,8 +982,18 @@ async function initAuthDatabase() {
             )
         `);
 
+        _wrapper.exec(`
+            CREATE TABLE IF NOT EXISTS ai_chat_history (
+                patient_id INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+                conversation_json TEXT NOT NULL,
+                createdAt TEXT DEFAULT (datetime('now')),
+                updatedAt TEXT DEFAULT (datetime('now'))
+            )
+        `);
+
         _wrapper.exec(`CREATE INDEX IF NOT EXISTS idx_sessions_user ON user_sessions(user_id)`);
         _wrapper.exec(`CREATE INDEX IF NOT EXISTS idx_audit_user ON access_audit_logs(user_id)`);
+        _wrapper.exec(`CREATE INDEX IF NOT EXISTS idx_ai_chat_history_patient ON ai_chat_history(patient_id)`);
 
         return _wrapper;
     })();
