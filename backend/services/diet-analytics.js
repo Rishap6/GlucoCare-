@@ -114,8 +114,8 @@ function buildDietReportSummary(patientId, days) {
         SELECT *
         FROM diet_intakes
         WHERE patient_id = ?
-          AND datetime(logged_at) >= datetime(?)
-        ORDER BY datetime(logged_at) DESC
+          AND logged_at >= ?
+        ORDER BY logged_at DESC
     `).all(patientId, sinceIso);
 
     const entries = rawEntries.map(mapDietIntakeRow);
@@ -194,8 +194,8 @@ function buildDietReportSummary(patientId, days) {
         FROM reports
         WHERE patient = ?
           AND parsed_json IS NOT NULL
-          AND datetime(createdAt) >= datetime(?, '-180 days')
-        ORDER BY datetime(createdAt) DESC
+          AND createdAt >= ?::timestamptz - interval '180 days'
+        ORDER BY createdAt DESC
         LIMIT 8
     `).all(patientId, new Date().toISOString());
 
