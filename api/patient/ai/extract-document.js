@@ -1,4 +1,4 @@
-const { sendJson, readBody } = require('../../../_lib');
+const { sendJson, readBody } = require('../../_lib');
 const { requirePatient } = require('../_auth');
 const { extractDocumentForAssistant } = require('../_ai');
 

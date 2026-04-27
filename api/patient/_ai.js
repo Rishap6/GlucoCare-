@@ -1,9 +1,9 @@
-const { answerQuestion } = require('../../../Ai/ai-engine');
-const { askLlmFallback } = require('../../../backend/services/llm');
-const { extractProjectDataFromDocument, evaluateExtractedData } = require('../../../Ai/document-intelligence');
-const { parseDocumentToText } = require('../../../Ai/document-reader');
-const { verifyReportPatientName } = require('../../../backend/services/report-processing');
-const { buildDietAiResponse } = require('../../../backend/services/diet-analytics');
+const { answerQuestion } = require('../../Ai/ai-engine');
+const { askLlmFallback } = require('../../backend/services/llm');
+const { extractProjectDataFromDocument, evaluateExtractedData } = require('../../Ai/document-intelligence');
+const { parseDocumentToText } = require('../../Ai/document-reader');
+const { verifyReportPatientName } = require('../../backend/services/report-processing');
+const { buildDietAiResponse } = require('../../backend/services/diet-analytics');
 
 const AI_HISTORY_MAX_MESSAGES = 80;
 const AI_HISTORY_MAX_CHATS = 40;
