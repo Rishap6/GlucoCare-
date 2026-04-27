@@ -1,7 +1,6 @@
 const { answerQuestion } = require('../../Ai/ai-engine');
 const { askLlmFallback } = require('../../backend/services/llm');
 const { extractProjectDataFromDocument, evaluateExtractedData } = require('../../Ai/document-intelligence');
-const { parseDocumentToText } = require('../../Ai/document-reader');
 const { verifyReportPatientName } = require('../../backend/services/report-processing');
 const { buildDietAiResponse } = require('../../backend/services/diet-analytics');
 
@@ -233,6 +232,7 @@ async function askAssistant(question, user, { conciseRequested = false } = {}) {
 }
 
 async function extractDocumentForAssistant({ fileName, fileType, text, base64Content, patientName }) {
+    const { parseDocumentToText } = require('../../Ai/document-reader');
     const parsed = await parseDocumentToText({
         fileName,
         fileType,
