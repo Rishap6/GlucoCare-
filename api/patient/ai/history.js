@@ -1,6 +1,6 @@
 const { sendJson, readBody } = require('../../_lib');
 const { requirePatient } = require('../_auth');
-const { initAuthDatabase, getDb } = require('../../backend/database');
+const { initAuthDatabase, getDb } = require('../../../backend/database');
 const { convertLegacyAiConversationToHistory, sanitizeAiHistoryPayload } = require('../_ai');
 
 function db() {
